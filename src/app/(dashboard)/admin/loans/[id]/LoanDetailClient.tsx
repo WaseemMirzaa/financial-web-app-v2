@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useLocale } from '@/contexts/LocaleContext';
-import { mockLoans, mockCustomers, mockEmployees } from '@/lib/mockData';
 import { Loan, LoanStatus, Customer } from '@/types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
 
@@ -20,64 +19,79 @@ export function LoanDetailClient() {
   const loanId = params.id as string;
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
-  // Load customers from localStorage
-  const [allCustomers, setAllCustomers] = React.useState<Customer[]>(mockCustomers);
+  
+  const [loan, setLoan] = useState<Loan | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [employee, setEmployee] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
   React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('customers');
-      if (stored) {
-        const parsed: Customer[] = JSON.parse(stored);
-        const merged = [...mockCustomers, ...parsed.filter((c: Customer) => !mockCustomers.find(m => m.id === c.id))];
-        setAllCustomers(merged);
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-  }, []);
-  
-  // Load loans from localStorage if available, otherwise use mock data
-  const [allLoans, setAllLoans] = React.useState<Loan[]>(mockLoans);
-  
-  React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('loans');
-      if (stored) {
-        const parsed: Loan[] = JSON.parse(stored);
-        const merged = [...mockLoans, ...parsed.filter((l: Loan) => !mockLoans.find(m => m.id === l.id))];
-        setAllLoans(merged);
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-  }, []);
+    fetchLoan();
+  }, [loanId]);
 
-  const loan = allLoans.find(l => l.id === loanId);
-  const customer = allCustomers.find(c => c.id === loan?.customerId);
-  const employee = mockEmployees.find(e => e.id === loan?.employeeId);
+  const fetchLoan = async () => {
+    try {
+      const response = await fetch(`/api/loans/${loanId}`);
+      const data = await response.json();
+      if (data.success) {
+        setLoan(data.data);
+        setFormData({
+          amount: data.data.amount.toString(),
+          interestRate: data.data.interestRate.toString(),
+          numberOfInstallments: data.data.numberOfInstallments.toString(),
+          installmentTotal: data.data.installmentTotal.toString(),
+          startDate: data.data.startDate,
+          status: data.data.status,
+          notes: data.data.notes || '',
+        });
+        fetchCustomer(data.data.customerId);
+        fetchEmployee(data.data.employeeId);
+      }
+    } catch (error) {
+      console.error('Failed to fetch loan:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomer = async (customerId: string) => {
+    try {
+      const response = await fetch(`/api/customers/${customerId}`);
+      const data = await response.json();
+      if (data.success) {
+        setCustomer(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch customer:', error);
+    }
+  };
+
+  const fetchEmployee = async (employeeId: string) => {
+    try {
+      const response = await fetch(`/api/employees/${employeeId}`);
+      const data = await response.json();
+      if (data.success) {
+        setEmployee(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch employee:', error);
+    }
+  };
   const [formData, setFormData] = useState({
-    amount: loan?.amount.toString() || '',
-    interestRate: loan?.interestRate.toString() || '',
-    numberOfInstallments: loan?.numberOfInstallments.toString() || '',
-    installmentTotal: loan?.installmentTotal.toString() || '',
-    startDate: loan?.startDate || '',
-    status: loan?.status || 'under_review' as LoanStatus,
-    notes: loan?.notes || '',
+    amount: '',
+    interestRate: '',
+    numberOfInstallments: '',
+    installmentTotal: '',
+    startDate: '',
+    status: 'under_review' as LoanStatus,
+    notes: '',
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
 
-  React.useEffect(() => {
-    if (loan) {
-      setFormData({
-        amount: loan.amount.toString(),
-        interestRate: loan.interestRate.toString(),
-        numberOfInstallments: loan.numberOfInstallments.toString(),
-        installmentTotal: loan.installmentTotal.toString(),
-        startDate: loan.startDate,
-        status: loan.status,
-        notes: loan.notes || '',
-      });
-    }
-  }, [loan]);
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   if (!loan) {
     return (
@@ -93,49 +107,64 @@ export function LoanDetailClient() {
     );
   }
 
-  const handleSave = () => {
-    if (loan) {
-      const updated = allLoans.map(l =>
-        l.id === loan.id
-          ? {
-              ...l,
-              amount: parseFloat(formData.amount),
-              interestRate: parseFloat(formData.interestRate),
-              numberOfInstallments: parseInt(formData.numberOfInstallments),
-              installmentTotal: parseFloat(formData.installmentTotal),
-              startDate: formData.startDate,
-              status: formData.status,
-              notes: formData.notes,
-              updatedAt: new Date().toISOString(),
-            }
-          : l
-      );
-      setAllLoans(updated);
-      
-      // Update localStorage if this loan was created (not in mock data)
-      try {
-        const stored = JSON.parse(localStorage.getItem('loans') || '[]');
-        const loanIndex = stored.findIndex((l: Loan) => l.id === loan.id);
-        if (loanIndex >= 0) {
-          stored[loanIndex] = {
-            ...stored[loanIndex],
-            amount: parseFloat(formData.amount),
-            interestRate: parseFloat(formData.interestRate),
-            numberOfInstallments: parseInt(formData.numberOfInstallments),
-            installmentTotal: parseFloat(formData.installmentTotal),
-            startDate: formData.startDate,
-            status: formData.status,
-            notes: formData.notes,
-            updatedAt: new Date().toISOString(),
-          };
-          localStorage.setItem('loans', JSON.stringify(stored));
-        }
-      } catch (e) {
-        // Ignore
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      errors.amount = t('validation.amountRequired');
+    }
+    
+    if (!formData.interestRate || parseFloat(formData.interestRate) < 0) {
+      errors.interestRate = t('validation.interestRateRequired');
+    }
+    
+    if (!formData.numberOfInstallments || parseInt(formData.numberOfInstallments) <= 0) {
+      errors.numberOfInstallments = t('validation.installmentsRequired');
+    }
+    
+    if (!formData.startDate) {
+      errors.startDate = t('validation.startDateRequired');
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!loan) return;
+    setSubmitError('');
+    setFormErrors({});
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/loans/${loan.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(formData.amount),
+          interestRate: parseFloat(formData.interestRate),
+          numberOfInstallments: parseInt(formData.numberOfInstallments),
+          installmentTotal: parseFloat(formData.installmentTotal),
+          startDate: formData.startDate,
+          status: formData.status,
+          notes: formData.notes,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchLoan();
+        setIsEditModalOpen(false);
+        setFormErrors({});
+        setSubmitError('');
+      } else {
+        setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
-      
-      setIsEditModalOpen(false);
-      router.refresh();
+    } catch (error) {
+      console.error('Failed to update loan:', error);
+      setSubmitError(t('error.internalServerError'));
     }
   };
 
@@ -210,7 +239,7 @@ export function LoanDetailClient() {
                 onClick={() => router.push(`/admin/customers/${loan.customerId}`)}
                 className="p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors"
               >
-                <p className="font-semibold text-neutral-900">{customer?.nameKey ? t(customer.nameKey) : (customer?.name || t('detail.unknown'))}</p>
+                <p className="font-semibold text-neutral-900">{customer?.name || t('detail.unknown')}</p>
                 <p className="text-sm text-neutral-600">{customer?.email}</p>
               </div>
             </div>
@@ -220,7 +249,7 @@ export function LoanDetailClient() {
                 onClick={() => router.push(`/admin/employees/${loan.employeeId}`)}
                 className="p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors"
               >
-                <p className="font-semibold text-neutral-900">{employee?.nameKey ? t(employee.nameKey) : (employee?.name || t('detail.unknown'))}</p>
+                <p className="font-semibold text-neutral-900">{employee?.name || t('detail.unknown')}</p>
                 <p className="text-sm text-neutral-600">{employee?.email}</p>
               </div>
             </div>
@@ -255,11 +284,20 @@ export function LoanDetailClient() {
         }
       >
         <div className="space-y-4">
+          {submitError && (
+            <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+              {submitError}
+            </div>
+          )}
           <Input
             label={t('form.amount')}
             type="number"
             value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, amount: e.target.value });
+              if (formErrors.amount) setFormErrors({ ...formErrors, amount: '' });
+            }}
+            error={formErrors.amount}
             required
           />
           <Input
@@ -267,28 +305,44 @@ export function LoanDetailClient() {
             type="number"
             step="0.1"
             value={formData.interestRate}
-            onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, interestRate: e.target.value });
+              if (formErrors.interestRate) setFormErrors({ ...formErrors, interestRate: '' });
+            }}
+            error={formErrors.interestRate}
             required
           />
           <Input
             label={t('form.numberOfInstallments')}
             type="number"
             value={formData.numberOfInstallments}
-            onChange={(e) => setFormData({ ...formData, numberOfInstallments: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, numberOfInstallments: e.target.value });
+              if (formErrors.numberOfInstallments) setFormErrors({ ...formErrors, numberOfInstallments: '' });
+            }}
+            error={formErrors.numberOfInstallments}
             required
           />
           <Input
             label={t('form.installmentTotal')}
             type="number"
             value={formData.installmentTotal}
-            onChange={(e) => setFormData({ ...formData, installmentTotal: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, installmentTotal: e.target.value });
+              if (formErrors.installmentTotal) setFormErrors({ ...formErrors, installmentTotal: '' });
+            }}
+            error={formErrors.installmentTotal}
             required
           />
           <Input
             label={t('form.startDate')}
             type="date"
             value={formData.startDate}
-            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, startDate: e.target.value });
+              if (formErrors.startDate) setFormErrors({ ...formErrors, startDate: '' });
+            }}
+            error={formErrors.startDate}
             required
           />
           <div>

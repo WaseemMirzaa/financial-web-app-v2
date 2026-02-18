@@ -31,10 +31,10 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
 
-  const getNotificationTitle = (notif: { titleKey?: string; title: string }) =>
-    notif.titleKey ? t(notif.titleKey) : (NOTIFICATION_TITLE_KEYS[notif.title] ? t(NOTIFICATION_TITLE_KEYS[notif.title]) : notif.title);
-  const getNotificationMessage = (notif: { messageKey?: string; message: string }) =>
-    notif.messageKey ? t(notif.messageKey) : (NOTIFICATION_MESSAGE_KEYS[notif.message] ? t(NOTIFICATION_MESSAGE_KEYS[notif.message]) : notif.message);
+  const getNotificationTitle = (notif: { title?: string }) =>
+    (notif.title && NOTIFICATION_TITLE_KEYS[notif.title]) ? t(NOTIFICATION_TITLE_KEYS[notif.title]) : (notif.title ?? '');
+  const getNotificationMessage = (notif: { message?: string }) =>
+    (notif.message && NOTIFICATION_MESSAGE_KEYS[notif.message]) ? t(NOTIFICATION_MESSAGE_KEYS[notif.message]) : (notif.message ?? '');
 
   const handleLogout = () => {
     logout();
@@ -150,7 +150,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                               </h4>
                               <p className="text-sm text-neutral-600 mt-1">{getNotificationMessage(notif)}</p>
                               <p className="text-xs text-neutral-400 mt-2">
-                                {formatDate(notif.createdAt, locale)}
+                                {notif.createdAt ? formatDate(notif.createdAt, locale ?? 'en') : ''}
                               </p>
                             </div>
                             {!notif.isRead && (

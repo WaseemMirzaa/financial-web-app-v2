@@ -1,13 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockLoans } from '@/lib/mockData';
 import { getLoanStatusColor, formatCurrency, formatDateOnly, formatNumber, formatPercent } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -15,8 +14,33 @@ export default function CustomerDashboard() {
   const router = useRouter();
   const { t, locale } = useLocale();
   const { user } = useAuth();
+  const [customerLoans, setCustomerLoans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const customerLoans = mockLoans.filter(l => l.customerId === user?.id);
+  useEffect(() => {
+    if (user?.id) {
+      fetchLoans();
+    }
+  }, [user?.id]);
+
+  const fetchLoans = async () => {
+    try {
+      const response = await fetch(`/api/loans?customerId=${user?.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setCustomerLoans(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch loans:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
+
   const activeLoan = customerLoans.find(l => l.status === 'active');
 
   return (

@@ -1,22 +1,86 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockChats, mockChatMessages, mockCustomers, mockInternalRooms } from '@/lib/mockData';
 import { Chat, ChatMessage } from '@/types';
+import type { Customer } from '@/types';
 
 export default function EmployeeChatPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { user } = useAuth();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
-  const [chats] = useState<Chat[]>([
-    ...mockChats.filter(c => c.type === 'customer_employee' && c.participantIds.includes(user?.id || '')),
-    ...mockChats.filter(c => c.type === 'internal_room' && c.participantIds.includes(user?.id || '')),
-  ]);
-  const [messages, setMessages] = useState<ChatMessage[]>(mockChatMessages);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [assignedCustomers, setAssignedCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [startingChat, setStartingChat] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchChats();
+      fetchAssignedCustomers();
+    }
+  }, [user?.id]);
+
+  const fetchAssignedCustomers = async () => {
+    try {
+      const response = await fetch(`/api/employees/${user?.id}/customers`);
+      const data = await response.json();
+      if (data.success) setAssignedCustomers(data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch assigned customers:', error);
+    }
+  };
+
+  const fetchChats = async () => {
+    try {
+      const response = await fetch(`/api/chat?userId=${user?.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setChats(data.data);
+        if (data.data.length > 0) {
+          setSelectedChat(data.data[0].id);
+          fetchMessages(data.data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch chats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMessages = async (chatId: string) => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/chat/${chatId}/messages?locale=${locale}&userId=${user.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setMessages(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedChat) {
+      fetchMessages(selectedChat);
+    }
+  }, [selectedChat]);
+
+  // Real-time: poll messages while a chat is open (pause when tab hidden)
+  useEffect(() => {
+    if (!selectedChat) return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchMessages(selectedChat);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [selectedChat, locale]);
 
   const selectedChatData = chats.find(c => c.id === selectedChat);
 
@@ -28,91 +92,150 @@ export default function EmployeeChatPage() {
   const translateRoomName = (name: string | undefined) =>
     (name && roomNameKey[name] ? t(roomNameKey[name]) : name) || '';
 
-  const handleSendMessage = (content: string, file?: File) => {
+  const handleStartChatWithCustomer = async (customerId: string) => {
+    if (!user?.id) return;
+    setStartingChat(true);
+    try {
+      const response = await fetch('/api/chat/with-customer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: user.id, customerId }),
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        const newChat = data.data as Chat;
+        const exists = chats.some((c) => c.id === newChat.id);
+        if (!exists) setChats((prev) => [newChat, ...prev]);
+        setSelectedChat(newChat.id);
+        fetchMessages(newChat.id);
+      }
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+    } finally {
+      setStartingChat(false);
+    }
+  };
+
+  const handleSendMessage = async (content: string, file?: File) => {
     if (!selectedChat || !user) return;
 
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      chatId: selectedChat,
-      senderId: user.id,
-      senderName: user.name,
-      senderRole: user.role,
-      content,
-      fileName: file?.name,
-      fileType: file?.type,
-      fileUrl: file ? URL.createObjectURL(file) : undefined,
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      // Upload file if provided
+      let fileUrl: string | undefined;
+      if (file) {
+        // For now, create object URL. In production, upload to storage service
+        fileUrl = URL.createObjectURL(file);
+      }
 
-    setMessages([...messages, newMessage]);
+      const response = await fetch(`/api/chat/${selectedChat}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          senderId: user.id,
+          content,
+          fileName: file?.name,
+          fileType: file?.type,
+          fileUrl,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Refresh messages to get translated versions
+        await fetchMessages(selectedChat);
+      } else {
+        console.error('Failed to send message:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="text-left rtl:text-right">
         <h1 className="text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
-        <p className="text-neutral-600">{t('chat.withCustomers')}</p>
+        <p className="text-neutral-600">{t('chat.withCustomersAndTeam')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <Card variant="elevated" padding="none">
-            <div className="p-4 border-b border-neutral-100">
-              <h3 className="font-semibold text-neutral-900">{t('chat.chats')}</h3>
-            </div>
-            <div className="divide-y divide-neutral-100 max-h-[600px] overflow-y-auto">
-              {chats.map((chat) => {
-                const isCustomerEmployee = chat.type === 'customer_employee';
-                const otherParticipantId = chat.participantIds.find(id => id !== user?.id);
-                const otherParticipant = isCustomerEmployee
-                  ? mockCustomers.find(c => c.id === otherParticipantId)
-                  : null;
-
-                return (
-                  <button
-                    key={chat.id}
-                    onClick={() => setSelectedChat(chat.id)}
-                    className={`w-full p-4 text-left rtl:text-right hover:bg-neutral-50 transition-colors ${
-                      selectedChat === chat.id ? 'bg-primary-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between rtl:flex-row-reverse">
-                      <div className="text-left rtl:text-right flex-1">
-                        <p className="font-semibold text-sm text-neutral-900 text-left rtl:text-right">
-                          {translateRoomName(chat.roomName) || otherParticipant?.name || t('chat.chat')}
-                        </p>
-                        {chat.lastMessage && (
-                          <p className="text-xs text-neutral-600 mt-1 truncate text-left rtl:text-right">
-                            {chat.lastMessage.contentKey ? t(chat.lastMessage.contentKey) : chat.lastMessage.content}
-                          </p>
-                        )}
-                      </div>
-                      {chat.unreadCount > 0 && (
-                        <span className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
-        </div>
+        <Card variant="elevated" padding="none" className="lg:col-span-1">
+          <div className="p-4 border-b border-neutral-100">
+            <h2 className="font-semibold text-neutral-900">{t('chat.chats')}</h2>
+            {assignedCustomers.length > 0 && (
+              <div className="mt-3">
+                <label htmlFor="customer-select" className="sr-only">
+                  {t('chat.startChatWithCustomer')}
+                </label>
+                <select
+                  id="customer-select"
+                  disabled={startingChat}
+                  className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  value=""
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (id) {
+                      handleStartChatWithCustomer(id);
+                      e.target.value = '';
+                    }
+                  }}
+                >
+                  <option value="">{t('chat.startChatWithCustomer')}</option>
+                  {assignedCustomers.map((cust) => (
+                    <option key={cust.id} value={cust.id}>
+                      {cust.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+          <div className="divide-y divide-neutral-100">
+            {chats.length === 0 ? (
+              <div className="p-4 text-center text-neutral-500">
+                <p>{t('chat.noChats')}</p>
+              </div>
+            ) : (
+              chats.map((chat) => (
+                <button
+                  key={chat.id}
+                  onClick={() => setSelectedChat(chat.id)}
+                  className={`w-full p-4 text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 ${
+                    selectedChat === chat.id ? 'bg-primary-50' : ''
+                  }`}
+                >
+                  <p className="font-semibold text-neutral-900">
+                    {chat.type === 'internal_room' ? translateRoomName(chat.roomName) : t('chat.customerChat')}
+                  </p>
+                  {chat.lastMessage && (
+                    <p className="text-sm text-neutral-600 mt-1 truncate">{chat.lastMessage.content}</p>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </Card>
 
         <div className="lg:col-span-2">
           {selectedChatData ? (
             <ChatWindow
-              messages={messages.filter(m => m.chatId === selectedChat)}
+              messages={messages}
               onSendMessage={handleSendMessage}
               title={
                 selectedChatData.type === 'internal_room'
                   ? translateRoomName(selectedChatData.roomName)
-                  : mockCustomers.find(c => c.id === selectedChatData.participantIds.find(id => id !== user?.id))?.name ||
-                    t('chat.chat')
+                  : t('chat.customerChat')
               }
             />
           ) : (
-            <Card variant="elevated" padding="large" className="h-[600px] flex items-center justify-center">
-              <p className="text-neutral-500">{t('chat.selectChat')}</p>
+            <Card variant="elevated" padding="large">
+              <p className="text-center text-neutral-500">{t('chat.selectChat')}</p>
             </Card>
           )}
         </div>

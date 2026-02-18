@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useLocale } from '@/contexts/LocaleContext';
-import { mockEmployees, mockCustomers } from '@/lib/mockData';
 import { Customer, Employee } from '@/types';
 import { formatDateOnly, formatNumber } from '@/lib/utils';
 
@@ -20,41 +19,46 @@ export function EmployeeDetailClient() {
   const employeeId = params.id as string;
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '' });
-  
-  // Load employees from localStorage and merge with mock data
-  const [allEmployees, setAllEmployees] = React.useState<Employee[]>(mockEmployees);
-  
-  React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('employees');
-      if (stored) {
-        const parsed: Employee[] = JSON.parse(stored);
-        const merged = [...mockEmployees, ...parsed.filter((e: Employee) => !mockEmployees.find(m => m.id === e.id))];
-        setAllEmployees(merged);
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-  }, []);
-  
-  // Load customers from localStorage for assigned customers list
-  const [allCustomers, setAllCustomers] = React.useState<Customer[]>(mockCustomers);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [assignedCustomers, setAssignedCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
   
   React.useEffect(() => {
+    fetchEmployee();
+    fetchAssignedCustomers();
+  }, [employeeId]);
+
+  const fetchEmployee = async () => {
     try {
-      const stored = localStorage.getItem('customers');
-      if (stored) {
-        const parsed: Customer[] = JSON.parse(stored);
-        const merged = [...mockCustomers, ...parsed.filter((c: Customer) => !mockCustomers.find(m => m.id === c.id))];
-        setAllCustomers(merged);
+      const response = await fetch(`/api/employees/${employeeId}`);
+      const data = await response.json();
+      if (data.success) {
+        setEmployee(data.data);
+        setFormData({
+          name: data.data.name,
+          email: data.data.email,
+        });
       }
-    } catch (e) {
-      // Ignore errors
+    } catch (error) {
+      console.error('Failed to fetch employee:', error);
+    } finally {
+      setLoading(false);
     }
-  }, []);
-  
-  const employee = allEmployees.find(e => e.id === employeeId);
-  const assignedCustomers = allCustomers.filter(c => employee?.assignedCustomerIds.includes(c.id));
+  };
+
+  const fetchAssignedCustomers = async () => {
+    try {
+      const response = await fetch(`/api/employees/${employeeId}/customers`);
+      const data = await response.json();
+      if (data.success) {
+        setAssignedCustomers(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch assigned customers:', error);
+    }
+  };
 
   React.useEffect(() => {
     if (employee) {
@@ -71,34 +75,62 @@ export function EmployeeDetailClient() {
         name: employee.name,
         email: employee.email,
       });
+      setFormErrors({});
+      setSubmitError('');
       setIsEditModalOpen(true);
     }
   };
 
-  const handleSave = () => {
-    if (employee) {
-      const updated = allEmployees.map(e =>
-        e.id === employee.id
-          ? { ...e, ...formData }
-          : e
-      );
-      setAllEmployees(updated);
-      
-      // Update localStorage
-      try {
-        const stored = JSON.parse(localStorage.getItem('employees') || '[]');
-        const updatedStored = stored.map((e: Employee) =>
-          e.id === employee.id ? { ...e, ...formData } : e
-        );
-        localStorage.setItem('employees', JSON.stringify(updatedStored));
-      } catch (e) {
-        // Ignore
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = t('validation.nameRequired');
+    }
+    
+    if (!formData.email.trim()) {
+      errors.email = t('validation.emailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = t('validation.emailInvalid');
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!employee) return;
+    setSubmitError('');
+    setFormErrors({});
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/employees/${employee.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchEmployee();
+        setIsEditModalOpen(false);
+        setFormErrors({});
+        setSubmitError('');
+      } else {
+        setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
-      
-      setIsEditModalOpen(false);
-      router.refresh();
+    } catch (error) {
+      console.error('Failed to update employee:', error);
+      setSubmitError(t('error.internalServerError'));
     }
   };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   if (!employee) {
     return (
@@ -125,7 +157,7 @@ export function EmployeeDetailClient() {
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-2 text-left rtl:text-right">{employee.nameKey ? t(employee.nameKey) : employee.name}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-2 text-left rtl:text-right">{employee.name}</h1>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2 text-neutral-600">
               <Mail className="w-4 h-4" />
@@ -158,17 +190,30 @@ export function EmployeeDetailClient() {
         }
       >
         <div className="space-y-4">
+          {submitError && (
+            <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+              {submitError}
+            </div>
+          )}
           <Input
             label={t('common.name')}
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+            }}
+            error={formErrors.name}
             required
           />
           <Input
             label={t('common.email')}
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
+            }}
+            error={formErrors.email}
             required
           />
         </div>
@@ -185,7 +230,7 @@ export function EmployeeDetailClient() {
           <div className="space-y-4">
             <div className="text-left rtl:text-right">
               <p className="text-sm text-neutral-600 mb-1">{t('common.name')}</p>
-              <p className="text-base font-semibold text-neutral-900">{employee.nameKey ? t(employee.nameKey) : employee.name}</p>
+              <p className="text-base font-semibold text-neutral-900">{employee.name}</p>
             </div>
             <div>
               <p className="text-sm text-neutral-600 mb-1">{t('common.email')}</p>
@@ -221,7 +266,7 @@ export function EmployeeDetailClient() {
                   onClick={() => router.push(`/admin/customers/${customer.id}`)}
                   className="p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200 text-left rtl:text-right"
                 >
-                  <p className="font-semibold text-neutral-900">{customer.nameKey ? t(customer.nameKey) : customer.name}</p>
+                  <p className="font-semibold text-neutral-900">{customer.name}</p>
                   <p className="text-sm text-neutral-600 mt-1">{customer.email}</p>
                 </div>
               ))

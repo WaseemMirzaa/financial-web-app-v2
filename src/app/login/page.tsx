@@ -38,8 +38,10 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const success = await login(email, password);
-      if (!success) setError(t('auth.invalidEmailPassword'));
+      const result = await login(email, password);
+      if (!result.success) {
+        setError(result.errorKey ? t(result.errorKey) : (result.error || t('auth.errorOccurred')));
+      }
     } catch {
       setError(t('auth.errorOccurred'));
     } finally {

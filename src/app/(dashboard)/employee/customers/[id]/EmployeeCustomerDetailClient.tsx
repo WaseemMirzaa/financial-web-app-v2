@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Mail, Phone, MapPin, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockCustomers, mockLoans } from '@/lib/mockData';
 import { Customer } from '@/types';
-import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { getLoanStatusColor, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
 
 export function EmployeeCustomerDetailClient() {
   const params = useParams();
@@ -18,25 +17,46 @@ export function EmployeeCustomerDetailClient() {
   const { t, locale } = useLocale();
   const { user } = useAuth();
   const customerId = params.id as string;
-  
-  // Load customers from localStorage
-  const [allCustomers, setAllCustomers] = React.useState<Customer[]>(mockCustomers);
-  
-  React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('customers');
-      if (stored) {
-        const parsed: Customer[] = JSON.parse(stored);
-        const merged = [...mockCustomers, ...parsed.filter((c: Customer) => !mockCustomers.find(m => m.id === c.id))];
-        setAllCustomers(merged);
-      }
-    } catch (e) {
-      // Ignore errors
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [customerLoans, setCustomerLoans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.id && customerId) {
+      fetchCustomer();
+      fetchLoans();
     }
-  }, []);
-  
-  const customer = allCustomers.find(c => c.id === customerId && c.assignedEmployeeId === user?.id);
-  const customerLoans = mockLoans.filter(l => l.customerId === customerId && l.employeeId === user?.id);
+  }, [user?.id, customerId]);
+
+  const fetchCustomer = async () => {
+    try {
+      const response = await fetch(`/api/customers/${customerId}`);
+      const data = await response.json();
+      if (data.success && data.data.assignedEmployeeId === user?.id) {
+        setCustomer(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch customer:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLoans = async () => {
+    try {
+      const response = await fetch(`/api/loans?customerId=${customerId}&employeeId=${user?.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setCustomerLoans(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch loans:', error);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   if (!customer) {
     return (
@@ -61,20 +81,24 @@ export function EmployeeCustomerDetailClient() {
         </Button>
       </div>
 
-      <div>
-        <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-2 text-left rtl:text-right">{customer.nameKey ? t(customer.nameKey) : customer.name}</h1>
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2 text-neutral-600">
-            <Mail className="w-4 h-4" />
-            <span>{customer.email}</span>
-          </div>
-          {customer.phone && (
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-2 text-left rtl:text-right">
+            {customer.name}
+          </h1>
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2 text-neutral-600">
-              <Phone className="w-4 h-4" />
-              <span>{customer.phone}</span>
+              <Mail className="w-4 h-4" />
+              <span>{customer.email}</span>
             </div>
-          )}
-          <Badge variant="success">{t('status.active')}</Badge>
+            {customer.phone && (
+              <div className="flex items-center gap-2 text-neutral-600">
+                <Phone className="w-4 h-4" />
+                <span>{customer.phone}</span>
+              </div>
+            )}
+            <Badge variant="success">{t('status.active')}</Badge>
+          </div>
         </div>
       </div>
 
@@ -87,9 +111,9 @@ export function EmployeeCustomerDetailClient() {
             <h2 className="text-xl font-semibold text-neutral-900">{t('detail.contactInformation')}</h2>
           </div>
           <div className="space-y-4">
-            <div className="text-left rtl:text-right">
+            <div>
               <p className="text-sm text-neutral-600 mb-1">{t('common.name')}</p>
-              <p className="text-base font-semibold text-neutral-900">{customer.nameKey ? t(customer.nameKey) : customer.name}</p>
+              <p className="text-base font-semibold text-neutral-900">{customer.name}</p>
             </div>
             <div>
               <p className="text-sm text-neutral-600 mb-1">{t('common.email')}</p>
@@ -107,30 +131,9 @@ export function EmployeeCustomerDetailClient() {
                 <p className="text-base font-semibold text-neutral-900">{customer.address}</p>
               </div>
             )}
-          </div>
-        </Card>
-
-        <Card variant="elevated" padding="large">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-success-light rounded-xl">
-              <FileText className="w-6 h-6 text-success" />
-            </div>
-            <h2 className="text-xl font-semibold text-neutral-900">{t('loan.summary')}</h2>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-neutral-600 mb-1">{t('loan.totalLoans')}</p>
-              <p className="text-2xl font-bold text-neutral-900">{formatNumber(customerLoans.length, locale)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-neutral-600 mb-1">{t('dashboard.activeLoans')}</p>
-              <p className="text-xl font-semibold text-neutral-900">
-                {formatNumber(customerLoans.filter(l => l.status === 'active').length, locale)}
-              </p>
-            </div>
             <div className="text-left rtl:text-right">
-              <p className="text-sm text-neutral-600 mb-1">{t('loan.totalLoanAmount')}</p>
-              <p className="text-xl font-semibold text-neutral-900">{formatCurrency(customerLoans.reduce((sum, l) => sum + l.amount, 0), locale)}</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('form.memberSince')}</p>
+              <p className="text-base font-semibold text-neutral-900">{formatDateOnly(customer.createdAt, locale)}</p>
             </div>
           </div>
         </Card>
@@ -138,8 +141,8 @@ export function EmployeeCustomerDetailClient() {
 
       <Card variant="elevated" padding="large">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-info-light rounded-xl">
-            <FileText className="w-6 h-6 text-info" />
+          <div className="p-3 bg-success-light rounded-xl">
+            <FileText className="w-6 h-6 text-success" />
           </div>
           <h2 className="text-xl font-semibold text-neutral-900">{t('detail.loanHistory')}</h2>
         </div>

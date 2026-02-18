@@ -1,35 +1,58 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, UserCheck, FileText, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { useLocale } from '@/contexts/LocaleContext';
-import { mockUsers, mockLoans, mockChats, mockCustomers, mockEmployees } from '@/lib/mockData';
 import { getLoanStatusColor, formatCurrency, formatNumber } from '@/lib/utils';
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { t, locale } = useLocale();
-  // Merge customers from localStorage so signup users appear in recent list
-  const [recentCustomers, setRecentCustomers] = React.useState(mockCustomers);
-  React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('customers');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const merged = [...mockCustomers, ...parsed.filter((c: { id: string }) => !mockCustomers.some(m => m.id === c.id))];
-        setRecentCustomers(merged);
-      }
-    } catch {
-      // ignore
-    }
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [chats, setChats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      const [customersRes, employeesRes, loansRes, chatsRes] = await Promise.all([
+        fetch('/api/customers'),
+        fetch('/api/employees'),
+        fetch('/api/loans'),
+        fetch('/api/chat?userId=admin'), // TODO: Get actual user ID
+      ]);
+
+      const customersData = await customersRes.json();
+      const employeesData = await employeesRes.json();
+      const loansData = await loansRes.json();
+      const chatsData = await chatsRes.json();
+
+      if (customersData.success) setCustomers(customersData.data);
+      if (employeesData.success) setEmployees(employeesData.data);
+      if (loansData.success) setLoans(loansData.data);
+      if (chatsData.success) setChats(chatsData.data);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   const stats = [
     {
       label: t('dashboard.totalCustomers'),
-      value: mockUsers.filter(u => u.role === 'customer').length,
+      value: customers.length,
       icon: Users,
       color: 'text-primary-500',
       bgColor: 'bg-primary-50',
@@ -37,7 +60,7 @@ export default function AdminDashboard() {
     },
     {
       label: t('dashboard.totalEmployees'),
-      value: mockUsers.filter(u => u.role === 'employee').length,
+      value: employees.length,
       icon: UserCheck,
       color: 'text-info',
       bgColor: 'bg-info-light',
@@ -45,7 +68,7 @@ export default function AdminDashboard() {
     },
     {
       label: t('dashboard.totalLoans'),
-      value: mockLoans.length,
+      value: loans.length,
       icon: FileText,
       color: 'text-success',
       bgColor: 'bg-success-light',
@@ -53,7 +76,7 @@ export default function AdminDashboard() {
     },
     {
       label: t('dashboard.activeChats'),
-      value: mockChats.length,
+      value: chats.length,
       icon: MessageSquare,
       color: 'text-warning',
       bgColor: 'bg-warning-light',
@@ -97,7 +120,7 @@ export default function AdminDashboard() {
         <Card variant="elevated" padding="medium">
           <h3 className="text-xl font-semibold text-neutral-900 mb-4">{t('dashboard.recentLoans')}</h3>
           <div className="space-y-4">
-            {mockLoans.slice(0, 5).map((loan) => (
+            {loans.slice(0, 5).map((loan) => (
               <div
                 key={loan.id}
                 onClick={() => router.push(`/admin/loans/${loan.id}`)}
@@ -129,38 +152,37 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <span className="text-neutral-600">{t('dashboard.activeLoans')}</span>
               <span className="font-semibold text-neutral-900">
-                {formatNumber(mockLoans.filter(l => l.status === 'active').length, locale)}
+                {formatNumber(loans.filter(l => l.status === 'active').length, locale)}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-neutral-600">{t('dashboard.pendingReviews')}</span>
               <span className="font-semibold text-neutral-900">
-                {formatNumber(mockLoans.filter(l => l.status === 'under_review').length, locale)}
+                {formatNumber(loans.filter(l => l.status === 'under_review').length, locale)}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-neutral-600">{t('dashboard.totalLoanAmount')}</span>
               <span className="font-semibold text-neutral-900">
-                {formatCurrency(mockLoans.reduce((sum, l) => sum + l.amount, 0), locale)}
+                {formatCurrency(loans.reduce((sum, l) => sum + l.amount, 0), locale)}
               </span>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Recent Customers & Recent Employees - clickable to detail pages */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card variant="elevated" padding="medium">
           <h3 className="text-xl font-semibold text-neutral-900 mb-4">{t('dashboard.recentCustomers')}</h3>
           <div className="space-y-3">
-            {recentCustomers.slice(0, 5).map((customer) => (
+            {customers.slice(0, 5).map((customer) => (
               <div
                 key={customer.id}
                 onClick={() => router.push(`/admin/customers/${customer.id}`)}
                 className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200"
               >
                 <div className="text-left rtl:text-right">
-                  <p className="font-semibold text-neutral-900">{customer.nameKey ? t(customer.nameKey) : customer.name}</p>
+                  <p className="font-semibold text-neutral-900">{customer.name}</p>
                   <p className="text-sm text-neutral-600">{customer.email}</p>
                 </div>
               </div>
@@ -171,14 +193,14 @@ export default function AdminDashboard() {
         <Card variant="elevated" padding="medium">
           <h3 className="text-xl font-semibold text-neutral-900 mb-4">{t('dashboard.recentEmployees')}</h3>
           <div className="space-y-3">
-            {mockEmployees.slice(0, 5).map((employee) => (
+            {employees.slice(0, 5).map((employee) => (
               <div
                 key={employee.id}
                 onClick={() => router.push(`/admin/employees/${employee.id}`)}
                 className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200"
               >
                 <div className="text-left rtl:text-right">
-                  <p className="font-semibold text-neutral-900">{employee.nameKey ? t(employee.nameKey) : employee.name}</p>
+                  <p className="font-semibold text-neutral-900">{employee.name}</p>
                   <p className="text-sm text-neutral-600">{employee.email}</p>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${

@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useLocale } from '@/contexts/LocaleContext';
-import { mockCustomers, mockEmployees, mockLoans } from '@/lib/mockData';
 import { Customer } from '@/types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
 
@@ -21,26 +20,78 @@ export function CustomerDetailClient() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
-  
-  // Load customers from localStorage and merge with mock data
-  const [allCustomers, setAllCustomers] = React.useState<Customer[]>(mockCustomers);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [assignedEmployee, setAssignedEmployee] = useState<any>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [customerLoans, setCustomerLoans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   React.useEffect(() => {
+    fetchCustomer();
+    fetchEmployees();
+    fetchLoans();
+  }, [customerId]);
+
+  const fetchCustomer = async () => {
     try {
-      const stored = localStorage.getItem('customers');
-      if (stored) {
-        const parsed: Customer[] = JSON.parse(stored);
-        const merged = [...mockCustomers, ...parsed.filter((c: Customer) => !mockCustomers.find(m => m.id === c.id))];
-        setAllCustomers(merged);
+      const response = await fetch(`/api/customers/${customerId}`);
+      const data = await response.json();
+      if (data.success) {
+        setCustomer(data.data);
+        setFormData({
+          name: data.data.name,
+          email: data.data.email,
+          phone: data.data.phone || '',
+          address: data.data.address || '',
+        });
+        if (data.data.assignedEmployeeId) {
+          fetchAssignedEmployee(data.data.assignedEmployeeId);
+        }
       }
-    } catch (e) {
-      // Ignore errors, use mock data
+    } catch (error) {
+      console.error('Failed to fetch customer:', error);
+    } finally {
+      setLoading(false);
     }
-  }, []);
-  
-  const customer = allCustomers.find(c => c.id === customerId);
-  const assignedEmployee = mockEmployees.find(e => e.id === customer?.assignedEmployeeId);
-  const customerLoans = mockLoans.filter(l => l.customerId === customerId);
+  };
+
+  const fetchAssignedEmployee = async (employeeId: string) => {
+    try {
+      const response = await fetch(`/api/employees/${employeeId}`);
+      const data = await response.json();
+      if (data.success) {
+        setAssignedEmployee(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch employee:', error);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/employees');
+      const data = await response.json();
+      if (data.success) {
+        setEmployees(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch employees:', error);
+    }
+  };
+
+  const fetchLoans = async () => {
+    try {
+      const response = await fetch(`/api/loans?customerId=${customerId}`);
+      const data = await response.json();
+      if (data.success) {
+        setCustomerLoans(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch loans:', error);
+    }
+  };
 
   React.useEffect(() => {
     if (customer) {
@@ -65,79 +116,89 @@ export function CustomerDetailClient() {
     }
   };
 
-  const handleSave = () => {
-    if (customer) {
-      const updated = allCustomers.map(c =>
-        c.id === customer.id
-          ? { ...c, ...formData }
-          : c
-      );
-      setAllCustomers(updated);
-      
-      // Update localStorage
-      try {
-        const stored = JSON.parse(localStorage.getItem('customers') || '[]');
-        const updatedStored = stored.map((c: Customer) =>
-          c.id === customer.id ? { ...c, ...formData } : c
-        );
-        localStorage.setItem('customers', JSON.stringify(updatedStored));
-      } catch (e) {
-        // Ignore
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = t('validation.nameRequired');
+    }
+    
+    if (!formData.email.trim()) {
+      errors.email = t('validation.emailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = t('validation.emailInvalid');
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!customer) return;
+    setSubmitError('');
+    setFormErrors({});
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/customers/${customer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchCustomer();
+        setIsEditModalOpen(false);
+        setFormErrors({});
+        setSubmitError('');
+      } else {
+        setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
-      
-      setIsEditModalOpen(false);
-      router.refresh();
+    } catch (error) {
+      console.error('Failed to update customer:', error);
+      setSubmitError(t('error.internalServerError'));
     }
   };
 
-  const handleAssignEmployee = (employeeId: string) => {
-    if (customer) {
-      const updated = allCustomers.map(c =>
-        c.id === customer.id
-          ? { ...c, assignedEmployeeId: employeeId }
-          : c
-      );
-      setAllCustomers(updated);
-      
-      // Update localStorage
-      try {
-        const stored = JSON.parse(localStorage.getItem('customers') || '[]');
-        const updatedStored = stored.map((c: Customer) =>
-          c.id === customer.id ? { ...c, assignedEmployeeId: employeeId } : c
-        );
-        localStorage.setItem('customers', JSON.stringify(updatedStored));
-      } catch (e) {
-        // Ignore
+  const handleAssignEmployee = async (employeeId: string) => {
+    if (!customer) return;
+    try {
+      const response = await fetch(`/api/customers/${customer.id}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchCustomer();
+        setIsAssignModalOpen(false);
       }
-      
-      setIsAssignModalOpen(false);
-      router.refresh();
+    } catch (error) {
+      console.error('Failed to assign employee:', error);
     }
   };
 
-  const handleRemoveEmployee = () => {
-    if (customer) {
-      const updated = allCustomers.map(c =>
-        c.id === customer.id
-          ? { ...c, assignedEmployeeId: '' }
-          : c
-      );
-      setAllCustomers(updated);
-      
-      // Update localStorage
-      try {
-        const stored = JSON.parse(localStorage.getItem('customers') || '[]');
-        const updatedStored = stored.map((c: Customer) =>
-          c.id === customer.id ? { ...c, assignedEmployeeId: '' } : c
-        );
-        localStorage.setItem('customers', JSON.stringify(updatedStored));
-      } catch (e) {
-        // Ignore
+  const handleRemoveEmployee = async () => {
+    if (!customer) return;
+    try {
+      const response = await fetch(`/api/customers/${customer.id}/assign`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchCustomer();
       }
-      
-      router.refresh();
+    } catch (error) {
+      console.error('Failed to remove employee:', error);
     }
   };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   if (!customer) {
     return (
@@ -164,7 +225,7 @@ export function CustomerDetailClient() {
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-2 text-left rtl:text-right">{customer.nameKey ? t(customer.nameKey) : customer.name}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-2 text-left rtl:text-right">{customer.name}</h1>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2 text-neutral-600">
               <Mail className="w-4 h-4" />
@@ -201,28 +262,43 @@ export function CustomerDetailClient() {
         }
       >
         <div className="space-y-4">
+          {submitError && (
+            <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+              {submitError}
+            </div>
+          )}
           <Input
             label={t('common.name')}
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+            }}
+            error={formErrors.name}
             required
           />
           <Input
             label={t('common.email')}
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
+            }}
+            error={formErrors.email}
             required
           />
           <Input
             label={t('common.phone')}
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            error={formErrors.phone}
           />
           <Input
             label={t('common.address')}
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            error={formErrors.address}
           />
         </div>
       </Modal>
@@ -299,7 +375,7 @@ export function CustomerDetailClient() {
               onClick={() => router.push(`/admin/employees/${assignedEmployee.id}`)}
               className="p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200 text-left rtl:text-right"
             >
-              <p className="font-semibold text-neutral-900">{assignedEmployee.nameKey ? t(assignedEmployee.nameKey) : assignedEmployee.name}</p>
+              <p className="font-semibold text-neutral-900">{assignedEmployee.name}</p>
               <p className="text-sm text-neutral-600 mt-1">{assignedEmployee.email}</p>
             </div>
           ) : (
@@ -356,13 +432,13 @@ export function CustomerDetailClient() {
         }
       >
         <div className="space-y-2">
-          {mockEmployees.map((employee) => (
+          {employees.map((employee) => (
             <button
               key={employee.id}
               onClick={() => handleAssignEmployee(employee.id)}
               className="w-full p-4 text-left rtl:text-right hover:bg-neutral-50 rounded-lg border border-neutral-200 transition-colors"
             >
-              <p className="font-semibold text-neutral-900">{employee.nameKey ? t(employee.nameKey) : employee.name}</p>
+              <p className="font-semibold text-neutral-900">{employee.name}</p>
               <p className="text-sm text-neutral-600">{employee.email}</p>
             </button>
           ))}

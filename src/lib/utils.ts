@@ -27,17 +27,20 @@ export function formatPercent(value: number, locale: string = 'en'): string {
   return `${formatted}%`;
 }
 
-export function formatDate(date: string, locale: string = 'en'): string {
+export function formatDate(date: string | undefined | null, locale: string = 'en'): string {
+  if (date == null || date === '') return '';
   try {
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return '';
     return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-SA' : 'en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    }).format(new Date(date));
+    }).format(d);
   } catch {
-    return new Date(date).toLocaleString();
+    return '';
   }
 }
 

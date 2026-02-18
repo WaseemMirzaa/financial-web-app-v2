@@ -14,9 +14,11 @@ interface ChatWindowProps {
   messages: ChatMessage[];
   onSendMessage: (content: string, file?: File) => void;
   title?: string;
+  /** When true, hide send input (e.g. admin monitoring customer chat) */
+  readOnly?: boolean;
 }
 
-export function ChatWindow({ messages, onSendMessage, title }: ChatWindowProps) {
+export function ChatWindow({ messages, onSendMessage, title, readOnly }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -92,7 +94,7 @@ export function ChatWindow({ messages, onSendMessage, title }: ChatWindowProps) 
                       </a>
                     </div>
                   )}
-                  <p className="text-sm">{message.contentKey ? t(message.contentKey) : message.content}</p>
+                  <p className="text-sm">{message.content}</p>
                   <p className={`text-xs mt-1 ${
                     isOwn ? 'text-white/70' : 'text-neutral-500'
                   }`}>
@@ -105,6 +107,7 @@ export function ChatWindow({ messages, onSendMessage, title }: ChatWindowProps) 
         )}
         <div ref={messagesEndRef} />
       </div>
+      {!readOnly && (
       <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-neutral-200 space-y-2 shrink-0">
         {selectedFile && (
           <div className="flex items-center gap-2 text-sm text-neutral-600 min-w-0">
@@ -152,6 +155,7 @@ export function ChatWindow({ messages, onSendMessage, title }: ChatWindowProps) 
           </Button>
         </div>
       </div>
+      )}
     </Card>
   );
 }

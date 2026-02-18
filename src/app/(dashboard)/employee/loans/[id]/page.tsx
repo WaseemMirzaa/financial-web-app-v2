@@ -1,10 +1,8 @@
-import { mockLoans } from '@/lib/mockData';
 import { EmployeeLoanDetailClient } from './EmployeeLoanDetailClient';
 
 export function generateStaticParams() {
-  return mockLoans.map((loan) => ({
-    id: loan.id,
-  }));
+  // Return empty array - pages will be generated on-demand
+  return [];
 }
 
 export default function EmployeeLoanDetailPage() {

@@ -44,7 +44,8 @@ A professional, premium-quality loan management web application built with Next.
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
+- MySQL (local or remote)
 - npm or yarn
 
 ### Installation
@@ -54,20 +55,35 @@ A professional, premium-quality loan management web application built with Next.
 npm install
 ```
 
-2. Run the development server:
+2. Configure environment:
+```bash
+# Copy example env (edit DB_* if needed)
+cp .env.local.example .env.local
+```
+
+3. Database setup (creates DB, tables, and seed data including admin):
+```bash
+npm run db:setup
+```
+Or step by step: `npm run db:migrate` then `npm run db:seed`.
+
+4. Run the development server (frontend + API):
 ```bash
 npm run dev
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. Open [http://localhost:3000](http://localhost:3000) and log in.
 
-### Demo Accounts
+### Demo Accounts (after seed)
 
-Login with any of these demo accounts (password can be anything for demo):
-
-- **Admin**: `admin@demo.com`
-- **Employee**: `employee@demo.com`
-- **Customer**: `customer@demo.com`
+| Role     | Email            | Password    |
+|----------|------------------|-------------|
+| Admin    | `admin@demo.com` | `admin123`  |
+| Employee | `john@demo.com`  | `employee123` |
+| Employee | `sarah@demo.com` | `employee123` |
+| Customer | `ahmed@demo.com`  | `customer123` |
+| Customer | `fatima@demo.com` | `customer123` |
+| Customer | `mohammed@demo.com` | `customer123` |
 
 ## Project Structure
 
@@ -120,8 +136,17 @@ The application is structured to easily integrate with a backend:
 ## Development
 
 ```bash
-# Development server
+# Development server (frontend + API)
 npm run dev
+
+# Database: migrate only
+npm run db:migrate
+
+# Database: seed only (admin + dummy data)
+npm run db:seed
+
+# Database: full setup (migrate + seed)
+npm run db:setup
 
 # Build for production
 npm run build

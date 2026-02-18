@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit, UserPlus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -8,35 +8,59 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useLocale } from '@/contexts/LocaleContext';
-import { mockCustomers, mockEmployees } from '@/lib/mockData';
 import { Customer } from '@/types';
 
 export default function CustomersPage() {
   const router = useRouter();
   const { t } = useLocale();
-  // Load customers from localStorage if available, otherwise use mock data
-  const loadCustomers = (): Customer[] => {
-    try {
-      const stored = localStorage.getItem('customers');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return [...mockCustomers, ...parsed.filter((c: Customer) => !mockCustomers.find(m => m.id === c.id))];
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-    return mockCustomers;
-  };
-  const [customers, setCustomers] = useState<Customer[]>(loadCustomers());
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '' });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchCustomers();
+    fetchEmployees();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      if (data.success) {
+        setCustomers(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/employees');
+      const data = await response.json();
+      if (data.success) {
+        setEmployees(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch employees:', error);
+    }
+  };
 
   const handleCreate = () => {
     setEditingCustomer(null);
     setFormData({ name: '', email: '', phone: '', address: '', password: '' });
+    setFormErrors({});
+    setSubmitError('');
     setIsModalOpen(true);
   };
 
@@ -47,8 +71,10 @@ export default function CustomersPage() {
       email: customer.email,
       phone: customer.phone || '',
       address: customer.address || '',
-      password: '', // Don't show existing password for security
+      password: '',
     });
+    setFormErrors({});
+    setSubmitError('');
     setIsModalOpen(true);
   };
 
@@ -57,67 +83,109 @@ export default function CustomersPage() {
     setIsAssignModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingCustomer) {
-      const updated = customers.map(c => 
-        c.id === editingCustomer.id 
-          ? { ...c, ...formData }
-          : c
-      );
-      setCustomers(updated);
-      localStorage.setItem('customers', JSON.stringify(updated.filter(c => !mockCustomers.find(m => m.id === c.id))));
-      
-      // Update password if provided
-      if (formData.password) {
-        try {
-          const creds = JSON.parse(localStorage.getItem('userCredentials') || '{}');
-          creds[formData.email] = formData.password;
-          localStorage.setItem('userCredentials', JSON.stringify(creds));
-        } catch (e) {
-          // Ignore
-        }
-      }
-    } else {
-      if (!formData.password || formData.password.length < 6) {
-        return; // validation handled by required + minLength in UI
-      }
-      const newCustomer: Customer = {
-        id: `customer-${Date.now()}`,
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
-        role: 'customer',
-        isActive: true,
-        assignedEmployeeId: '',
-        createdAt: new Date().toISOString(),
-      };
-      const updated = [...customers, newCustomer];
-      setCustomers(updated);
-      localStorage.setItem('customers', JSON.stringify(updated.filter(c => !mockCustomers.find(m => m.id === c.id))));
-      
-      // Save password to userCredentials
-      try {
-        const creds = JSON.parse(localStorage.getItem('userCredentials') || '{}');
-        creds[formData.email] = formData.password;
-        localStorage.setItem('userCredentials', JSON.stringify(creds));
-      } catch (e) {
-        localStorage.setItem('userCredentials', JSON.stringify({ [formData.email]: formData.password }));
-      }
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = t('validation.nameRequired');
     }
-    setIsModalOpen(false);
+    
+    if (!formData.email.trim()) {
+      errors.email = t('validation.emailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = t('validation.emailInvalid');
+    }
+    
+    if (!editingCustomer) {
+      if (!formData.password) {
+        errors.password = t('validation.passwordRequired');
+      } else if (formData.password.length < 6) {
+        errors.password = t('validation.passwordMinLength');
+      }
+    } else if (formData.password && formData.password.length < 6) {
+      errors.password = t('validation.passwordMinLength');
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleAssignEmployee = (employeeId: string) => {
-    if (selectedCustomer) {
-      setCustomers(customers.map(c => 
-        c.id === selectedCustomer.id 
-          ? { ...c, assignedEmployeeId: employeeId }
-          : c
-      ));
-      setIsAssignModalOpen(false);
+  const handleSave = async () => {
+    setSubmitError('');
+    setFormErrors({});
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      if (editingCustomer) {
+        const response = await fetch(`/api/customers/${editingCustomer.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            ...(formData.password && { password: formData.password }),
+          }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          await fetchCustomers();
+          setIsModalOpen(false);
+          setFormErrors({});
+          setSubmitError('');
+        } else {
+          setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+        }
+      } else {
+        const response = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        const data = await response.json();
+        if (data.success) {
+          await fetchCustomers();
+          setIsModalOpen(false);
+          setFormErrors({});
+          setSubmitError('');
+        } else {
+          setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save customer:', error);
+      setSubmitError(t('error.internalServerError'));
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const handleAssignEmployee = async (employeeId: string) => {
+    if (!selectedCustomer) return;
+    try {
+      const response = await fetch(`/api/customers/${selectedCustomer.id}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchCustomers();
+        setIsAssignModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Failed to assign employee:', error);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -146,18 +214,18 @@ export default function CustomersPage() {
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {customers.map((customer) => {
-                const assignedEmployee = mockEmployees.find(e => e.id === customer.assignedEmployeeId);
+                const assignedEmployee = employees.find(e => e.id === customer.assignedEmployeeId);
                 return (
                   <tr
                     key={customer.id}
                     onClick={() => router.push(`/admin/customers/${customer.id}`)}
                     className="hover:bg-neutral-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900 font-medium">{customer.nameKey ? t(customer.nameKey) : customer.name}</td>
+                    <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900 font-medium">{customer.name}</td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">{customer.email}</td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">{customer.phone || '-'}</td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">
-                      {assignedEmployee ? (assignedEmployee.nameKey ? t(assignedEmployee.nameKey) : assignedEmployee.name) : t('detail.unassigned')}
+                      {assignedEmployee ? assignedEmployee.name : t('detail.unassigned')}
                     </td>
                     <td className="px-6 py-4 text-right rtl:text-left" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end rtl:flex-row-reverse gap-2">
@@ -193,8 +261,8 @@ export default function CustomersPage() {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" onClick={handleSave}>
-              {t('common.save')}
+            <Button variant="primary" onClick={handleSave} disabled={submitting}>
+              {submitting ? t('common.loading') + '...' : t('common.save')}
             </Button>
           </>
         }
@@ -248,13 +316,13 @@ export default function CustomersPage() {
         }
       >
         <div className="space-y-2">
-          {mockEmployees.map((employee) => (
+          {employees.map((employee) => (
             <button
               key={employee.id}
               onClick={() => handleAssignEmployee(employee.id)}
               className="w-full p-4 text-left rtl:text-right hover:bg-neutral-50 rounded-lg border border-neutral-200 transition-colors"
             >
-              <p className="font-semibold text-neutral-900">{employee.nameKey ? t(employee.nameKey) : employee.name}</p>
+              <p className="font-semibold text-neutral-900">{employee.name}</p>
               <p className="text-sm text-neutral-600">{employee.email}</p>
             </button>
           ))}

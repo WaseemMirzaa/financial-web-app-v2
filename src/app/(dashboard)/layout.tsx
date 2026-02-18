@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { registerFCMToken } from '@/lib/firebase';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 
@@ -13,21 +15,34 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, isAuthenticated } = useAuth();
+  const { locale } = useLocale();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login');
+      const schedule = (fn: () => void) =>
+        typeof queueMicrotask !== 'undefined' ? queueMicrotask(fn) : setTimeout(fn, 0);
+      schedule(() => router.push('/login'));
     }
   }, [isAuthenticated, router]);
 
+  useEffect(() => {
+    if (user?.id) {
+      registerFCMToken(user.id);
+    }
+  }, [user?.id]);
+
   if (!isAuthenticated || !user) {
-    return null;
+    return (
+      <div className="min-h-screen min-h-[100dvh] bg-page flex items-center justify-center">
+        <p className="text-neutral-500">Loading...</p>
+      </div>
+    );
   }
 
   return (
-    <NotificationProvider userId={user.id}>
+    <NotificationProvider userId={user.id} locale={locale}>
       <div className="min-h-screen min-h-[100dvh] bg-page flex flex-col">
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <div className="flex flex-1 min-h-0">

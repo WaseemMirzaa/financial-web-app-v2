@@ -1,52 +1,51 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, UserX } from 'lucide-react';
+import { Plus, Edit, UserX } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useLocale } from '@/contexts/LocaleContext';
-import { mockEmployees } from '@/lib/mockData';
 import { Employee } from '@/types';
 import { formatNumber } from '@/lib/utils';
 
 export default function EmployeesPage() {
   const router = useRouter();
   const { t, locale } = useLocale();
-  const [employees, setEmployees] = React.useState<Employee[]>(mockEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  // Persist employees to localStorage and merge with mock on load
-  React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('employees');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const merged = [...mockEmployees, ...parsed.filter((p: Employee) => !mockEmployees.some(m => m.id === p.id))];
-        setEmployees(merged);
-      }
-    } catch {
-      // ignore
-    }
+  useEffect(() => {
+    fetchEmployees();
   }, []);
 
-  React.useEffect(() => {
-    const fromMock = employees.filter(e => mockEmployees.some(m => m.id === e.id));
-    const created = employees.filter(e => !mockEmployees.some(m => m.id === e.id));
-    if (created.length > 0) {
-      localStorage.setItem('employees', JSON.stringify(created));
-    } else {
-      localStorage.removeItem('employees');
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/employees');
+      const data = await response.json();
+      if (data.success) {
+        setEmployees(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch employees:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [employees]);
+  };
 
   const handleCreate = () => {
     setEditingEmployee(null);
     setFormData({ name: '', email: '', password: '' });
+    setFormErrors({});
+    setSubmitError('');
     setIsModalOpen(true);
   };
 
@@ -56,43 +55,105 @@ export default function EmployeesPage() {
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingEmployee) {
-      setEmployees(employees.map(e => 
-        e.id === editingEmployee.id 
-          ? { ...e, name: formData.name, email: formData.email }
-          : e
-      ));
-    } else {
-      if (!formData.password || formData.password.length < 6) {
-        return; // validation handled by required + minLength in UI
-      }
-      const newEmployee: Employee = {
-        id: `employee-${Date.now()}`,
-        name: formData.name,
-        email: formData.email,
-        role: 'employee',
-        isActive: true,
-        assignedCustomerIds: [],
-        createdAt: new Date().toISOString(),
-      };
-      setEmployees([...employees, newEmployee]);
-      try {
-        const creds = JSON.parse(localStorage.getItem('userCredentials') || '{}');
-        creds[formData.email] = formData.password;
-        localStorage.setItem('userCredentials', JSON.stringify(creds));
-      } catch {
-        localStorage.setItem('userCredentials', JSON.stringify({ [formData.email]: formData.password }));
-      }
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = t('validation.nameRequired');
     }
-    setIsModalOpen(false);
+    
+    if (!formData.email.trim()) {
+      errors.email = t('validation.emailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = t('validation.emailInvalid');
+    }
+    
+    if (!editingEmployee) {
+      if (!formData.password) {
+        errors.password = t('validation.passwordRequired');
+      } else if (formData.password.length < 6) {
+        errors.password = t('validation.passwordMinLength');
+      }
+    } else if (formData.password && formData.password.length < 6) {
+      errors.password = t('validation.passwordMinLength');
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleDeactivate = (id: string) => {
-    setEmployees(employees.map(e => 
-      e.id === id ? { ...e, isActive: false } : e
-    ));
+  const handleSave = async () => {
+    setSubmitError('');
+    setFormErrors({});
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      if (editingEmployee) {
+        const response = await fetch(`/api/employees/${editingEmployee.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            ...(formData.password && { password: formData.password }),
+          }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          await fetchEmployees();
+          setIsModalOpen(false);
+          setFormErrors({});
+          setSubmitError('');
+        } else {
+          setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+        }
+      } else {
+        const response = await fetch('/api/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        const data = await response.json();
+        if (data.success) {
+          await fetchEmployees();
+          setIsModalOpen(false);
+          setFormErrors({});
+          setSubmitError('');
+        } else {
+          setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save employee:', error);
+      setSubmitError(t('error.internalServerError'));
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleDeactivate = async (employeeId: string) => {
+    try {
+      const response = await fetch(`/api/employees/${employeeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: false }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchEmployees();
+      }
+    } catch (error) {
+      console.error('Failed to deactivate employee:', error);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -172,24 +233,37 @@ export default function EmployeesPage() {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" onClick={handleSave}>
-              {t('common.save')}
+            <Button variant="primary" onClick={handleSave} disabled={submitting}>
+              {submitting ? t('common.loading') + '...' : t('common.save')}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
+          {submitError && (
+            <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+              {submitError}
+            </div>
+          )}
           <Input
             label={t('common.name')}
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+            }}
+            error={formErrors.name}
             required
           />
           <Input
             label={t('common.email')}
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
+            }}
+            error={formErrors.email}
             required
           />
           {!editingEmployee && (
@@ -197,7 +271,11 @@ export default function EmployeesPage() {
               label={t('common.password')}
               type="password"
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, password: e.target.value });
+                if (formErrors.password) setFormErrors({ ...formErrors, password: '' });
+              }}
+              error={formErrors.password}
               placeholder={t('form.placeholder.password')}
               required
               minLength={6}

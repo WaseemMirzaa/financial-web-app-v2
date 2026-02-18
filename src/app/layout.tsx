@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LocaleProvider } from '@/contexts/LocaleContext';
+import { AppInitializer } from '@/components/AppInitializer';
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -13,6 +14,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: 'Loan Management System',
   description: 'Professional loan management platform',
+  icons: { icon: '/icon' },
 };
 
 export const viewport = {
@@ -28,16 +30,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){var l=localStorage.getItem('locale');if(l==='ar'){document.documentElement.dir='rtl';document.documentElement.lang='ar';}else{document.documentElement.dir='ltr';document.documentElement.lang=(l==='en'||l==='ar'?l:'en');}})();`,
-          }}
-        />
-      </head>
       <body className={plusJakarta.className}>
         <LocaleProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <AppInitializer>{children}</AppInitializer>
+          </AuthProvider>
         </LocaleProvider>
       </body>
     </html>

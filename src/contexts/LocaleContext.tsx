@@ -60,6 +60,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.error': 'Error',
     'common.loading': 'Loading',
     'common.close': 'Close',
+    'common.noResults': 'No results found',
     'common.openMenu': 'Open menu',
     'common.changeLanguage': 'Change language',
     'common.notificationsAria': 'Notifications',
@@ -140,6 +141,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'dashboard.activeLoansCount': 'Active Loans',
     'dashboard.pendingReviewsCount': 'Pending Reviews',
     'dashboard.noAssignedCustomers': 'No assigned customers',
+    'dashboard.noLoansFound': 'No loans found',
     'dashboard.noActiveLoan': 'No Active Loan',
     'dashboard.noActiveLoanDescription': "You don't have an active loan at the moment.",
     'dashboard.activeLoanDescription': 'Your current loan details',
@@ -251,8 +253,17 @@ const translations: Record<Locale, Record<string, string>> = {
     'chat.chat': 'Chat',
     'chat.monitorAll': 'Monitor all customer-employee and internal chats',
     'chat.withCustomers': 'Chat with customers and internal teams',
+    'chat.withCustomersAndTeam': 'Chat with customers and internal teams',
     'chat.withEmployee': 'Chat with your assigned employee',
     'chat.noChatAvailable': 'No chat available. Please contact support.',
+    'chat.noEmployeeAssigned': 'No employee assigned to you yet.',
+    'chat.employee': 'Employee',
+    'chat.noChats': 'No chats yet',
+    'chat.manageAllChats': 'Manage all customer-employee and internal chats',
+    'chat.startChatWithEmployee': 'Start chat with employee',
+    'chat.startChatWithCustomer': 'Start chat with customer',
+    'chat.adminMonitorOnly': 'Monitor all chats (read-only for customer chats and private chats)',
+    'chat.adminCannotSendPrivate': 'Admin cannot send messages in private chats',
     'chat.file': 'File',
     'chat.room.contracts': 'Contracts',
     'chat.room.followUp': 'Follow Up',
@@ -265,6 +276,13 @@ const translations: Record<Locale, Record<string, string>> = {
     'chat.sender.johnEmployee': 'John Employee',
     'chat.sender.fatimaCustomer': 'Fatima Customer',
     'chat.sender.sarahEmployee': 'Sarah Employee',
+    'chat.createRoom': 'Create Room',
+    'chat.createGroupRoom': 'Create Group Room',
+    'chat.roomName': 'Room Name',
+    'chat.roomNamePlaceholder': 'e.g., Contracts, Follow Up',
+    'chat.selectEmployees': 'Select Employees',
+    'chat.noEmployees': 'No employees available',
+    'chat.customerChat': 'Customer Chat',
     'loan.notes.monthlyPayment': 'Monthly payment plan',
     'loan.notes.pendingActivation': 'Pending activation',
     'loan.notes.documentationReview': 'Documentation review in progress',
@@ -293,6 +311,82 @@ const translations: Record<Locale, Record<string, string>> = {
     'customer.myLoans': 'My Loans',
     'customer.viewAllLoans': 'View all your loan information (Read-only)',
     'customer.lastUpdated': 'Last Updated',
+    
+    // API Error Messages
+    'error.internalServerError': 'Internal server error',
+    'error.requestTimeout': 'Request timed out. Please try again.',
+    'error.userIdRequired': 'User ID is required',
+    'error.emailPasswordRequired': 'Email and password are required',
+    'error.invalidEmailFormat': 'Invalid email format',
+    'error.invalidEmailOrPassword': 'Invalid email or password',
+    'error.emailAlreadyExists': 'Email already exists',
+    'error.nameEmailPasswordRequired': 'Name, email, and password are required',
+    'error.passwordMinLength': 'Password must be at least 6 characters',
+    'error.missingRequiredFields': 'Missing required fields',
+    'error.missingRequiredFieldsList': 'Missing required fields: {fields}',
+    'error.customerNotFound': 'Customer not found',
+    'error.employeeNotFound': 'Employee not found',
+    'error.loanNotFound': 'Loan not found',
+    'error.notificationNotFound': 'Notification not found',
+    'error.userNotFound': 'User not found',
+    'error.employeeIdRequired': 'Employee ID is required',
+    'error.unauthorized': 'Unauthorized',
+    'error.accountCreatedSuccessfully': 'Account created successfully',
+    'error.customerCreatedSuccessfully': 'Customer created successfully',
+    'error.customerUpdatedSuccessfully': 'Customer updated successfully',
+    'error.employeeCreatedSuccessfully': 'Employee created successfully',
+    'error.employeeUpdatedSuccessfully': 'Employee updated successfully',
+    'error.loanCreatedSuccessfully': 'Loan created successfully',
+    'error.loanUpdatedSuccessfully': 'Loan updated successfully',
+    'error.loanDeletedSuccessfully': 'Loan deleted successfully',
+    'error.notificationCreatedSuccessfully': 'Notification created successfully',
+    'error.messageSentSuccessfully': 'Message sent successfully',
+    'error.chatIdRequired': 'Chat ID is required',
+    'error.invalidTargetType': 'Invalid target type',
+    'fcm.registered': 'Token registered for push notifications',
+    'error.accessDenied': 'Access denied',
+    'error.chatNotFound': 'Chat not found',
+    'error.invalidToken': 'Invalid token',
+    'error.invalidEmployeeIds': 'One or more employee IDs are invalid',
+    'chat.adminCannotSendToCustomer': 'Admin cannot send messages in customer chats',
+    'chat.adminNoPrivateChats': 'Admin cannot start private chats',
+    
+    // Broadcast / Announcements
+    'common.announcements': 'Announcements',
+    'broadcast.pageTitle': 'Create Announcement',
+    'broadcast.pageDescription': 'Send an announcement to employees and/or customers. They will see it in their dashboard notifications.',
+    'broadcast.titleLabel': 'Title',
+    'broadcast.messageLabel': 'Message',
+    'broadcast.titleArLabel': 'Title (Arabic, optional)',
+    'broadcast.messageArLabel': 'Message (Arabic, optional)',
+    'broadcast.targetAudience': 'Target audience',
+    'broadcast.targetAll': 'All (employees and customers)',
+    'broadcast.targetAllEmployees': 'All employees',
+    'broadcast.targetAllCustomers': 'All customers',
+    'broadcast.send': 'Send announcement',
+    'broadcast.sending': 'Sending…',
+    'broadcast.sentSuccessfully': 'Announcement sent successfully',
+    
+    // Form Validation Messages
+    'validation.required': 'This field is required',
+    'validation.nameRequired': 'Name is required',
+    'validation.emailRequired': 'Email is required',
+    'validation.emailInvalid': 'Please enter a valid email address',
+    'validation.passwordRequired': 'Password is required',
+    'validation.passwordMinLength': 'Password must be at least 6 characters',
+    'validation.passwordMismatch': 'Passwords do not match',
+    'validation.phoneInvalid': 'Please enter a valid phone number',
+    'validation.amountRequired': 'Amount is required',
+    'validation.amountInvalid': 'Please enter a valid amount',
+    'validation.interestRateRequired': 'Interest rate is required',
+    'validation.interestRateInvalid': 'Please enter a valid interest rate',
+    'validation.installmentsRequired': 'Number of installments is required',
+    'validation.installmentsInvalid': 'Please enter a valid number of installments',
+    'validation.startDateRequired': 'Start date is required',
+    'validation.customerRequired': 'Please select a customer',
+    'validation.employeeRequired': 'Please select an employee',
+    'validation.selectCustomer': 'Please select a customer',
+    'validation.selectEmployee': 'Please select an employee',
   },
   ar: {
     // Common
@@ -334,6 +428,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.error': 'خطأ',
     'common.loading': 'جاري التحميل',
     'common.close': 'إغلاق',
+    'common.noResults': 'لم يتم العثور على نتائج',
     'common.openMenu': 'فتح القائمة',
     'common.changeLanguage': 'تغيير اللغة',
     'common.notificationsAria': 'الإشعارات',
@@ -414,6 +509,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'dashboard.activeLoansCount': 'القروض النشطة',
     'dashboard.pendingReviewsCount': 'المراجعات المعلقة',
     'dashboard.noAssignedCustomers': 'لا يوجد عملاء معينون',
+    'dashboard.noLoansFound': 'لم يتم العثور على قروض',
     'dashboard.noActiveLoan': 'لا يوجد قرض نشط',
     'dashboard.noActiveLoanDescription': 'ليس لديك قرض نشط في الوقت الحالي.',
     'dashboard.activeLoanDescription': 'تفاصيل قرضك الحالي',
@@ -525,8 +621,17 @@ const translations: Record<Locale, Record<string, string>> = {
     'chat.chat': 'محادثة',
     'chat.monitorAll': 'مراقبة جميع محادثات العملاء والموظفين والداخلية',
     'chat.withCustomers': 'الدردشة مع العملاء والفرق الداخلية',
+    'chat.withCustomersAndTeam': 'الدردشة مع العملاء والفرق الداخلية',
     'chat.withEmployee': 'الدردشة مع الموظف المعين لك',
     'chat.noChatAvailable': 'لا توجد محادثة متاحة. يرجى الاتصال بالدعم.',
+    'chat.noEmployeeAssigned': 'لم يتم تعيين موظف لك بعد.',
+    'chat.employee': 'موظف',
+    'chat.noChats': 'لا توجد محادثات بعد',
+    'chat.manageAllChats': 'إدارة جميع محادثات العملاء والموظفين والداخلية',
+    'chat.startChatWithEmployee': 'بدء محادثة مع موظف',
+    'chat.startChatWithCustomer': 'بدء محادثة مع عميل',
+    'chat.adminMonitorOnly': 'مراقبة جميع المحادثات (للقراءة فقط لمحادثات العملاء والمحادثات الخاصة)',
+    'chat.adminCannotSendPrivate': 'لا يمكن للمسؤول إرسال رسائل في المحادثات الخاصة',
     'chat.file': 'ملف',
     'chat.room.contracts': 'العقود',
     'chat.room.followUp': 'المتابعة',
@@ -539,6 +644,13 @@ const translations: Record<Locale, Record<string, string>> = {
     'chat.sender.johnEmployee': 'جون موظف',
     'chat.sender.fatimaCustomer': 'فاطمة عميلة',
     'chat.sender.sarahEmployee': 'سارة موظفة',
+    'chat.createRoom': 'إنشاء غرفة',
+    'chat.createGroupRoom': 'إنشاء غرفة جماعية',
+    'chat.roomName': 'اسم الغرفة',
+    'chat.roomNamePlaceholder': 'مثال: العقود، المتابعة',
+    'chat.selectEmployees': 'اختر الموظفين',
+    'chat.noEmployees': 'لا يوجد موظفون متاحون',
+    'chat.customerChat': 'محادثة العميل',
     'loan.notes.monthlyPayment': 'خطة الدفع الشهرية',
     'loan.notes.pendingActivation': 'في انتظار التفعيل',
     'loan.notes.documentationReview': 'مراجعة المستندات قيد التنفيذ',
@@ -567,6 +679,82 @@ const translations: Record<Locale, Record<string, string>> = {
     'customer.myLoans': 'قروضي',
     'customer.viewAllLoans': 'عرض جميع معلومات القروض الخاصة بك (للقراءة فقط)',
     'customer.lastUpdated': 'آخر تحديث',
+    
+    // API Error Messages
+    'error.internalServerError': 'خطأ في الخادم الداخلي',
+    'error.requestTimeout': 'انتهت مهلة الطلب. يرجى المحاولة مرة أخرى.',
+    'error.userIdRequired': 'معرف المستخدم مطلوب',
+    'error.emailPasswordRequired': 'البريد الإلكتروني وكلمة المرور مطلوبان',
+    'error.invalidEmailFormat': 'تنسيق البريد الإلكتروني غير صحيح',
+    'error.invalidEmailOrPassword': 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+    'error.emailAlreadyExists': 'البريد الإلكتروني موجود بالفعل',
+    'error.nameEmailPasswordRequired': 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة',
+    'error.passwordMinLength': 'يجب أن تكون كلمة المرور 6 أحرف على الأقل',
+    'error.missingRequiredFields': 'الحقول المطلوبة مفقودة',
+    'error.missingRequiredFieldsList': 'الحقول المطلوبة مفقودة: {fields}',
+    'error.customerNotFound': 'العميل غير موجود',
+    'error.employeeNotFound': 'الموظف غير موجود',
+    'error.loanNotFound': 'القرض غير موجود',
+    'error.notificationNotFound': 'الإشعار غير موجود',
+    'error.userNotFound': 'المستخدم غير موجود',
+    'error.employeeIdRequired': 'معرف الموظف مطلوب',
+    'error.unauthorized': 'غير مصرح',
+    'error.accountCreatedSuccessfully': 'تم إنشاء الحساب بنجاح',
+    'error.customerCreatedSuccessfully': 'تم إنشاء العميل بنجاح',
+    'error.customerUpdatedSuccessfully': 'تم تحديث العميل بنجاح',
+    'error.employeeCreatedSuccessfully': 'تم إنشاء الموظف بنجاح',
+    'error.employeeUpdatedSuccessfully': 'تم تحديث الموظف بنجاح',
+    'error.loanCreatedSuccessfully': 'تم إنشاء القرض بنجاح',
+    'error.loanUpdatedSuccessfully': 'تم تحديث القرض بنجاح',
+    'error.loanDeletedSuccessfully': 'تم حذف القرض بنجاح',
+    'error.notificationCreatedSuccessfully': 'تم إنشاء الإشعار بنجاح',
+    'error.messageSentSuccessfully': 'تم إرسال الرسالة بنجاح',
+    'error.chatIdRequired': 'معرف المحادثة مطلوب',
+    'error.invalidTargetType': 'نوع الهدف غير صالح',
+    'fcm.registered': 'تم تسجيل الرمز للإشعارات',
+    'error.accessDenied': 'تم رفض الوصول',
+    'error.chatNotFound': 'المحادثة غير موجودة',
+    'error.invalidToken': 'رمز غير صالح',
+    'error.invalidEmployeeIds': 'معرف موظف واحد أو أكثر غير صالح',
+    'chat.adminCannotSendToCustomer': 'لا يمكن للمسؤول إرسال رسائل في محادثات العملاء',
+    'chat.adminNoPrivateChats': 'لا يمكن للمسؤول بدء محادثات خاصة',
+    
+    // Broadcast / Announcements
+    'common.announcements': 'الإعلانات',
+    'broadcast.pageTitle': 'إنشاء إعلان',
+    'broadcast.pageDescription': 'أرسل إعلاناً للموظفين و/أو العملاء. سيظهر في إشعارات لوحة التحكم لديهم.',
+    'broadcast.titleLabel': 'العنوان',
+    'broadcast.messageLabel': 'الرسالة',
+    'broadcast.titleArLabel': 'العنوان (عربي، اختياري)',
+    'broadcast.messageArLabel': 'الرسالة (عربي، اختياري)',
+    'broadcast.targetAudience': 'الجمهور المستهدف',
+    'broadcast.targetAll': 'الكل (موظفون وعملاء)',
+    'broadcast.targetAllEmployees': 'جميع الموظفين',
+    'broadcast.targetAllCustomers': 'جميع العملاء',
+    'broadcast.send': 'إرسال الإعلان',
+    'broadcast.sending': 'جاري الإرسال…',
+    'broadcast.sentSuccessfully': 'تم إرسال الإعلان بنجاح',
+    
+    // Form Validation Messages
+    'validation.required': 'هذا الحقل مطلوب',
+    'validation.nameRequired': 'الاسم مطلوب',
+    'validation.emailRequired': 'البريد الإلكتروني مطلوب',
+    'validation.emailInvalid': 'يرجى إدخال عنوان بريد إلكتروني صحيح',
+    'validation.passwordRequired': 'كلمة المرور مطلوبة',
+    'validation.passwordMinLength': 'يجب أن تكون كلمة المرور 6 أحرف على الأقل',
+    'validation.passwordMismatch': 'كلمات المرور غير متطابقة',
+    'validation.phoneInvalid': 'يرجى إدخال رقم هاتف صحيح',
+    'validation.amountRequired': 'المبلغ مطلوب',
+    'validation.amountInvalid': 'يرجى إدخال مبلغ صحيح',
+    'validation.interestRateRequired': 'معدل الفائدة مطلوب',
+    'validation.interestRateInvalid': 'يرجى إدخال معدل فائدة صحيح',
+    'validation.installmentsRequired': 'عدد الأقساط مطلوب',
+    'validation.installmentsInvalid': 'يرجى إدخال عدد أقساط صحيح',
+    'validation.startDateRequired': 'تاريخ البدء مطلوب',
+    'validation.customerRequired': 'يرجى اختيار عميل',
+    'validation.employeeRequired': 'يرجى اختيار موظف',
+    'validation.selectCustomer': 'يرجى اختيار عميل',
+    'validation.selectEmployee': 'يرجى اختيار موظف',
   },
 };
 
@@ -574,24 +762,16 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize locale from localStorage on mount
+  // Defer state update to useEffect to avoid "Cannot update HotReload while rendering Router"
   useEffect(() => {
     const storedLocale = getStoredLocale();
     setLocaleState(storedLocale);
-    
-    // Ensure locale is stored in cache
     if (typeof window !== 'undefined') {
       localStorage.setItem('locale', storedLocale);
     }
-    
-    // Set document attributes
     document.documentElement.setAttribute('dir', storedLocale === 'ar' ? 'rtl' : 'ltr');
     document.documentElement.setAttribute('lang', storedLocale);
-    
-    // Mark as initialized after a brief delay to ensure everything is set
-    setTimeout(() => {
-      setIsInitialized(true);
-    }, 100);
+    setIsInitialized(true);
   }, []);
 
   useLayoutEffect(() => {
@@ -611,8 +791,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   };
 
   const t = (key: string, params?: Record<string, string | number>): string => {
-    let text = translations[locale][key] || key;
-    if (params) {
+    const safeLocale = (locale === 'ar' ? 'ar' : 'en') as Locale;
+    const otherLocale = safeLocale === 'en' ? 'ar' : 'en';
+    let text = (translations[safeLocale] && translations[safeLocale][key]) || (translations[otherLocale] && translations[otherLocale][key]) || key;
+    if (params && text) {
       Object.keys(params).forEach((paramKey) => {
         const value = params[paramKey];
         text = text.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value));

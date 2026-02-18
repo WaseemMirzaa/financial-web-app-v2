@@ -1,17 +1,41 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockCustomers } from '@/lib/mockData';
 import Link from 'next/link';
+import { Customer } from '@/types';
 
 export default function EmployeeCustomersPage() {
   const { t } = useLocale();
   const { user } = useAuth();
+  const [assignedCustomers, setAssignedCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const assignedCustomers = mockCustomers.filter(c => c.assignedEmployeeId === user?.id);
+  useEffect(() => {
+    if (user?.id) {
+      fetchCustomers();
+    }
+  }, [user?.id]);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch(`/api/employees/${user?.id}/customers`);
+      const data = await response.json();
+      if (data.success) {
+        setAssignedCustomers(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -30,7 +54,7 @@ export default function EmployeeCustomersPage() {
             <Link key={customer.id} href={`/employee/customers/${customer.id}`}>
               <Card variant="elevated" padding="medium" className="hover:shadow-xl transition-shadow cursor-pointer text-left rtl:text-right">
                 <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">{customer.nameKey ? t(customer.nameKey) : customer.name}</h3>
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">{customer.name}</h3>
                   <p className="text-sm text-neutral-600 mb-1">{customer.email}</p>
                   {customer.phone && (
                     <p className="text-sm text-neutral-600">{customer.phone}</p>

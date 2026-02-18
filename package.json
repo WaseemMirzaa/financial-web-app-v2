@@ -7,14 +7,27 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "export": "next build"
+    "export": "next build",
+    "migrate": "tsx scripts/migrate.ts",
+    "seed-admin": "tsx scripts/seed-admin.ts",
+    "seed": "tsx scripts/seed.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:setup": "node scripts/setup.js",
+    "test:api": "BASE_URL=http://localhost:3004 ./scripts/test-apis.sh"
   },
   "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "firebase": "^11.0.0",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.3.1",
+    "firebase": "^12.9.0",
+    "lucide-react": "^0.460.0",
+    "mysql2": "^3.17.2",
     "next": "14.2.15",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "lucide-react": "^0.460.0",
-    "clsx": "^2.1.1"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
@@ -25,6 +38,7 @@
     "eslint-config-next": "14.2.15",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.3"
   }
 }

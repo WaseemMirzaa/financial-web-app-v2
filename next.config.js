@@ -1,10 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Static export for Cloudflare Pages (works great for client-side apps)
-  output: 'export',
+  // No static export: app uses API routes and dynamic [id] routes that depend on DB at runtime
   images: {
-    unoptimized: true, // Required for static export
+    unoptimized: true,
+  },
+  async rewrites() {
+    return [{ source: '/favicon.ico', destination: '/icon' }];
   },
 }
 

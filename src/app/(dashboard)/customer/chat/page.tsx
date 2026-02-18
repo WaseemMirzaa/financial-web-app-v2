@@ -1,46 +1,159 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockChats, mockChatMessages, mockEmployees } from '@/lib/mockData';
 import { Chat, ChatMessage } from '@/types';
 
 export default function CustomerChatPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { user } = useAuth();
-  const customerChats = mockChats.filter(c => c.type === 'customer_employee' && c.participantIds.includes(user?.id || ''));
-  const [selectedChat, setSelectedChat] = useState<string | null>(customerChats[0]?.id || null);
-  const [chats] = useState<Chat[]>(customerChats);
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    mockChatMessages.filter(m => chats.some(c => c.id === m.chatId))
-  );
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [assignedEmployee, setAssignedEmployee] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [startingChat, setStartingChat] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchChats();
+      fetchAssignedEmployee();
+    }
+  }, [user?.id]);
+
+  const fetchChats = async () => {
+    try {
+      const response = await fetch(`/api/chat?userId=${user?.id}`);
+      const data = await response.json();
+      if (data.success) {
+        const customerChats = data.data.filter((c: Chat) => c.type === 'customer_employee');
+        setChats(customerChats);
+        if (customerChats.length > 0) {
+          setSelectedChat(customerChats[0].id);
+          fetchMessages(customerChats[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch chats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAssignedEmployee = async () => {
+    try {
+      // Get customer data to find assigned employee
+      const response = await fetch(`/api/customers/${user?.id}`);
+      const data = await response.json();
+      if (data.success && data.data.assignedEmployeeId) {
+        const empResponse = await fetch(`/api/employees/${data.data.assignedEmployeeId}`);
+        const empData = await empResponse.json();
+        if (empData.success) {
+          setAssignedEmployee(empData.data);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch assigned employee:', error);
+    }
+  };
+
+  const fetchMessages = async (chatId: string) => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/chat/${chatId}/messages?locale=${locale}&userId=${user.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setMessages(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedChat) {
+      fetchMessages(selectedChat);
+    }
+  }, [selectedChat]);
+
+  // Real-time: poll messages while a chat is open (pause when tab hidden)
+  useEffect(() => {
+    if (!selectedChat) return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchMessages(selectedChat);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [selectedChat, locale]);
 
   const selectedChatData = chats.find(c => c.id === selectedChat);
-  const assignedEmployee = mockEmployees.find(e => 
-    selectedChatData?.participantIds.includes(e.id) && e.id !== user?.id
-  );
 
-  const handleSendMessage = (content: string, file?: File) => {
+  const handleStartChat = async () => {
+    if (!user?.id) return;
+    setStartingChat(true);
+    try {
+      const response = await fetch('/api/chat/with-assigned-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: user.id }),
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        const newChat = data.data as Chat;
+        setChats((prev) => [newChat, ...prev]);
+        setSelectedChat(newChat.id);
+        fetchMessages(newChat.id);
+      }
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+    } finally {
+      setStartingChat(false);
+    }
+  };
+
+  const handleSendMessage = async (content: string, file?: File) => {
     if (!selectedChat || !user) return;
 
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      chatId: selectedChat,
-      senderId: user.id,
-      senderName: user.name,
-      senderRole: user.role,
-      content,
-      fileName: file?.name,
-      fileType: file?.type,
-      fileUrl: file ? URL.createObjectURL(file) : undefined,
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      // Upload file if provided
+      let fileUrl: string | undefined;
+      if (file) {
+        // For now, create object URL. In production, upload to storage service
+        fileUrl = URL.createObjectURL(file);
+      }
 
-    setMessages([...messages, newMessage]);
+      const response = await fetch(`/api/chat/${selectedChat}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          senderId: user.id,
+          content,
+          fileName: file?.name,
+          fileType: file?.type,
+          fileUrl,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Refresh messages to get translated versions
+        await fetchMessages(selectedChat);
+      } else {
+        console.error('Failed to send message:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   if (chats.length === 0) {
     return (
@@ -51,7 +164,19 @@ export default function CustomerChatPage() {
         </div>
         <Card variant="elevated" padding="large">
           <div className="text-center py-12">
-            <p className="text-neutral-500">{t('chat.noChatAvailable')}</p>
+            <p className="text-neutral-500 mb-4">{t('chat.noChatAvailable')}</p>
+            {!assignedEmployee ? (
+              <p className="text-sm text-neutral-600">{t('chat.noEmployeeAssigned')}</p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleStartChat}
+                disabled={startingChat}
+                className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50"
+              >
+                {startingChat ? t('common.loading') + '...' : t('chat.startChatWithEmployee')}
+              </button>
+            )}
           </div>
         </Card>
       </div>
@@ -65,19 +190,45 @@ export default function CustomerChatPage() {
         <p className="text-neutral-600">{t('chat.withEmployee')}</p>
       </div>
 
-      {selectedChatData && assignedEmployee ? (
-        <ChatWindow
-          messages={messages.filter(m => m.chatId === selectedChat)}
-          onSendMessage={handleSendMessage}
-          title={assignedEmployee.name}
-        />
-      ) : (
-        <Card variant="elevated" padding="large" className="h-[600px] flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-neutral-500">{t('chat.noChatAvailable')}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card variant="elevated" padding="none" className="lg:col-span-1">
+          <div className="p-4 border-b border-neutral-100">
+            <h2 className="font-semibold text-neutral-900">{t('chat.chats')}</h2>
+          </div>
+          <div className="divide-y divide-neutral-100">
+            {chats.map((chat) => (
+              <button
+                key={chat.id}
+                onClick={() => setSelectedChat(chat.id)}
+                className={`w-full p-4 text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 ${
+                  selectedChat === chat.id ? 'bg-primary-50' : ''
+                }`}
+              >
+                <p className="font-semibold text-neutral-900">
+                  {assignedEmployee ? assignedEmployee.name : t('chat.employee')}
+                </p>
+                {chat.lastMessage && (
+                  <p className="text-sm text-neutral-600 mt-1 truncate">{chat.lastMessage.content}</p>
+                )}
+              </button>
+            ))}
           </div>
         </Card>
-      )}
+
+        <div className="lg:col-span-2">
+          {selectedChatData && assignedEmployee ? (
+            <ChatWindow
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              title={assignedEmployee.name}
+            />
+          ) : (
+            <Card variant="elevated" padding="large">
+              <p className="text-center text-neutral-500">{t('chat.selectChat')}</p>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

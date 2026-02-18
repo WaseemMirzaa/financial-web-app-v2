@@ -1,8 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Notification } from '@/types';
-import { mockNotifications } from '@/lib/mockData';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -11,56 +10,96 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   removeNotification: (id: string) => void;
+  refreshNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export function NotificationProvider({ children, userId }: { children: ReactNode; userId?: string }) {
+export function NotificationProvider({ children, userId, locale }: { children: ReactNode; userId?: string; locale?: string }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!userId) return;
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({ userId });
+      if (locale) params.set('locale', locale);
+      const response = await fetch(`/api/notifications?${params.toString()}`);
+      const data = await response.json();
+      if (data.success) {
+        setNotifications(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, locale]);
 
   useEffect(() => {
     if (userId) {
-      // Load notifications for user from localStorage or mock data
-      const stored = localStorage.getItem(`notifications-${userId}`);
-      if (stored) {
-        try {
-          setNotifications(JSON.parse(stored));
-        } catch (e) {
-          // Fallback to mock data
-          const userNotifications = mockNotifications.filter(n => n.userId === userId);
-          setNotifications(userNotifications);
-        }
-      } else {
-        const userNotifications = mockNotifications.filter(n => n.userId === userId);
-        setNotifications(userNotifications);
-        localStorage.setItem(`notifications-${userId}`, JSON.stringify(userNotifications));
-      }
+      fetchNotifications();
     }
-  }, [userId]);
+  }, [userId, fetchNotifications]);
 
   useEffect(() => {
-    if (userId && notifications.length > 0) {
-      localStorage.setItem(`notifications-${userId}`, JSON.stringify(notifications));
+    if (!userId) return;
+    const onFocus = () => fetchNotifications();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [userId, fetchNotifications]);
+
+  // Realtime: poll for new notifications every 15s
+  useEffect(() => {
+    if (!userId) return;
+    const interval = setInterval(() => fetchNotifications(), 15000);
+    return () => clearInterval(interval);
+  }, [userId, fetchNotifications]);
+
+  const addNotification = async (notification: Omit<Notification, 'id' | 'createdAt'>) => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...notification,
+          userId: userId || notification.userId,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Failed to add notification:', error);
     }
-  }, [notifications, userId]);
-
-  const addNotification = (notification: Omit<Notification, 'id' | 'createdAt'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: `notif-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    setNotifications(prev => [newNotification, ...prev]);
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}/read`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setNotifications(prev =>
+          prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  const markAllAsRead = async () => {
+    try {
+      await Promise.all(
+        notifications.filter(n => !n.isRead).map(n => markAsRead(n.id))
+      );
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
   };
 
   const removeNotification = (id: string) => {
@@ -78,6 +117,7 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
         markAsRead,
         markAllAsRead,
         removeNotification,
+        refreshNotifications: fetchNotifications,
       }}
     >
       {children}

@@ -57,15 +57,15 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      const success = await signup(
+      const result = await signup(
         formData.name,
         formData.email,
         formData.password,
         formData.phone || undefined,
         formData.address || undefined
       );
-      if (!success) {
-        setError(t('auth.emailExists'));
+      if (!result.success) {
+        setError(result.errorKey ? t(result.errorKey) : (result.error || t('auth.errorOccurred')));
       }
       // Success - redirect happens via useEffect
     } catch {

@@ -8,9 +8,8 @@ import {
   Users,
   FileText,
   MessageSquare,
-  Settings,
   UserCheck,
-  Building2,
+  Megaphone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -64,6 +63,12 @@ export function Sidebar({ inDrawer = false, onItemClick }: SidebarProps) {
       href: '/admin/chat',
       icon: MessageSquare,
       label: t('common.chat'),
+      roles: ['admin'],
+    },
+    {
+      href: '/admin/broadcast',
+      icon: Megaphone,
+      label: t('common.announcements'),
       roles: ['admin'],
     },
     {

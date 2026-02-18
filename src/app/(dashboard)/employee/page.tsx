@@ -1,21 +1,53 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, FileText, MessageSquare } from 'lucide-react';
+import { Users, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockCustomers, mockLoans } from '@/lib/mockData';
 import { getLoanStatusColor, formatCurrency, formatNumber } from '@/lib/utils';
 
 export default function EmployeeDashboard() {
   const router = useRouter();
   const { t, locale } = useLocale();
   const { user } = useAuth();
+  const [assignedCustomers, setAssignedCustomers] = useState<any[]>([]);
+  const [assignedLoans, setAssignedLoans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const assignedCustomers = mockCustomers.filter(c => c.assignedEmployeeId === user?.id);
-  const assignedLoans = mockLoans.filter(l => l.employeeId === user?.id);
+  useEffect(() => {
+    if (user?.id) {
+      fetchData();
+    }
+  }, [user?.id]);
+
+  const fetchData = async () => {
+    try {
+      const [customersRes, loansRes] = await Promise.all([
+        fetch(`/api/employees/${user?.id}/customers`),
+        fetch(`/api/loans?employeeId=${user?.id}`),
+      ]);
+
+      const customersData = await customersRes.json();
+      const loansData = await loansRes.json();
+
+      if (customersData.success) {
+        setAssignedCustomers(customersData.data);
+      }
+      if (loansData.success) {
+        setAssignedLoans(loansData.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   const stats = [
     {
@@ -83,13 +115,13 @@ export default function EmployeeDashboard() {
             {assignedCustomers.length === 0 ? (
               <p className="text-neutral-500">{t('dashboard.noAssignedCustomers')}</p>
             ) : (
-              assignedCustomers.map((customer) => (
+              assignedCustomers.slice(0, 5).map((customer) => (
                 <div
                   key={customer.id}
                   onClick={() => router.push(`/employee/customers/${customer.id}`)}
                   className="p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200"
                 >
-                  <p className="font-semibold text-neutral-900">{customer.nameKey ? t(customer.nameKey) : customer.name}</p>
+                  <p className="font-semibold text-neutral-900">{customer.name}</p>
                   <p className="text-sm text-neutral-600">{customer.email}</p>
                 </div>
               ))
@@ -100,30 +132,34 @@ export default function EmployeeDashboard() {
         <Card variant="elevated" padding="medium">
           <h3 className="text-xl font-semibold text-neutral-900 mb-4">{t('dashboard.recentLoans')}</h3>
           <div className="space-y-3">
-            {assignedLoans.slice(0, 5).map((loan) => {
-              const customer = assignedCustomers.find(c => c.id === loan.customerId);
-              return (
-                <div
-                  key={loan.id}
-                  onClick={() => router.push(`/employee/loans/${loan.id}`)}
-                  className="p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200"
-                >
-                  <div className="flex items-center justify-between">
-                <div className="text-left rtl:text-right">
-                  <p className="font-semibold text-neutral-900">{customer?.nameKey ? t(customer.nameKey) : (customer?.name || t('detail.unknown'))}</p>
-                  <p className="text-sm text-neutral-600">{formatCurrency(loan.amount, locale)}</p>
-                </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      loan.status === 'active' ? 'bg-success-light text-success' :
-                      loan.status === 'approved' ? 'bg-info-light text-info' :
-                      'bg-neutral-200 text-neutral-600'
-                    }`}>
-                      {t(`loan.status.${loan.status}`)}
-                    </span>
+            {assignedLoans.length === 0 ? (
+              <p className="text-neutral-500">{t('dashboard.noLoansFound')}</p>
+            ) : (
+              assignedLoans.slice(0, 5).map((loan) => {
+                const customer = assignedCustomers.find(c => c.id === loan.customerId);
+                return (
+                  <div
+                    key={loan.id}
+                    onClick={() => router.push(`/employee/loans/${loan.id}`)}
+                    className="p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-left rtl:text-right">
+                        <p className="font-semibold text-neutral-900">{customer?.name || t('detail.unknown')}</p>
+                        <p className="text-sm text-neutral-600">{formatCurrency(loan.amount, locale)}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        loan.status === 'active' ? 'bg-success-light text-success' :
+                        loan.status === 'approved' ? 'bg-info-light text-info' :
+                        'bg-neutral-200 text-neutral-600'
+                      }`}>
+                        {t(`loan.status.${loan.status}`)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </Card>
       </div>

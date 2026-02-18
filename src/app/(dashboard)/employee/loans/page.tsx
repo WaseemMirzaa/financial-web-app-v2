@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockLoans, mockCustomers } from '@/lib/mockData';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
 
@@ -18,7 +17,9 @@ export default function EmployeeLoansPage() {
   const router = useRouter();
   const { t, locale } = useLocale();
   const { user } = useAuth();
-  const [loans, setLoans] = useState<Loan[]>(mockLoans.filter(l => l.employeeId === user?.id));
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [formData, setFormData] = useState({
@@ -31,8 +32,41 @@ export default function EmployeeLoansPage() {
     status: 'under_review' as LoanStatus,
     notes: '',
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
 
-  const assignedCustomers = mockCustomers.filter(c => c.assignedEmployeeId === user?.id);
+  useEffect(() => {
+    if (user?.id) {
+      fetchLoans();
+      fetchCustomers();
+    }
+  }, [user?.id]);
+
+  const fetchLoans = async () => {
+    try {
+      const response = await fetch(`/api/loans?employeeId=${user?.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setLoans(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch loans:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch(`/api/employees/${user?.id}/customers`);
+      const data = await response.json();
+      if (data.success) {
+        setCustomers(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+    }
+  };
 
   const handleCreate = () => {
     setEditingLoan(null);
@@ -46,6 +80,8 @@ export default function EmployeeLoansPage() {
       status: 'under_review',
       notes: '',
     });
+    setFormErrors({});
+    setSubmitError('');
     setIsModalOpen(true);
   };
 
@@ -64,40 +100,100 @@ export default function EmployeeLoansPage() {
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingLoan) {
-      setLoans(loans.map(l => 
-        l.id === editingLoan.id 
-          ? {
-              ...l,
-              ...formData,
-              amount: parseFloat(formData.amount),
-              interestRate: parseFloat(formData.interestRate),
-              numberOfInstallments: parseInt(formData.numberOfInstallments),
-              installmentTotal: parseFloat(formData.installmentTotal),
-              updatedAt: new Date().toISOString(),
-            }
-          : l
-      ));
-    } else {
-      const newLoan: Loan = {
-        id: `loan-${Date.now()}`,
-        customerId: formData.customerId,
-        employeeId: user?.id || '',
-        amount: parseFloat(formData.amount),
-        interestRate: parseFloat(formData.interestRate),
-        numberOfInstallments: parseInt(formData.numberOfInstallments),
-        installmentTotal: parseFloat(formData.installmentTotal),
-        startDate: formData.startDate,
-        status: formData.status,
-        notes: formData.notes,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setLoans([...loans, newLoan]);
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!editingLoan && !formData.customerId) {
+      errors.customerId = t('validation.customerRequired');
     }
-    setIsModalOpen(false);
+    
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      errors.amount = t('validation.amountRequired');
+    }
+    
+    if (!formData.interestRate || parseFloat(formData.interestRate) < 0) {
+      errors.interestRate = t('validation.interestRateRequired');
+    }
+    
+    if (!formData.numberOfInstallments || parseInt(formData.numberOfInstallments) <= 0) {
+      errors.numberOfInstallments = t('validation.installmentsRequired');
+    }
+    
+    if (!formData.startDate) {
+      errors.startDate = t('validation.startDateRequired');
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
+
+  const handleSave = async () => {
+    setSubmitError('');
+    setFormErrors({});
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      if (editingLoan) {
+        const response = await fetch(`/api/loans/${editingLoan.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: parseFloat(formData.amount),
+            interestRate: parseFloat(formData.interestRate),
+            numberOfInstallments: parseInt(formData.numberOfInstallments),
+            installmentTotal: parseFloat(formData.installmentTotal),
+            startDate: formData.startDate,
+            status: formData.status,
+            notes: formData.notes,
+          }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          await fetchLoans();
+          setIsModalOpen(false);
+          setFormErrors({});
+          setSubmitError('');
+        } else {
+          setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+        }
+      } else {
+        const response = await fetch('/api/loans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId: formData.customerId,
+            employeeId: user?.id,
+            amount: parseFloat(formData.amount),
+            interestRate: parseFloat(formData.interestRate),
+            numberOfInstallments: parseInt(formData.numberOfInstallments),
+            installmentTotal: parseFloat(formData.installmentTotal),
+            startDate: formData.startDate,
+            status: formData.status,
+            notes: formData.notes,
+          }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          await fetchLoans();
+          setIsModalOpen(false);
+          setFormErrors({});
+          setSubmitError('');
+        } else {
+          setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save loan:', error);
+      setSubmitError(t('error.internalServerError'));
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">{t('common.loading')}...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -127,14 +223,16 @@ export default function EmployeeLoansPage() {
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {loans.map((loan) => {
-                const customer = assignedCustomers.find(c => c.id === loan.customerId);
+                const customer = customers.find(c => c.id === loan.customerId);
                 return (
                   <tr
                     key={loan.id}
                     onClick={() => router.push(`/employee/loans/${loan.id}`)}
                     className="hover:bg-neutral-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900 font-medium">{customer?.name || '-'}</td>
+                    <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900 font-medium">
+                      {customer ? customer.name : '-'}
+                    </td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900">
                       {formatCurrency(loan.amount, locale)}
                     </td>
@@ -148,7 +246,7 @@ export default function EmployeeLoansPage() {
                     <td className="px-6 py-4 text-right rtl:text-left" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleEdit(loan)}
-                        className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                        className="p-2 hover:bg-neutral-50 rounded-xl transition-colors"
                       >
                         <Edit className="w-4 h-4 text-neutral-600" />
                       </button>
@@ -178,25 +276,44 @@ export default function EmployeeLoansPage() {
         }
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">{t('form.customer')}</label>
-            <select
-              value={formData.customerId}
-              onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-              className="w-full h-12 px-4 rounded-lg border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              required
-            >
-              <option value="">{t('form.selectCustomer')}</option>
-              {assignedCustomers.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
+          {submitError && (
+            <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+              {submitError}
+            </div>
+          )}
+          {!editingLoan && (
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">{t('form.customer')}</label>
+              <select
+                value={formData.customerId}
+                onChange={(e) => {
+                  setFormData({ ...formData, customerId: e.target.value });
+                  if (formErrors.customerId) setFormErrors({ ...formErrors, customerId: '' });
+                }}
+                className={`w-full h-12 px-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-primary-500/20 ${
+                  formErrors.customerId ? 'border-error' : 'border-neutral-200'
+                }`}
+                required
+              >
+                <option value="">{t('form.selectCustomer')}</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {formErrors.customerId && (
+                <p className="mt-2 text-sm text-error">{formErrors.customerId}</p>
+              )}
+            </div>
+          )}
           <Input
             label={t('form.amount')}
             type="number"
             value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, amount: e.target.value });
+              if (formErrors.amount) setFormErrors({ ...formErrors, amount: '' });
+            }}
+            error={formErrors.amount}
             required
           />
           <Input
@@ -204,28 +321,44 @@ export default function EmployeeLoansPage() {
             type="number"
             step="0.1"
             value={formData.interestRate}
-            onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, interestRate: e.target.value });
+              if (formErrors.interestRate) setFormErrors({ ...formErrors, interestRate: '' });
+            }}
+            error={formErrors.interestRate}
             required
           />
           <Input
             label={t('form.numberOfInstallments')}
             type="number"
             value={formData.numberOfInstallments}
-            onChange={(e) => setFormData({ ...formData, numberOfInstallments: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, numberOfInstallments: e.target.value });
+              if (formErrors.numberOfInstallments) setFormErrors({ ...formErrors, numberOfInstallments: '' });
+            }}
+            error={formErrors.numberOfInstallments}
             required
           />
           <Input
             label={t('form.installmentTotal')}
             type="number"
             value={formData.installmentTotal}
-            onChange={(e) => setFormData({ ...formData, installmentTotal: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, installmentTotal: e.target.value });
+              if (formErrors.installmentTotal) setFormErrors({ ...formErrors, installmentTotal: '' });
+            }}
+            error={formErrors.installmentTotal}
             required
           />
           <Input
             label={t('form.startDate')}
             type="date"
             value={formData.startDate}
-            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, startDate: e.target.value });
+              if (formErrors.startDate) setFormErrors({ ...formErrors, startDate: '' });
+            }}
+            error={formErrors.startDate}
             required
           />
           <div>
@@ -233,7 +366,7 @@ export default function EmployeeLoansPage() {
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value as LoanStatus })}
-              className="w-full h-12 px-4 rounded-lg border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full h-12 px-4 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             >
               <option value="under_review">{t('loan.status.under_review')}</option>
               <option value="approved">{t('loan.status.approved')}</option>
@@ -247,7 +380,7 @@ export default function EmployeeLoansPage() {
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full h-24 px-4 py-3 rounded-lg border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full h-24 px-4 py-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
           </div>
         </div>
