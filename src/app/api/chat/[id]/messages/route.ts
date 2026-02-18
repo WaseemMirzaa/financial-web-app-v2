@@ -168,9 +168,15 @@ export async function POST(
     const body = await request.json();
     const { senderId, content, fileName, fileType, fileUrl } = body;
 
-    if (!chatId || !senderId || !content) {
-      return validationError('Chat ID, sender ID, and content are required', 'error.missingRequiredFields');
+    if (!chatId || !senderId) {
+      return validationError('Chat ID and sender ID are required', 'error.missingRequiredFields');
     }
+    const hasContent = content != null && String(content).trim() !== '';
+    const hasFile = fileUrl && fileName;
+    if (!hasContent && !hasFile) {
+      return validationError('Message content or file is required', 'error.missingRequiredFields');
+    }
+    const contentToUse = hasContent ? String(content).trim() : (fileName ? `[${fileName}]` : '');
 
     const sendErr = await checkCanSendInChat(chatId, senderId);
     if (sendErr) return sendErr;
@@ -181,18 +187,17 @@ export async function POST(
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // Translate message content to both languages
-    let contentEn = content;
-    let contentAr = content;
+    let contentEn = contentToUse;
+    let contentAr = contentToUse;
 
     try {
-      const translations = await translateToBothLanguages(content);
+      const translations = await translateToBothLanguages(contentToUse);
       contentEn = translations.en;
       contentAr = translations.ar;
     } catch (translateError) {
       console.warn('Translation failed, using original text:', translateError);
-      // If translation fails, use original text for both languages
-      contentEn = content;
-      contentAr = content;
+      contentEn = contentToUse;
+      contentAr = contentToUse;
     }
 
     // Get sender name and role from users table

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
@@ -39,11 +40,11 @@ export function EmployeeLoanDetailClient() {
     if (user?.id && loanId) {
       fetchLoan();
     }
-  }, [user?.id, loanId]);
+  }, [user?.id, loanId, locale]);
 
   const fetchLoan = async () => {
     try {
-      const response = await fetch(`/api/loans/${loanId}`);
+      const response = await fetch(`/api/loans/${loanId}?locale=${locale}`);
       const data = await response.json();
       if (data.success && data.data.employeeId === user?.id) {
         setLoan(data.data);
@@ -110,17 +111,27 @@ export function EmployeeLoanDetailClient() {
     }
     
     try {
-      const response = await fetch(`/api/loans/${loan.id}`, {
+      const amountNum = parseFloat(formData.amount);
+      const interestRateNum = parseFloat(formData.interestRate);
+      const numberOfInstallmentsNum = parseInt(formData.numberOfInstallments, 10);
+      const installmentTotalNum = formData.installmentTotal ? parseFloat(formData.installmentTotal) : undefined;
+      
+      if (isNaN(amountNum) || isNaN(interestRateNum) || isNaN(numberOfInstallmentsNum)) {
+        setSubmitError(t('validation.invalidNumber'));
+        return;
+      }
+      
+      const response = await fetch(`/api/loans/${loan.id}?locale=${locale}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: parseFloat(formData.amount),
-          interestRate: parseFloat(formData.interestRate),
-          numberOfInstallments: parseInt(formData.numberOfInstallments),
-          installmentTotal: parseFloat(formData.installmentTotal),
+          amount: amountNum,
+          interestRate: interestRateNum,
+          numberOfInstallments: numberOfInstallmentsNum,
+          installmentTotal: installmentTotalNum,
           startDate: formData.startDate,
           status: formData.status,
-          notes: formData.notes,
+          notes: formData.notes?.trim() || null,
         }),
       });
       const data = await response.json();
@@ -139,7 +150,11 @@ export function EmployeeLoanDetailClient() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   if (!loan) {

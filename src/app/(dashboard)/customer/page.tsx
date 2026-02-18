@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FileText, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatCurrency, formatDateOnly, formatNumber, formatPercent } from '@/lib/utils';
@@ -21,11 +22,11 @@ export default function CustomerDashboard() {
     if (user?.id) {
       fetchLoans();
     }
-  }, [user?.id]);
+  }, [user?.id, locale]);
 
   const fetchLoans = async () => {
     try {
-      const response = await fetch(`/api/loans?customerId=${user?.id}`);
+      const response = await fetch(`/api/loans?customerId=${user?.id}&locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setCustomerLoans(data.data);
@@ -38,7 +39,11 @@ export default function CustomerDashboard() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   const activeLoan = customerLoans.find(l => l.status === 'active');

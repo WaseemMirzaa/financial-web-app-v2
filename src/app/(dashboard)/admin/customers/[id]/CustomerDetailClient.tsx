@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Customer } from '@/types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
@@ -32,7 +33,7 @@ export function CustomerDetailClient() {
     fetchCustomer();
     fetchEmployees();
     fetchLoans();
-  }, [customerId]);
+  }, [customerId, locale]);
 
   const fetchCustomer = async () => {
     try {
@@ -83,7 +84,7 @@ export function CustomerDetailClient() {
 
   const fetchLoans = async () => {
     try {
-      const response = await fetch(`/api/loans?customerId=${customerId}`);
+      const response = await fetch(`/api/loans?customerId=${customerId}&locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setCustomerLoans(data.data);
@@ -197,7 +198,11 @@ export function CustomerDetailClient() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   if (!customer) {

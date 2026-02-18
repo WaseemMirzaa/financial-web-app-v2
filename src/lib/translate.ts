@@ -17,18 +17,33 @@ export async function translateText(
   text: string,
   options: TranslateOptions
 ): Promise<string> {
+  console.log('[Translate] translateText called:', { text: text.substring(0, 50), options });
+  
   // If no API key is configured, return original text
   if (!GOOGLE_TRANSLATE_API_KEY) {
-    console.warn('Google Translate API key not configured. Returning original text.');
+    console.warn('[Translate] Google Translate API key not configured. Returning original text.');
     return text;
   }
 
   // If source and target are the same, return original
   if (options.sourceLanguage === options.targetLanguage) {
+    console.log('[Translate] Source and target language are the same, returning original');
     return text;
   }
 
   try {
+    const requestBody = {
+      q: text,
+      source: options.sourceLanguage || 'auto',
+      target: options.targetLanguage,
+      format: 'text',
+    };
+    console.log('[Translate] Sending request to Google Translate API:', { 
+      url: GOOGLE_TRANSLATE_API_URL,
+      hasKey: !!GOOGLE_TRANSLATE_API_KEY,
+      body: { ...requestBody, q: requestBody.q.substring(0, 50) }
+    });
+
     const response = await fetch(
       `${GOOGLE_TRANSLATE_API_URL}?key=${GOOGLE_TRANSLATE_API_KEY}`,
       {
@@ -36,25 +51,28 @@ export async function translateText(
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          q: text,
-          source: options.sourceLanguage || 'auto',
-          target: options.targetLanguage,
-          format: 'text',
-        }),
+        body: JSON.stringify(requestBody),
       }
     );
 
+    console.log('[Translate] Response status:', response.status, response.statusText);
+
     if (!response.ok) {
       const error = await response.json();
-      console.error('Google Translate API error:', error);
+      console.error('[Translate] Google Translate API error:', error);
       return text; // Return original text on error
     }
 
     const data = await response.json();
-    return data.data?.translations?.[0]?.translatedText || text;
+    const translated = data.data?.translations?.[0]?.translatedText || text;
+    console.log('[Translate] Translation result:', { 
+      original: text.substring(0, 50), 
+      translated: translated.substring(0, 50),
+      detectedSource: data.data?.translations?.[0]?.detectedSourceLanguage
+    });
+    return translated;
   } catch (error) {
-    console.error('Translation error:', error);
+    console.error('[Translate] Translation error:', error);
     return text; // Return original text on error
   }
 }
@@ -63,7 +81,10 @@ export async function translateText(
  * Detect language of text
  */
 export async function detectLanguage(text: string): Promise<string> {
+  console.log('[Translate] detectLanguage called:', { text: text.substring(0, 50) });
+  
   if (!GOOGLE_TRANSLATE_API_KEY) {
+    console.warn('[Translate] No API key, defaulting to en');
     return 'en'; // Default to English
   }
 
@@ -82,13 +103,16 @@ export async function detectLanguage(text: string): Promise<string> {
     );
 
     if (!response.ok) {
+      console.warn('[Translate] Detection failed, defaulting to en');
       return 'en'; // Default to English on error
     }
 
     const data = await response.json();
-    return data.data?.detections?.[0]?.[0]?.language || 'en';
+    const detected = data.data?.detections?.[0]?.[0]?.language || 'en';
+    console.log('[Translate] Detected language:', detected);
+    return detected;
   } catch (error) {
-    console.error('Language detection error:', error);
+    console.error('[Translate] Language detection error:', error);
     return 'en';
   }
 }
@@ -100,28 +124,41 @@ export async function translateToBothLanguages(
   text: string,
   sourceLanguage?: string
 ): Promise<{ en: string; ar: string }> {
+  console.log('[Translate] translateToBothLanguages called:', { 
+    text: text.substring(0, 50), 
+    sourceLanguage 
+  });
+  
   // If source language is not provided, detect it
   const detectedLanguage = sourceLanguage || (await detectLanguage(text));
+  console.log('[Translate] Detected/source language:', detectedLanguage);
 
   // If text is already in English, only translate to Arabic
   if (detectedLanguage === 'en') {
+    console.log('[Translate] Text is English, translating to Arabic only');
     const ar = await translateText(text, {
       sourceLanguage: 'en',
       targetLanguage: 'ar',
     });
-    return { en: text, ar };
+    const result = { en: text, ar };
+    console.log('[Translate] Result:', { en: result.en.substring(0, 50), ar: result.ar.substring(0, 50) });
+    return result;
   }
 
   // If text is already in Arabic, only translate to English
   if (detectedLanguage === 'ar') {
+    console.log('[Translate] Text is Arabic, translating to English only');
     const en = await translateText(text, {
       sourceLanguage: 'ar',
       targetLanguage: 'en',
     });
-    return { en, ar: text };
+    const result = { en, ar: text };
+    console.log('[Translate] Result:', { en: result.en.substring(0, 50), ar: result.ar.substring(0, 50) });
+    return result;
   }
 
   // If text is in another language, translate to both
+  console.log('[Translate] Text is in another language, translating to both EN and AR');
   const en = await translateText(text, {
     sourceLanguage: detectedLanguage,
     targetLanguage: 'en',
@@ -131,5 +168,7 @@ export async function translateToBothLanguages(
     targetLanguage: 'ar',
   });
 
-  return { en, ar };
+  const result = { en, ar };
+  console.log('[Translate] Final result:', { en: result.en.substring(0, 50), ar: result.ar.substring(0, 50) });
+  return result;
 }

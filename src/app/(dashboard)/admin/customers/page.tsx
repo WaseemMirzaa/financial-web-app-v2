@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Customer } from '@/types';
 
@@ -184,7 +185,11 @@ export default function CustomersPage() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   return (

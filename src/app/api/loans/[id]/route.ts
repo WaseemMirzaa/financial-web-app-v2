@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 import { saveLoanNotesTranslations } from '@/lib/translations';
+import { translateToBothLanguages } from '@/lib/translate';
 import { successResponse, errorResponse, notFoundError, serverError } from '@/lib/api';
 
 export async function GET(
@@ -8,6 +9,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const locale = request.nextUrl.searchParams.get('locale') || 'en';
+
     const [rows] = await pool.query(
       `SELECT l.*,
         lt_en.notes as notes_en,
@@ -24,6 +27,7 @@ export async function GET(
     }
 
     const loan = rows[0];
+    const notes = locale === 'ar' ? (loan.notes_ar || loan.notes_en || null) : (loan.notes_en || loan.notes_ar || null);
     const loanData = {
       id: loan.id,
       customerId: loan.customer_id,
@@ -34,8 +38,7 @@ export async function GET(
       installmentTotal: parseFloat(loan.installment_total),
       startDate: loan.start_date,
       status: loan.status,
-      notes: loan.notes_en || loan.notes_ar || null,
-      notesKey: loan.notes_en ? `loan.notes.${loan.id}` : undefined,
+      notes,
       createdAt: loan.created_at,
       updatedAt: loan.updated_at,
     };
@@ -53,6 +56,8 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
+    console.log('[Loans API] PUT request body:', body);
+    
     const {
       amount,
       interestRate,
@@ -77,34 +82,48 @@ export async function PUT(
     await connection.beginTransaction();
 
     try {
-      // Update loan
+      // Update loan - convert strings to numbers and validate
       const updateFields: string[] = [];
       const updateValues: any[] = [];
 
-      if (amount !== undefined) {
-        updateFields.push('amount = ?');
-        updateValues.push(amount);
+      if (amount !== undefined && amount !== null && amount !== '') {
+        const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
+        if (!isNaN(amountNum) && amountNum > 0) {
+          updateFields.push('amount = ?');
+          updateValues.push(amountNum);
+        }
       }
-      if (interestRate !== undefined) {
-        updateFields.push('interest_rate = ?');
-        updateValues.push(interestRate);
+      if (interestRate !== undefined && interestRate !== null && interestRate !== '') {
+        const interestRateNum = typeof interestRate === 'string' ? parseFloat(interestRate) : interestRate;
+        if (!isNaN(interestRateNum) && interestRateNum >= 0) {
+          updateFields.push('interest_rate = ?');
+          updateValues.push(interestRateNum);
+        }
       }
-      if (numberOfInstallments !== undefined) {
-        updateFields.push('number_of_installments = ?');
-        updateValues.push(numberOfInstallments);
+      if (numberOfInstallments !== undefined && numberOfInstallments !== null && numberOfInstallments !== '') {
+        const numberOfInstallmentsNum = typeof numberOfInstallments === 'string' ? parseInt(numberOfInstallments, 10) : numberOfInstallments;
+        if (!isNaN(numberOfInstallmentsNum) && numberOfInstallmentsNum > 0) {
+          updateFields.push('number_of_installments = ?');
+          updateValues.push(numberOfInstallmentsNum);
+        }
       }
-      if (installmentTotal !== undefined) {
-        updateFields.push('installment_total = ?');
-        updateValues.push(installmentTotal);
+      if (installmentTotal !== undefined && installmentTotal !== null && installmentTotal !== '') {
+        const installmentTotalNum = typeof installmentTotal === 'string' ? parseFloat(installmentTotal) : installmentTotal;
+        if (!isNaN(installmentTotalNum) && installmentTotalNum > 0) {
+          updateFields.push('installment_total = ?');
+          updateValues.push(installmentTotalNum);
+        }
       }
-      if (startDate !== undefined) {
+      if (startDate !== undefined && startDate !== null && startDate !== '') {
         updateFields.push('start_date = ?');
         updateValues.push(startDate);
       }
-      if (status !== undefined) {
+      if (status !== undefined && status !== null && status !== '') {
         updateFields.push('status = ?');
         updateValues.push(status);
       }
+      
+      console.log('[Loans API] Update fields:', updateFields, 'Values:', updateValues);
 
       if (updateFields.length > 0) {
         updateValues.push(params.id);
@@ -114,9 +133,22 @@ export async function PUT(
         );
       }
 
-      // Update notes translations if provided
+      // Update notes: translate to EN/AR when non-empty, or clear when empty
       if (notes !== undefined) {
-        await saveLoanNotesTranslations(params.id, notes, notes);
+        if (notes != null && String(notes).trim() !== '') {
+          let notesEn = String(notes);
+          let notesAr = String(notes);
+          try {
+            const translated = await translateToBothLanguages(notesEn);
+            notesEn = translated.en;
+            notesAr = translated.ar;
+          } catch (e) {
+            console.warn('Loan notes translation failed, using original:', e);
+          }
+          await saveLoanNotesTranslations(params.id, notesEn, notesAr);
+        } else {
+          await saveLoanNotesTranslations(params.id, '', '');
+        }
       }
 
       await connection.commit();
@@ -134,6 +166,7 @@ export async function PUT(
       ) as any[];
 
       const loan = rows[0];
+      const notesOut = loan.notes_en || loan.notes_ar || null;
       const loanData = {
         id: loan.id,
         customerId: loan.customer_id,
@@ -144,8 +177,7 @@ export async function PUT(
         installmentTotal: parseFloat(loan.installment_total),
         startDate: loan.start_date,
         status: loan.status,
-        notes: loan.notes_en || loan.notes_ar || null,
-        notesKey: loan.notes_en ? `loan.notes.${loan.id}` : undefined,
+        notes: notesOut,
         createdAt: loan.created_at,
         updatedAt: loan.updated_at,
       };
@@ -153,13 +185,15 @@ export async function PUT(
       return successResponse(loanData, 'Loan updated successfully', 'error.loanUpdatedSuccessfully');
     } catch (error) {
       await connection.rollback();
+      console.error('[Loans API] Transaction error:', error);
       throw error;
     } finally {
       connection.release();
     }
   } catch (error: any) {
-    console.error('Update loan error:', error);
-    return serverError();
+    console.error('[Loans API] Update loan error:', error);
+    console.error('[Loans API] Error stack:', error?.stack);
+    return serverError(error?.message || 'Failed to update loan');
   }
 }
 

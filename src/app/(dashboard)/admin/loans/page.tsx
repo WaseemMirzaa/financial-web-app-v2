@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
@@ -39,11 +40,11 @@ export default function LoansPage() {
     fetchLoans();
     fetchCustomers();
     fetchEmployees();
-  }, []);
+  }, [locale]);
 
   const fetchLoans = async () => {
     try {
-      const response = await fetch('/api/loans');
+      const response = await fetch(`/api/loans?locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setLoans(data.data);
@@ -155,17 +156,27 @@ export default function LoansPage() {
     
     try {
       if (editingLoan) {
+        const amountNum = parseFloat(formData.amount);
+        const interestRateNum = parseFloat(formData.interestRate);
+        const numberOfInstallmentsNum = parseInt(formData.numberOfInstallments, 10);
+        const installmentTotalNum = formData.installmentTotal ? parseFloat(formData.installmentTotal) : undefined;
+        
+        if (isNaN(amountNum) || isNaN(interestRateNum) || isNaN(numberOfInstallmentsNum)) {
+          setSubmitError(t('validation.invalidNumber'));
+          return;
+        }
+        
         const response = await fetch(`/api/loans/${editingLoan.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amount: parseFloat(formData.amount),
-            interestRate: parseFloat(formData.interestRate),
-            numberOfInstallments: parseInt(formData.numberOfInstallments),
-            installmentTotal: parseFloat(formData.installmentTotal),
+            amount: amountNum,
+            interestRate: interestRateNum,
+            numberOfInstallments: numberOfInstallmentsNum,
+            installmentTotal: installmentTotalNum,
             startDate: formData.startDate,
             status: formData.status,
-            notes: formData.notes,
+            notes: formData.notes?.trim() || null,
           }),
         });
         const data = await response.json();
@@ -178,19 +189,29 @@ export default function LoansPage() {
           setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
         }
       } else {
+        const amountNum = parseFloat(formData.amount);
+        const interestRateNum = parseFloat(formData.interestRate);
+        const numberOfInstallmentsNum = parseInt(formData.numberOfInstallments, 10);
+        const installmentTotalNum = formData.installmentTotal ? parseFloat(formData.installmentTotal) : undefined;
+        
+        if (isNaN(amountNum) || isNaN(interestRateNum) || isNaN(numberOfInstallmentsNum)) {
+          setSubmitError(t('validation.invalidNumber'));
+          return;
+        }
+        
         const response = await fetch('/api/loans', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             customerId: formData.customerId,
             employeeId: formData.employeeId,
-            amount: parseFloat(formData.amount),
-            interestRate: parseFloat(formData.interestRate),
-            numberOfInstallments: parseInt(formData.numberOfInstallments),
-            installmentTotal: parseFloat(formData.installmentTotal),
+            amount: amountNum,
+            interestRate: interestRateNum,
+            numberOfInstallments: numberOfInstallmentsNum,
+            installmentTotal: installmentTotalNum,
             startDate: formData.startDate,
             status: formData.status,
-            notes: formData.notes,
+            notes: formData.notes?.trim() || null,
           }),
         });
         const data = await response.json();
@@ -210,7 +231,11 @@ export default function LoansPage() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   return (

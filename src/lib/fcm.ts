@@ -64,14 +64,30 @@ export async function sendPushNotification(
   messageEn: string,
   messageAr: string
 ): Promise<void> {
+  console.log('[FCM] sendPushNotification called:', { userId, titleEn, titleAr, messageEn: messageEn.substring(0, 50), messageAr: messageAr.substring(0, 50) });
+  
   const tokens = await getFcmTokensForUser(userId);
-  if (tokens.length === 0) return;
+  console.log('[FCM] Found tokens for user:', { userId, tokenCount: tokens.length, tokens: tokens.map(t => t.substring(0, 20) + '...') });
+  
+  if (tokens.length === 0) {
+    console.warn('[FCM] No tokens found for user:', userId);
+    return;
+  }
 
   const admin = getAdmin();
-  if (!admin?.messaging) return;
+  if (!admin?.messaging) {
+    console.warn('[FCM] Firebase Admin not initialized or messaging unavailable');
+    console.log('[FCM] Admin check:', { 
+      hasAdmin: !!admin, 
+      hasMessaging: !!admin?.messaging,
+      hasCreds: !!(process.env.GOOGLE_APPLICATION_CREDENTIALS || (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY))
+    });
+    return;
+  }
 
   try {
-    await admin.messaging().sendEachForMulticast({
+    console.log('[FCM] Sending push notification to', tokens.length, 'token(s)');
+    const result = await admin.messaging().sendEachForMulticast({
       tokens,
       notification: {
         title: titleEn,
@@ -82,6 +98,19 @@ export async function sendPushNotification(
         title_ar: titleAr,
         body_en: messageEn,
         body_ar: messageAr,
+      },
+      webpush: {
+        notification: {
+          title: titleEn,
+          body: messageEn,
+          icon: '/icon',
+        },
+        data: {
+          title_en: titleEn,
+          title_ar: titleAr,
+          body_en: messageEn,
+          body_ar: messageAr,
+        },
       },
       android: {
         notification: {
@@ -109,7 +138,16 @@ export async function sendPushNotification(
         fcmOptions: {},
       },
     });
+    console.log('[FCM] Push notification sent:', { 
+      successCount: result.successCount, 
+      failureCount: result.failureCount,
+      responses: result.responses?.map((r: any, i: number) => ({ 
+        index: i, 
+        success: r.success, 
+        error: r.error?.code 
+      }))
+    });
   } catch (err) {
-    console.warn('FCM send failed for user', userId, err);
+    console.error('[FCM] Send failed for user', userId, err);
   }
 }

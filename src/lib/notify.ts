@@ -21,6 +21,8 @@ export async function createNotificationAndPush(
   messageAr: string,
   type: NotificationType = 'info'
 ): Promise<string | null> {
+  console.log('[Notify] createNotificationAndPush called:', { userId, titleEn, titleAr, messageEn: messageEn.substring(0, 50), messageAr: messageAr.substring(0, 50), type });
+  
   const notificationId = `notification-${Date.now()}-${userId}-${Math.random().toString(36).substr(2, 6)}`;
   const connection = await pool.getConnection();
   try {
@@ -37,16 +39,22 @@ export async function createNotificationAndPush(
       messageAr
     );
     await connection.commit();
+    console.log('[Notify] Notification created in DB:', notificationId);
   } catch (err) {
     await connection.rollback();
-    console.error('Create notification error:', err);
+    console.error('[Notify] Create notification error:', err);
     return null;
   } finally {
     connection.release();
   }
 
+  console.log('[Notify] Sending FCM push notification...');
   Promise.allSettled([
     sendPushNotification(userId, titleEn, titleAr, messageEn, messageAr),
-  ]).catch((e) => console.warn('FCM send after notification:', e));
+  ]).then((results) => {
+    console.log('[Notify] FCM send results:', results);
+  }).catch((e) => {
+    console.warn('[Notify] FCM send after notification error:', e);
+  });
   return notificationId;
 }

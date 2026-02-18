@@ -22,31 +22,30 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Safeguard: stop loader after max wait so app never stays stuck
+  // Always exit loading after 2.5s so app never stays stuck
   useEffect(() => {
-    const t = setTimeout(() => setIsChecking(false), 5000);
+    const t = setTimeout(() => setIsChecking(false), 2500);
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
     if (!isInitialized) return;
 
-    // Defer navigation and setState to avoid "Cannot update HotReload while rendering Router"
     const schedule = (fn: () => void) => {
-      if (typeof queueMicrotask !== 'undefined') {
-        queueMicrotask(fn);
-      } else {
-        setTimeout(fn, 0);
-      }
+      if (typeof queueMicrotask !== 'undefined') queueMicrotask(fn);
+      else setTimeout(fn, 0);
     };
 
-    const done = () => schedule(() => setIsChecking(false));
+    const done = () => {
+      React.startTransition(() => setIsChecking(false));
+    };
 
     if (isAuthenticated && user) {
+      const p = pathname || '';
       const isOnDashboard =
-        pathname?.startsWith('/admin') ||
-        pathname?.startsWith('/employee') ||
-        pathname?.startsWith('/customer');
+        p.startsWith('/admin') ||
+        p.startsWith('/employee') ||
+        p.startsWith('/customer');
       if (!isOnDashboard) {
         schedule(() => {
           if (user.role === 'admin') router.push('/admin');
@@ -92,7 +91,6 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     done();
   }, [isInitialized, isAuthenticated, user, router, pathname]);
 
-  // Show loader while checking initialization or locale
   if (!isInitialized || isChecking) {
     return <Loader fullScreen text="Initializing application..." />;
   }

@@ -6,6 +6,7 @@ import { ArrowLeft, Mail, Phone, MapPin, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Customer } from '@/types';
@@ -26,7 +27,7 @@ export function EmployeeCustomerDetailClient() {
       fetchCustomer();
       fetchLoans();
     }
-  }, [user?.id, customerId]);
+  }, [user?.id, customerId, locale]);
 
   const fetchCustomer = async () => {
     try {
@@ -44,7 +45,7 @@ export function EmployeeCustomerDetailClient() {
 
   const fetchLoans = async () => {
     try {
-      const response = await fetch(`/api/loans?customerId=${customerId}&employeeId=${user?.id}`);
+      const response = await fetch(`/api/loans?customerId=${customerId}&locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setCustomerLoans(data.data);
@@ -55,7 +56,11 @@ export function EmployeeCustomerDetailClient() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   if (!customer) {

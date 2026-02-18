@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       clearTimeout(timeoutId);
       console.error('Signup error:', error);
-      if (error?.name === 'AbortError') {
+      if (error && error.name === 'AbortError') {
         return { success: false, errorKey: 'error.requestTimeout', error: 'Request timed out' };
       }
       return { success: false, errorKey: 'error.internalServerError', error: 'Internal server error' };

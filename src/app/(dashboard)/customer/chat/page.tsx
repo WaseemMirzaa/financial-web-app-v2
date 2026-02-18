@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { ChatWindow } from '@/components/chat/ChatWindow';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Chat, ChatMessage } from '@/types';
@@ -118,30 +119,37 @@ export default function CustomerChatPage() {
     if (!selectedChat || !user) return;
 
     try {
-      // Upload file if provided
       let fileUrl: string | undefined;
+      let fileName: string | undefined;
+      let fileType: string | undefined;
       if (file) {
-        // For now, create object URL. In production, upload to storage service
-        fileUrl = URL.createObjectURL(file);
+        const form = new FormData();
+        form.append('file', file);
+        const uploadRes = await fetch('/api/chat/upload', { method: 'POST', body: form });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success || !uploadData.data) {
+          console.error('Upload failed:', uploadData.error);
+          return;
+        }
+        fileUrl = uploadData.data.fileUrl;
+        fileName = uploadData.data.fileName;
+        fileType = uploadData.data.fileType;
       }
 
       const response = await fetch(`/api/chat/${selectedChat}/messages`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           senderId: user.id,
-          content,
-          fileName: file?.name,
-          fileType: file?.type,
+          content: content.trim() || (fileName ? '' : ' '),
+          fileName,
+          fileType,
           fileUrl,
         }),
       });
 
       const data = await response.json();
       if (data.success) {
-        // Refresh messages to get translated versions
         await fetchMessages(selectedChat);
       } else {
         console.error('Failed to send message:', data.error);
@@ -152,7 +160,11 @@ export default function CustomerChatPage() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   if (chats.length === 0) {

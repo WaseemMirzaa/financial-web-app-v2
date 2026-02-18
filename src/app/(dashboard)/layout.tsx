@@ -8,6 +8,7 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { registerFCMToken } from '@/lib/firebase';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { Loader } from '@/components/ui/Loader';
 
 export default function DashboardLayout({
   children,
@@ -28,15 +29,15 @@ export default function DashboardLayout({
   }, [isAuthenticated, router]);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user && user.id) {
       registerFCMToken(user.id);
     }
-  }, [user?.id]);
+  }, [user && user.id]);
 
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen min-h-[100dvh] bg-page flex items-center justify-center">
-        <p className="text-neutral-500">Loading...</p>
+        <Loader size="large" />
       </div>
     );
   }

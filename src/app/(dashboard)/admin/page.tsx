@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, UserCheck, FileText, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { getLoanStatusColor, formatCurrency, formatNumber } from '@/lib/utils';
 
@@ -18,14 +19,14 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [locale]);
 
   const fetchData = async () => {
     try {
       const [customersRes, employeesRes, loansRes, chatsRes] = await Promise.all([
         fetch('/api/customers'),
         fetch('/api/employees'),
-        fetch('/api/loans'),
+        fetch(`/api/loans?locale=${locale}`),
         fetch('/api/chat?userId=admin'), // TODO: Get actual user ID
       ]);
 
@@ -46,7 +47,11 @@ export default function AdminDashboard() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   const stats = [

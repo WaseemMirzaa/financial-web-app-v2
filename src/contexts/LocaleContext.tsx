@@ -74,8 +74,8 @@ const translations: Record<Locale, Record<string, string>> = {
     'auth.signUpAsCustomer': 'Sign up as customer',
     'auth.signInLink': 'Sign in',
     'auth.createAccount': 'Create Account',
-    'auth.creatingAccount': 'Creating account…',
-    'auth.signingIn': 'Signing in…',
+    'auth.creatingAccount': 'Creating account...',
+    'auth.signingIn': 'Signing in...',
     'auth.fullName': 'Full Name',
     'auth.confirmPassword': 'Confirm Password',
     'auth.phoneOptional': 'Phone (Optional)',
@@ -109,17 +109,17 @@ const translations: Record<Locale, Record<string, string>> = {
     'auth.employeeAccountsNote': 'Note: Employee accounts are created by administrators only.',
     'auth.forgotPassword': 'Forgot password?',
     'auth.forgotPasswordTitle': 'Reset your password',
-    'auth.forgotPasswordDescription': 'Enter your email and we’ll send you a one-time code to reset your password.',
+    'auth.forgotPasswordDescription': "Enter your email and we'll send you a one-time code to reset your password.",
     'auth.sendOtp': 'Send OTP',
-    'auth.otpSent': 'We’ve sent a one-time code to your email. Enter it below along with your new password.',
+    'auth.otpSent': "We've sent a one-time code to your email. Enter it below along with your new password.",
     'auth.enterOtp': 'Enter OTP',
     'auth.newPassword': 'New password',
     'auth.resetPassword': 'Reset password',
     'auth.otpInvalidOrExpired': 'Invalid or expired OTP. Please request a new code.',
     'auth.passwordResetSuccess': 'Password reset successfully. You can now sign in.',
     'auth.backToLogin': 'Back to login',
-    'auth.sendingOtp': 'Sending…',
-    'auth.resettingPassword': 'Resetting…',
+    'auth.sendingOtp': 'Sending...',
+    'auth.resettingPassword': 'Resetting...',
     'auth.demoOtpHint': 'Demo: OTP sent to your email (use this code)',
     
     // Dashboard
@@ -364,7 +364,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'broadcast.targetAllEmployees': 'All employees',
     'broadcast.targetAllCustomers': 'All customers',
     'broadcast.send': 'Send announcement',
-    'broadcast.sending': 'Sending…',
+    'broadcast.sending': 'Sending...',
     'broadcast.sentSuccessfully': 'Announcement sent successfully',
     
     // Form Validation Messages
@@ -442,8 +442,8 @@ const translations: Record<Locale, Record<string, string>> = {
     'auth.signUpAsCustomer': 'سجل كعميل',
     'auth.signInLink': 'تسجيل الدخول',
     'auth.createAccount': 'إنشاء حساب',
-    'auth.creatingAccount': 'جاري إنشاء الحساب…',
-    'auth.signingIn': 'جاري تسجيل الدخول…',
+    'auth.creatingAccount': 'جاري إنشاء الحساب...',
+    'auth.signingIn': 'جاري تسجيل الدخول...',
     'auth.fullName': 'الاسم الكامل',
     'auth.confirmPassword': 'تأكيد كلمة المرور',
     'auth.phoneOptional': 'الهاتف (اختياري)',
@@ -486,8 +486,8 @@ const translations: Record<Locale, Record<string, string>> = {
     'auth.otpInvalidOrExpired': 'الرمز غير صالح أو منتهي. يرجى طلب رمز جديد.',
     'auth.passwordResetSuccess': 'تم إعادة تعيين كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.',
     'auth.backToLogin': 'العودة لتسجيل الدخول',
-    'auth.sendingOtp': 'جاري الإرسال…',
-    'auth.resettingPassword': 'جاري إعادة التعيين…',
+    'auth.sendingOtp': 'جاري الإرسال...',
+    'auth.resettingPassword': 'جاري إعادة التعيين...',
     'auth.demoOtpHint': 'تجربة: تم إرسال الرمز إلى بريدك (استخدم هذا الرمز)',
     
     // Dashboard
@@ -732,7 +732,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'broadcast.targetAllEmployees': 'جميع الموظفين',
     'broadcast.targetAllCustomers': 'جميع العملاء',
     'broadcast.send': 'إرسال الإعلان',
-    'broadcast.sending': 'جاري الإرسال…',
+    'broadcast.sending': 'جاري الإرسال...',
     'broadcast.sentSuccessfully': 'تم إرسال الإعلان بنجاح',
     
     // Form Validation Messages
@@ -762,15 +762,17 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Defer state update to useEffect to avoid "Cannot update HotReload while rendering Router"
+  // Initialize locale from localStorage and set document attributes on mount
   useEffect(() => {
     const storedLocale = getStoredLocale();
     setLocaleState(storedLocale);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('locale', storedLocale);
+      try {
+        localStorage.setItem('locale', storedLocale);
+        document.documentElement.setAttribute('dir', storedLocale === 'ar' ? 'rtl' : 'ltr');
+        document.documentElement.setAttribute('lang', storedLocale);
+      } catch (_) {}
     }
-    document.documentElement.setAttribute('dir', storedLocale === 'ar' ? 'rtl' : 'ltr');
-    document.documentElement.setAttribute('lang', storedLocale);
     setIsInitialized(true);
   }, []);
 
@@ -785,9 +787,9 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     setLocaleState(newLocale);
     if (typeof window !== 'undefined') {
       localStorage.setItem('locale', newLocale);
+      document.documentElement.setAttribute('dir', newLocale === 'ar' ? 'rtl' : 'ltr');
+      document.documentElement.setAttribute('lang', newLocale);
     }
-    document.documentElement.setAttribute('dir', newLocale === 'ar' ? 'rtl' : 'ltr');
-    document.documentElement.setAttribute('lang', newLocale);
   };
 
   const t = (key: string, params?: Record<string, string | number>): string => {
@@ -797,7 +799,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     if (params && text) {
       Object.keys(params).forEach((paramKey) => {
         const value = params[paramKey];
-        text = text.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value));
+        text = text.replace(new RegExp('\\{' + paramKey + '\\}', 'g'), String(value));
       });
     }
     return text;

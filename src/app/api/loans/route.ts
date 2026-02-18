@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 import { saveLoanNotesTranslations } from '@/lib/translations';
+import { translateToBothLanguages } from '@/lib/translate';
 import { successResponse, errorResponse, validationError, notFoundError, serverError } from '@/lib/api';
 import { createNotificationAndPush } from '@/lib/notify';
 
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
     const customerId = searchParams.get('customerId');
     const employeeId = searchParams.get('employeeId');
     const status = searchParams.get('status');
+    const locale = searchParams.get('locale') || 'en';
 
     let query = `
       SELECT l.*,
@@ -41,21 +43,23 @@ export async function GET(request: NextRequest) {
 
     const [rows] = await pool.query(query, params) as any[];
 
-    const loans = rows.map((row: any) => ({
-      id: row.id,
-      customerId: row.customer_id,
-      employeeId: row.employee_id,
-      amount: parseFloat(row.amount),
-      interestRate: parseFloat(row.interest_rate),
-      numberOfInstallments: row.number_of_installments,
-      installmentTotal: parseFloat(row.installment_total),
-      startDate: row.start_date,
-      status: row.status,
-      notes: row.notes_en || row.notes_ar || null,
-      notesKey: row.notes_en ? `loan.notes.${row.id}` : undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    const loans = rows.map((row: any) => {
+      const notes = locale === 'ar' ? (row.notes_ar || row.notes_en || null) : (row.notes_en || row.notes_ar || null);
+      return {
+        id: row.id,
+        customerId: row.customer_id,
+        employeeId: row.employee_id,
+        amount: parseFloat(row.amount),
+        interestRate: parseFloat(row.interest_rate),
+        numberOfInstallments: row.number_of_installments,
+        installmentTotal: parseFloat(row.installment_total),
+        startDate: row.start_date,
+        status: row.status,
+        notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    });
 
     return successResponse(loans);
   } catch (error: any) {
@@ -67,6 +71,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('[Loans API] POST request body:', body);
+    
     const {
       customerId,
       employeeId,
@@ -79,8 +85,34 @@ export async function POST(request: NextRequest) {
       notes,
     } = body;
 
-    if (!customerId || !employeeId || !amount || !interestRate || !numberOfInstallments || !startDate) {
-      return validationError('Missing required fields', 'error.missingRequiredFields');
+    // Validate required fields
+    if (!customerId || !employeeId) {
+      console.log('[Loans API] Missing customerId or employeeId');
+      return validationError('Customer and employee are required', 'error.missingRequiredFields');
+    }
+    
+    const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
+    const interestRateNum = typeof interestRate === 'string' ? parseFloat(interestRate) : interestRate;
+    const numberOfInstallmentsNum = typeof numberOfInstallments === 'string' ? parseInt(numberOfInstallments, 10) : numberOfInstallments;
+    
+    if (!amountNum || isNaN(amountNum) || amountNum <= 0) {
+      console.log('[Loans API] Invalid amount:', amount);
+      return validationError('Valid amount is required', 'error.missingRequiredFields');
+    }
+    
+    if (interestRateNum === undefined || interestRateNum === null || isNaN(interestRateNum) || interestRateNum < 0) {
+      console.log('[Loans API] Invalid interestRate:', interestRate);
+      return validationError('Valid interest rate is required', 'error.missingRequiredFields');
+    }
+    
+    if (!numberOfInstallmentsNum || isNaN(numberOfInstallmentsNum) || numberOfInstallmentsNum <= 0) {
+      console.log('[Loans API] Invalid numberOfInstallments:', numberOfInstallments);
+      return validationError('Valid number of installments is required', 'error.missingRequiredFields');
+    }
+    
+    if (!startDate) {
+      console.log('[Loans API] Missing startDate');
+      return validationError('Start date is required', 'error.missingRequiredFields');
     }
 
     // Check if customer exists
@@ -110,6 +142,22 @@ export async function POST(request: NextRequest) {
 
     try {
       // Create loan
+      const finalInstallmentTotal = installmentTotal ? 
+        (typeof installmentTotal === 'string' ? parseFloat(installmentTotal) : installmentTotal) :
+        amountNum * (1 + interestRateNum / 100);
+      
+      console.log('[Loans API] Inserting loan:', {
+        loanId,
+        customerId,
+        employeeId,
+        amount: amountNum,
+        interestRate: interestRateNum,
+        numberOfInstallments: numberOfInstallmentsNum,
+        installmentTotal: finalInstallmentTotal,
+        startDate,
+        status: status || 'under_review',
+      });
+      
       await connection.query(
         `INSERT INTO loans (
           id, customer_id, employee_id, amount, interest_rate,
@@ -119,18 +167,27 @@ export async function POST(request: NextRequest) {
           loanId,
           customerId,
           employeeId,
-          amount,
-          interestRate,
-          numberOfInstallments,
-          installmentTotal || amount * (1 + interestRate / 100),
+          amountNum,
+          interestRateNum,
+          numberOfInstallmentsNum,
+          finalInstallmentTotal,
           startDate,
           status || 'under_review',
         ]
       );
 
-      // Save notes translations if provided
-      if (notes) {
-        await saveLoanNotesTranslations(loanId, notes, notes);
+      // Translate notes to EN/AR and save
+      if (notes != null && String(notes).trim() !== '') {
+        let notesEn = String(notes);
+        let notesAr = String(notes);
+        try {
+          const translated = await translateToBothLanguages(notesEn);
+          notesEn = translated.en;
+          notesAr = translated.ar;
+        } catch (e) {
+          console.warn('Loan notes translation failed, using original:', e);
+        }
+        await saveLoanNotesTranslations(loanId, notesEn, notesAr);
       }
 
       await connection.commit();
@@ -159,7 +216,6 @@ export async function POST(request: NextRequest) {
         startDate: loan.start_date,
         status: loan.status,
         notes: loan.notes_en || loan.notes_ar || null,
-        notesKey: loan.notes_en ? `loan.notes.${loan.id}` : undefined,
         createdAt: loan.created_at,
         updatedAt: loan.updated_at,
       };
@@ -196,12 +252,14 @@ export async function POST(request: NextRequest) {
       return successResponse(loanData, 'Loan created successfully', 'error.loanCreatedSuccessfully');
     } catch (error) {
       await connection.rollback();
+      console.error('[Loans API] Transaction error:', error);
       throw error;
     } finally {
       connection.release();
     }
   } catch (error: any) {
-    console.error('Create loan error:', error);
-    return serverError();
+    console.error('[Loans API] Create loan error:', error);
+    console.error('[Loans API] Error stack:', error?.stack);
+    return serverError(error?.message || 'Failed to create loan');
   }
 }

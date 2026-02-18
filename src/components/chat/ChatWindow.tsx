@@ -84,17 +84,24 @@ export function ChatWindow({ messages, onSendMessage, title, readOnly }: ChatWin
                   </div>
                   {message.fileUrl && (
                     <div className="mb-2">
-                      <a
-                        href={message.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm underline"
-                      >
-                        {message.fileName || t('chat.file')}
-                      </a>
+                      {message.fileType?.startsWith('image/') ? (
+                        <a href={message.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
+                          <img src={message.fileUrl} alt={message.fileName || ''} className="max-w-full max-h-48 rounded object-contain" />
+                        </a>
+                      ) : (
+                        <a
+                          href={message.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={message.fileName}
+                          className="text-sm underline"
+                        >
+                          {message.fileName || t('chat.file')} ({message.fileType?.includes('pdf') ? 'Preview/Download' : 'Download'})
+                        </a>
+                      )}
                     </div>
                   )}
-                  <p className="text-sm">{message.content}</p>
+                  {message.content ? <p className="text-sm">{message.content}</p> : null}
                   <p className={`text-xs mt-1 ${
                     isOwn ? 'text-white/70' : 'text-neutral-500'
                   }`}>
@@ -128,6 +135,7 @@ export function ChatWindow({ messages, onSendMessage, title, readOnly }: ChatWin
           <input
             ref={fileInputRef}
             type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.docx,application/pdf,image/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={handleFileSelect}
             className="hidden"
             id="file-input"

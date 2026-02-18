@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatCurrency, formatNumber } from '@/lib/utils';
@@ -20,13 +21,13 @@ export default function EmployeeDashboard() {
     if (user?.id) {
       fetchData();
     }
-  }, [user?.id]);
+  }, [user?.id, locale]);
 
   const fetchData = async () => {
     try {
       const [customersRes, loansRes] = await Promise.all([
         fetch(`/api/employees/${user?.id}/customers`),
-        fetch(`/api/loans?employeeId=${user?.id}`),
+        fetch(`/api/loans?employeeId=${user?.id}&locale=${locale}`),
       ]);
 
       const customersData = await customersRes.json();
@@ -46,7 +47,11 @@ export default function EmployeeDashboard() {
   };
 
   if (loading) {
-    return <div className="p-6">{t('common.loading')}...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader size="large" />
+      </div>
+    );
   }
 
   const stats = [

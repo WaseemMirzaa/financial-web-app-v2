@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { LocaleProvider } from '@/contexts/LocaleContext';
-import { AppInitializer } from '@/components/AppInitializer';
+import { ClientRoot } from '@/components/ClientRoot';
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -31,11 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <body className={plusJakarta.className}>
-        <LocaleProvider>
-          <AuthProvider>
-            <AppInitializer>{children}</AppInitializer>
-          </AuthProvider>
-        </LocaleProvider>
+        <ClientRoot>{children}</ClientRoot>
       </body>
     </html>
   );
