@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
 
     return successResponse(employees);
   } catch (error: any) {
-    console.error('Get employees error:', error);
-    return serverError();
+    console.error('Get employees error:', error?.message || error);
+    return serverError(error?.message || 'Failed to fetch employees');
   }
 }
 

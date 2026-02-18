@@ -6,10 +6,12 @@ import { Users, UserCheck, FileText, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatCurrency, formatNumber } from '@/lib/utils';
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { user } = useAuth();
   const { t, locale } = useLocale();
   const [customers, setCustomers] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -19,15 +21,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [locale]);
+  }, [locale, user && user.id]);
 
   const fetchData = async () => {
+    if (!user || !user.id) return;
     try {
       const [customersRes, employeesRes, loansRes, chatsRes] = await Promise.all([
         fetch('/api/customers'),
         fetch('/api/employees'),
         fetch(`/api/loans?locale=${locale}`),
-        fetch('/api/chat?userId=admin'), // TODO: Get actual user ID
+        fetch(`/api/chat?userId=${user.id}`),
       ]);
 
       const customersData = await customersRes.json();

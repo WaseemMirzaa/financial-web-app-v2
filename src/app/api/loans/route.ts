@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
 
     const [rows] = await pool.query(query, params) as any[];
 
+    const toDateOnly = (v: any) => (v == null || v === '') ? null : (typeof v === 'string' && v.length >= 10 ? v.slice(0, 10) : String(v));
     const loans = rows.map((row: any) => {
       const notes = locale === 'ar' ? (row.notes_ar || row.notes_en || null) : (row.notes_en || row.notes_ar || null);
       return {
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
         interestRate: parseFloat(row.interest_rate),
         numberOfInstallments: row.number_of_installments,
         installmentTotal: parseFloat(row.installment_total),
-        startDate: row.start_date,
+        startDate: toDateOnly(row.start_date),
         status: row.status,
         notes,
         createdAt: row.created_at,
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
       console.log('[Loans API] Missing startDate');
       return validationError('Start date is required', 'error.missingRequiredFields');
     }
+    const startDateNorm = typeof startDate === 'string' && startDate.length >= 10 ? startDate.slice(0, 10) : String(startDate);
 
     // Check if customer exists
     const [customers] = await pool.query(
@@ -171,7 +173,7 @@ export async function POST(request: NextRequest) {
           interestRateNum,
           numberOfInstallmentsNum,
           finalInstallmentTotal,
-          startDate,
+          startDateNorm,
           status || 'under_review',
         ]
       );
@@ -213,7 +215,7 @@ export async function POST(request: NextRequest) {
         interestRate: parseFloat(loan.interest_rate),
         numberOfInstallments: loan.number_of_installments,
         installmentTotal: parseFloat(loan.installment_total),
-        startDate: loan.start_date,
+        startDate: loan.start_date ? (String(loan.start_date).slice(0, 10)) : loan.start_date,
         status: loan.status,
         notes: loan.notes_en || loan.notes_ar || null,
         createdAt: loan.created_at,
@@ -229,10 +231,12 @@ export async function POST(request: NextRequest) {
          WHERE u.id = ?`,
         [customerId]
       ) as any[];
-      const custNameEn = custRow?.[0]?.name_en || custRow?.[0]?.name_ar || 'Customer';
-      const custNameAr = custRow?.[0]?.name_ar || custRow?.[0]?.name_en || 'عميل';
+      const c0 = custRow && custRow[0];
+      const custNameEn = (c0 && (c0.name_en || c0.name_ar)) || 'Customer';
+      const custNameAr = (c0 && (c0.name_ar || c0.name_en)) || 'عميل';
 
-      await createNotificationAndPush(
+      try {
+        await createNotificationAndPush(
         customerId,
         'New Loan Created',
         'تم إنشاء قرض جديد',
@@ -248,6 +252,9 @@ export async function POST(request: NextRequest) {
         `تم إنشاء قرض للعميل ${custNameAr} (${amountStr}).`,
         'info'
       );
+      } catch (notifyErr) {
+        console.warn('[Loans API] Notify/push failed:', notifyErr);
+      }
 
       return successResponse(loanData, 'Loan created successfully', 'error.loanCreatedSuccessfully');
     } catch (error) {

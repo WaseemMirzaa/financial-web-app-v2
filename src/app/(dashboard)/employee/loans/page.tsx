@@ -12,7 +12,7 @@ import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
-import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 
 export default function EmployeeLoansPage() {
   const router = useRouter();
@@ -94,7 +94,7 @@ export default function EmployeeLoansPage() {
       interestRate: loan.interestRate.toString(),
       numberOfInstallments: loan.numberOfInstallments.toString(),
       installmentTotal: loan.installmentTotal.toString(),
-      startDate: loan.startDate,
+      startDate: toDateInputValue(loan.startDate) || '',
       status: loan.status,
       notes: loan.notes || '',
     });

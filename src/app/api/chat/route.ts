@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     const role = await getUserRole(userId);
     if (!role) {
-      return errorResponse('User not found', 404, 'error.userNotFound');
+      return successResponse([]);
     }
 
     let rows: any[] = [];
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(chats);
   } catch (error: any) {
-    console.error('Get chats error:', error);
-    return serverError();
+    console.error('Get chats error:', error?.message || error);
+    return successResponse([]);
   }
 }

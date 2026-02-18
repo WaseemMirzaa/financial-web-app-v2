@@ -56,6 +56,21 @@ export function formatDateOnly(date: string, locale: string = 'en'): string {
   }
 }
 
+/** For <input type="date"> value: always yyyy-MM-dd */
+export function toDateInputValue(date: string | undefined | null): string {
+  if (date == null || date === '') return '';
+  try {
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  } catch {
+    return '';
+  }
+}
+
 export function getLoanStatusColor(status: string): 'default' | 'success' | 'warning' | 'error' | 'info' {
   switch (status) {
     case 'approved':

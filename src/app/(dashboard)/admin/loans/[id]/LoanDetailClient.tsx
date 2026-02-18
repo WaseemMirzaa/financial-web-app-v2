@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Loan, LoanStatus, Customer } from '@/types';
-import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 
 export function LoanDetailClient() {
   const params = useParams();
@@ -41,7 +41,7 @@ export function LoanDetailClient() {
           interestRate: data.data.interestRate.toString(),
           numberOfInstallments: data.data.numberOfInstallments.toString(),
           installmentTotal: data.data.installmentTotal.toString(),
-          startDate: data.data.startDate,
+          startDate: toDateInputValue(data.data.startDate) || '',
           status: data.data.status,
           notes: data.data.notes || '',
         });

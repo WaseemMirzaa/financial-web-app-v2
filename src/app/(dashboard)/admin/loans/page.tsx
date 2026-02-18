@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Loan, LoanStatus } from '@/types';
-import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 
 export default function LoansPage() {
   const router = useRouter();
@@ -107,7 +107,7 @@ export default function LoansPage() {
       interestRate: loan.interestRate.toString(),
       numberOfInstallments: loan.numberOfInstallments.toString(),
       installmentTotal: loan.installmentTotal.toString(),
-      startDate: loan.startDate,
+      startDate: toDateInputValue(loan.startDate) || '',
       status: loan.status,
       notes: loan.notes || '',
     });

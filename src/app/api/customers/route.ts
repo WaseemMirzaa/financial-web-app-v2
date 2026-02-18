@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
 
     return successResponse(customers);
   } catch (error: any) {
-    console.error('Get customers error:', error);
-    return serverError();
+    console.error('Get customers error:', error?.message || error);
+    return serverError(error?.message || 'Failed to fetch customers');
   }
 }
 

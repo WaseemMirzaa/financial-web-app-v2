@@ -28,6 +28,7 @@ export async function GET(
 
     const loan = rows[0];
     const notes = locale === 'ar' ? (loan.notes_ar || loan.notes_en || null) : (loan.notes_en || loan.notes_ar || null);
+    const startDateVal = loan.start_date ? String(loan.start_date).slice(0, 10) : loan.start_date;
     const loanData = {
       id: loan.id,
       customerId: loan.customer_id,
@@ -36,7 +37,7 @@ export async function GET(
       interestRate: parseFloat(loan.interest_rate),
       numberOfInstallments: loan.number_of_installments,
       installmentTotal: parseFloat(loan.installment_total),
-      startDate: loan.start_date,
+      startDate: startDateVal,
       status: loan.status,
       notes,
       createdAt: loan.created_at,
@@ -115,8 +116,9 @@ export async function PUT(
         }
       }
       if (startDate !== undefined && startDate !== null && startDate !== '') {
+        const startDateNorm = typeof startDate === 'string' && startDate.length >= 10 ? startDate.slice(0, 10) : String(startDate);
         updateFields.push('start_date = ?');
-        updateValues.push(startDate);
+        updateValues.push(startDateNorm);
       }
       if (status !== undefined && status !== null && status !== '') {
         updateFields.push('status = ?');
@@ -167,6 +169,7 @@ export async function PUT(
 
       const loan = rows[0];
       const notesOut = loan.notes_en || loan.notes_ar || null;
+      const startDateOut = loan.start_date ? String(loan.start_date).slice(0, 10) : loan.start_date;
       const loanData = {
         id: loan.id,
         customerId: loan.customer_id,
@@ -175,7 +178,7 @@ export async function PUT(
         interestRate: parseFloat(loan.interest_rate),
         numberOfInstallments: loan.number_of_installments,
         installmentTotal: parseFloat(loan.installment_total),
-        startDate: loan.start_date,
+        startDate: startDateOut,
         status: loan.status,
         notes: notesOut,
         createdAt: loan.created_at,
