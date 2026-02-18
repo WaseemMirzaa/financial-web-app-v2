@@ -49,13 +49,13 @@ export function ChatWindow({ messages, onSendMessage, title, readOnly }: ChatWin
   };
 
   return (
-    <Card variant="elevated" padding="none" className="flex flex-col min-h-[300px] h-[60vh] sm:h-[600px]">
+    <Card variant="elevated" padding="none" className="flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
       {title && (
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-neutral-100 shrink-0">
-          <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
+        <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-neutral-100 shrink-0">
+          <h3 className="text-base sm:text-lg font-semibold text-neutral-900 truncate">{title}</h3>
         </div>
       )}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-neutral-500">
             {t('chat.noMessages')}
@@ -69,7 +69,7 @@ export function ChatWindow({ messages, onSendMessage, title, readOnly }: ChatWin
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                  className={`max-w-[85%] sm:max-w-[75%] md:max-w-[70%] rounded-xl sm:rounded-lg px-3 py-2.5 sm:px-4 sm:py-2 ${
                     isOwn
                       ? 'bg-primary-500 text-white'
                       : 'bg-neutral-100 text-neutral-900'
@@ -115,23 +115,25 @@ export function ChatWindow({ messages, onSendMessage, title, readOnly }: ChatWin
         <div ref={messagesEndRef} />
       </div>
       {!readOnly && (
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-neutral-200 space-y-2 shrink-0">
+      <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-neutral-200 space-y-2 shrink-0 bg-white">
         {selectedFile && (
           <div className="flex items-center gap-2 text-sm text-neutral-600 min-w-0">
             <Paperclip className="w-4 h-4 shrink-0" />
-            <span className="truncate">{selectedFile.name}</span>
+            <span className="truncate flex-1 min-w-0">{selectedFile.name}</span>
             <button
+              type="button"
               onClick={() => {
                 setSelectedFile(null);
                 if (fileInputRef.current) fileInputRef.current.value = '';
               }}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center text-error hover:text-red-700 shrink-0"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center text-error hover:text-red-700 shrink-0 rounded-xl touch-manipulation"
+              aria-label={t('common.delete')}
             >
               ×
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <input
             ref={fileInputRef}
             type="file"
@@ -142,7 +144,7 @@ export function ChatWindow({ messages, onSendMessage, title, readOnly }: ChatWin
           />
           <label
             htmlFor="file-input"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-neutral-50 rounded-xl cursor-pointer transition-colors shrink-0"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-neutral-50 rounded-xl cursor-pointer transition-colors shrink-0 touch-manipulation"
           >
             <Paperclip className="w-5 h-5 text-neutral-600" />
           </label>
@@ -156,10 +158,10 @@ export function ChatWindow({ messages, onSendMessage, title, readOnly }: ChatWin
               }
             }}
             placeholder={t('chat.typeMessage')}
-            className="flex-1 min-w-0"
+            className="flex-1 min-w-0 min-h-[44px]"
           />
-          <Button onClick={handleSend} variant="primary" size="medium" className="shrink-0">
-            <Send className="w-4 h-4" />
+          <Button onClick={handleSend} variant="primary" size="medium" className="shrink-0 min-w-[44px]">
+            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
         </div>
       </div>

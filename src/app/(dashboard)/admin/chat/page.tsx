@@ -32,7 +32,7 @@ export default function AdminChatPage() {
       fetchChats();
       fetchEmployees();
     }
-  }, [user?.id]);
+  }, [user?.id, locale]);
 
   const fetchEmployees = async () => {
     try {
@@ -97,7 +97,7 @@ export default function AdminChatPage() {
       fetchMessages(selectedChat);
       fetchParticipants(selectedChat);
     }
-  }, [selectedChat]);
+  }, [selectedChat, locale]);
 
   // Real-time: poll messages while a chat is open (pause when tab hidden)
   useEffect(() => {
@@ -216,19 +216,20 @@ export default function AdminChatPage() {
   return (
     <div className="space-y-6">
       <div className="text-left rtl:text-right">
-        <h1 className="text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
-        <p className="text-neutral-600">{t('chat.manageAllChats')}</p>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
+        <p className="text-sm sm:text-base text-neutral-600">{t('chat.manageAllChats')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card variant="elevated" padding="none" className="lg:col-span-1">
-          <div className="p-4 border-b border-neutral-100">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-semibold text-neutral-900">{t('chat.chats')}</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <Card variant="elevated" padding="none" className="lg:col-span-1 flex flex-col min-h-0">
+          <div className="p-3 sm:p-4 border-b border-neutral-100 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+              <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
               <Button
                 variant="primary"
                 size="small"
                 onClick={() => setIsCreateRoomModalOpen(true)}
+                className="w-full sm:w-auto"
               >
                 {t('chat.createRoom')}
               </Button>
@@ -250,8 +251,9 @@ export default function AdminChatPage() {
               filteredChats.map((chat) => (
                 <button
                   key={chat.id}
+                  type="button"
                   onClick={() => setSelectedChat(chat.id)}
-                  className={`w-full p-4 text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 ${
+                  className={`w-full p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 touch-manipulation ${
                     selectedChat === chat.id ? 'bg-primary-50' : ''
                   }`}
                 >
@@ -332,7 +334,7 @@ export default function AdminChatPage() {
               )}
             </div>
           </div>
-          <div className="flex gap-3 justify-end pt-4">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4">
             <Button
               variant="secondary"
               onClick={() => {
@@ -340,6 +342,7 @@ export default function AdminChatPage() {
                 setRoomName('');
                 setSelectedEmployeeIds([]);
               }}
+              className="w-full sm:w-auto"
             >
               {t('common.cancel')}
             </Button>
@@ -347,6 +350,7 @@ export default function AdminChatPage() {
               variant="primary"
               onClick={handleCreateRoom}
               disabled={!roomName.trim() || selectedEmployeeIds.length === 0 || creatingRoom}
+              className="w-full sm:w-auto"
             >
               {creatingRoom ? t('common.loading') + '...' : t('chat.createRoom')}
             </Button>

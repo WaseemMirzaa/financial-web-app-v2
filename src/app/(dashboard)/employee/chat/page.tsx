@@ -24,7 +24,7 @@ export default function EmployeeChatPage() {
       fetchChats();
       fetchAssignedCustomers();
     }
-  }, [user?.id]);
+  }, [user?.id, locale]);
 
   const fetchAssignedCustomers = async () => {
     try {
@@ -71,7 +71,7 @@ export default function EmployeeChatPage() {
     if (selectedChat) {
       fetchMessages(selectedChat);
     }
-  }, [selectedChat]);
+  }, [selectedChat, locale]);
 
   // Real-time: poll messages while a chat is open (pause when tab hidden)
   useEffect(() => {
@@ -172,14 +172,14 @@ export default function EmployeeChatPage() {
   return (
     <div className="space-y-6">
       <div className="text-left rtl:text-right">
-        <h1 className="text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
-        <p className="text-neutral-600">{t('chat.withCustomersAndTeam')}</p>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
+        <p className="text-sm sm:text-base text-neutral-600">{t('chat.withCustomersAndTeam')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card variant="elevated" padding="none" className="lg:col-span-1">
-          <div className="p-4 border-b border-neutral-100">
-            <h2 className="font-semibold text-neutral-900">{t('chat.chats')}</h2>
+          <div className="p-3 sm:p-4 border-b border-neutral-100">
+            <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
             {assignedCustomers.length > 0 && (
               <div className="mt-3">
                 <label htmlFor="customer-select" className="sr-only">
@@ -188,7 +188,7 @@ export default function EmployeeChatPage() {
                 <select
                   id="customer-select"
                   disabled={startingChat}
-                  className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full min-h-[44px] rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                   value=""
                   onChange={(e) => {
                     const id = e.target.value;
@@ -217,8 +217,9 @@ export default function EmployeeChatPage() {
               chats.map((chat) => (
                 <button
                   key={chat.id}
+                  type="button"
                   onClick={() => setSelectedChat(chat.id)}
-                  className={`w-full p-4 text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 ${
+                  className={`w-full p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 touch-manipulation ${
                     selectedChat === chat.id ? 'bg-primary-50' : ''
                   }`}
                 >

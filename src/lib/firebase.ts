@@ -46,6 +46,26 @@ export function getFirebaseAnalytics(): Analytics | null {
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
+/** Play a short beep (browsers ignore Notification "sound" option). May be blocked by autoplay policy. */
+function playNotificationSound() {
+  if (typeof window === 'undefined') return;
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.2);
+  } catch {
+    // Autoplay blocked or unsupported
+  }
+}
+
 /**
  * Request notification permission, get FCM token, and register it with the backend.
  * Call when user is logged in (e.g. from dashboard layout).
@@ -121,10 +141,13 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
       const body = locale === 'ar' ? (d.body_ar || n.body) : (d.body_en || n.body);
       
       if (title && body && 'Notification' in window && Notification.permission === 'granted') {
+        playNotificationSound();
         new Notification(title, {
           body,
           icon: '/icon',
           badge: '/icon',
+          silent: false,
+          vibrate: [200, 100, 200],
         });
       }
     });

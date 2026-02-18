@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Bell, LogOut, Globe, Menu, X } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Bell, LogOut, Globe, Menu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Card } from '@/components/ui/Card';
 import { formatDate } from '@/lib/utils';
 
 interface HeaderProps {
@@ -25,11 +23,40 @@ const NOTIFICATION_MESSAGE_KEYS: Record<string, string> = {
 };
 
 export function Header({ onMenuClick }: HeaderProps) {
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { locale, setLocale, t } = useLocale();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (langRef.current && !langRef.current.contains(target)) setShowLanguageMenu(false);
+      if (notifRef.current && !notifRef.current.contains(target)) setShowNotifications(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getNotificationRoute = (notif: { title?: string }): string => {
+    const role = user?.role;
+    const title = (notif.title || '').toLowerCase();
+    if (role === 'employee' && (title.includes('customer assigned') || title.includes('عميل'))) return '/employee/customers';
+    if (role === 'customer' && (title.includes('employee assigned') || title.includes('موظف'))) return '/customer';
+    if (title.includes('loan') || title.includes('قرض')) {
+      if (role === 'customer') return '/customer/loan';
+      if (role === 'employee') return '/employee/loans';
+      if (role === 'admin') return '/admin/loans';
+    }
+    if (title.includes('message') || title.includes('رسالة')) return role === 'admin' ? '/admin/chat' : role === 'employee' ? '/employee/chat' : '/customer/chat';
+    if (role === 'admin') return '/admin';
+    if (role === 'employee') return '/employee';
+    return '/customer';
+  };
 
   const getNotificationTitle = (notif: { title?: string }) =>
     (notif.title && NOTIFICATION_TITLE_KEYS[notif.title]) ? t(NOTIFICATION_TITLE_KEYS[notif.title]) : (notif.title ?? '');
@@ -67,9 +94,10 @@ export function Header({ onMenuClick }: HeaderProps) {
           {/* Right: Actions */}
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-shrink-0">
             {/* Language Toggle */}
-            <div className="relative">
+            <div className="relative" ref={langRef}>
               <button
-                onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                type="button"
+                onClick={() => { setShowLanguageMenu((v) => !v); setShowNotifications(false); }}
                 className="flex items-center justify-center min-w-[44px] min-h-[44px] sm:min-w-[48px] sm:min-h-[48px] hover:bg-neutral-100 rounded-lg transition-colors"
                 aria-label={t('common.changeLanguage')}
               >
@@ -104,9 +132,10 @@ export function Header({ onMenuClick }: HeaderProps) {
             </div>
 
             {/* Notifications */}
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
+                type="button"
+                onClick={() => { setShowNotifications((v) => !v); setShowLanguageMenu(false); }}
                 className="relative flex items-center justify-center min-w-[44px] min-h-[44px] sm:min-w-[48px] sm:min-h-[48px] hover:bg-neutral-100 rounded-lg transition-colors"
                 aria-label={t('common.notificationsAria')}
               >
@@ -138,7 +167,21 @@ export function Header({ onMenuClick }: HeaderProps) {
                       notifications.map((notif) => (
                         <div
                           key={notif.id}
-                          onClick={() => markAsRead(notif.id)}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            markAsRead(notif.id);
+                            setShowNotifications(false);
+                            router.push(getNotificationRoute(notif));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              markAsRead(notif.id);
+                              setShowNotifications(false);
+                              router.push(getNotificationRoute(notif));
+                            }
+                          }}
                           className={`p-4 sm:p-5 border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer transition-colors ${
                             !notif.isRead ? 'bg-primary-50/30' : ''
                           }`}

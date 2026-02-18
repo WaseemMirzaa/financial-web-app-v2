@@ -119,11 +119,11 @@ export function Sidebar({ inDrawer = false, onItemClick }: SidebarProps) {
 
   return (
     <aside
-      className={`flex flex-col w-64 bg-white border-r border-neutral-100 min-h-0 ${
-        inDrawer ? 'h-full flex-1' : 'hidden lg:flex h-[calc(100vh-4rem)] sticky top-16'
+      className={`flex flex-col w-64 sm:w-72 bg-white border-r border-neutral-100 min-h-0 ${
+        inDrawer ? 'h-full flex-1 w-[min(280px,85vw)]' : 'hidden lg:flex lg:w-64 xl:w-72 h-[calc(100vh-4rem)] sticky top-16'
       }`}
     >
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 p-3 sm:p-4 space-y-1 sm:space-y-2 overflow-y-auto">
         {filteredItems.map((item) => {
           const Icon = item.icon;
           // Dashboard (base route) only active on exact match; other items active on exact or sub-routes
@@ -142,13 +142,13 @@ export function Sidebar({ inDrawer = false, onItemClick }: SidebarProps) {
                 }
               }}
               className={clsx(
-                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+                'flex items-center gap-3 px-4 py-3.5 min-h-[44px] rounded-xl transition-all duration-200 touch-manipulation',
                 isActive
                   ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-soft'
                   : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
               )}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-5 h-5 shrink-0" />
               <span className="font-medium">{item.label}</span>
             </Link>
           );

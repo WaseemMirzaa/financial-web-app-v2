@@ -135,8 +135,18 @@ export async function PUT(
         );
       }
 
-      // Update notes: translate to EN/AR when non-empty, or clear when empty
-      if (notes !== undefined) {
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      console.error('[Loans API] Transaction error:', error);
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+    // Notes use pool - run after commit so update is visible
+    if (notes !== undefined) {
+      try {
         if (notes != null && String(notes).trim() !== '') {
           let notesEn = String(notes);
           let notesAr = String(notes);
@@ -151,48 +161,42 @@ export async function PUT(
         } else {
           await saveLoanNotesTranslations(params.id, '', '');
         }
+      } catch (notesErr: any) {
+        console.warn('[Loans API] Notes update failed:', notesErr?.message || notesErr);
       }
-
-      await connection.commit();
-
-      // Return updated loan
-      const [rows] = await pool.query(
-        `SELECT l.*,
-          lt_en.notes as notes_en,
-          lt_ar.notes as notes_ar
-        FROM loans l
-        LEFT JOIN loan_translations lt_en ON l.id = lt_en.loan_id AND lt_en.locale = 'en'
-        LEFT JOIN loan_translations lt_ar ON l.id = lt_ar.loan_id AND lt_ar.locale = 'ar'
-        WHERE l.id = ?`,
-        [params.id]
-      ) as any[];
-
-      const loan = rows[0];
-      const notesOut = loan.notes_en || loan.notes_ar || null;
-      const startDateOut = loan.start_date ? String(loan.start_date).slice(0, 10) : loan.start_date;
-      const loanData = {
-        id: loan.id,
-        customerId: loan.customer_id,
-        employeeId: loan.employee_id,
-        amount: parseFloat(loan.amount),
-        interestRate: parseFloat(loan.interest_rate),
-        numberOfInstallments: loan.number_of_installments,
-        installmentTotal: parseFloat(loan.installment_total),
-        startDate: startDateOut,
-        status: loan.status,
-        notes: notesOut,
-        createdAt: loan.created_at,
-        updatedAt: loan.updated_at,
-      };
-
-      return successResponse(loanData, 'Loan updated successfully', 'error.loanUpdatedSuccessfully');
-    } catch (error) {
-      await connection.rollback();
-      console.error('[Loans API] Transaction error:', error);
-      throw error;
-    } finally {
-      connection.release();
     }
+
+    // Return updated loan
+    const [rows] = await pool.query(
+      `SELECT l.*,
+        lt_en.notes as notes_en,
+        lt_ar.notes as notes_ar
+      FROM loans l
+      LEFT JOIN loan_translations lt_en ON l.id = lt_en.loan_id AND lt_en.locale = 'en'
+      LEFT JOIN loan_translations lt_ar ON l.id = lt_ar.loan_id AND lt_ar.locale = 'ar'
+      WHERE l.id = ?`,
+      [params.id]
+    ) as any[];
+
+    const loan = rows[0];
+    const notesOut = loan.notes_en || loan.notes_ar || null;
+    const startDateOut = loan.start_date ? String(loan.start_date).slice(0, 10) : loan.start_date;
+    const loanData = {
+      id: loan.id,
+      customerId: loan.customer_id,
+      employeeId: loan.employee_id,
+      amount: parseFloat(loan.amount),
+      interestRate: parseFloat(loan.interest_rate),
+      numberOfInstallments: loan.number_of_installments,
+      installmentTotal: parseFloat(loan.installment_total),
+      startDate: startDateOut,
+      status: loan.status,
+      notes: notesOut,
+      createdAt: loan.created_at,
+      updatedAt: loan.updated_at,
+    };
+
+    return successResponse(loanData, 'Loan updated successfully', 'error.loanUpdatedSuccessfully');
   } catch (error: any) {
     console.error('[Loans API] Update loan error:', error);
     console.error('[Loans API] Error stack:', error?.stack);

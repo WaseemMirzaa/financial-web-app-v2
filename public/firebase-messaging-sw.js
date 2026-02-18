@@ -26,6 +26,8 @@ messaging.onBackgroundMessage(function(payload) {
     body: body,
     icon: '/icon',
     tag: data.notification_id || 'default',
+    silent: true,
+    vibrate: [200, 100, 200],
   });
 });
 

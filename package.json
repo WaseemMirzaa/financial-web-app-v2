@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
+    "dev:watch": "while true; do npm run dev; echo 'Server exited. Restarting in 2s...'; sleep 2; done",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

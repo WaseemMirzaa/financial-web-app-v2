@@ -178,51 +178,62 @@ export async function POST(request: NextRequest) {
         ]
       );
 
-      // Translate notes to EN/AR and save
-      if (notes != null && String(notes).trim() !== '') {
-        let notesEn = String(notes);
-        let notesAr = String(notes);
-        try {
-          const translated = await translateToBothLanguages(notesEn);
-          notesEn = translated.en;
-          notesAr = translated.ar;
-        } catch (e) {
-          console.warn('Loan notes translation failed, using original:', e);
-        }
-        await saveLoanNotesTranslations(loanId, notesEn, notesAr);
-      }
-
       await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      console.error('[Loans API] Transaction error:', error);
+      throw error;
+    } finally {
+      connection.release();
+    }
 
-      // Return created loan
-      const [rows] = await pool.query(
-        `SELECT l.*,
-          lt_en.notes as notes_en,
-          lt_ar.notes as notes_ar
-        FROM loans l
-        LEFT JOIN loan_translations lt_en ON l.id = lt_en.loan_id AND lt_en.locale = 'en'
-        LEFT JOIN loan_translations lt_ar ON l.id = lt_ar.loan_id AND lt_ar.locale = 'ar'
-        WHERE l.id = ?`,
-        [loanId]
-      ) as any[];
+    // Notes use pool (separate connection) - run after commit so loan row is visible
+    if (notes != null && String(notes).trim() !== '') {
+      let notesEn = String(notes);
+      let notesAr = String(notes);
+      try {
+        const translated = await translateToBothLanguages(notesEn);
+        notesEn = translated.en;
+        notesAr = translated.ar;
+      } catch (e) {
+        console.warn('Loan notes translation failed, using original:', e);
+      }
+      try {
+        await saveLoanNotesTranslations(loanId, notesEn, notesAr);
+      } catch (notesErr: any) {
+        console.warn('[Loans API] Notes save failed:', notesErr?.message || notesErr);
+      }
+    }
 
-      const loan = rows[0];
-      const loanData = {
-        id: loan.id,
-        customerId: loan.customer_id,
-        employeeId: loan.employee_id,
-        amount: parseFloat(loan.amount),
-        interestRate: parseFloat(loan.interest_rate),
-        numberOfInstallments: loan.number_of_installments,
-        installmentTotal: parseFloat(loan.installment_total),
-        startDate: loan.start_date ? (String(loan.start_date).slice(0, 10)) : loan.start_date,
-        status: loan.status,
-        notes: loan.notes_en || loan.notes_ar || null,
-        createdAt: loan.created_at,
-        updatedAt: loan.updated_at,
-      };
+    // Return created loan
+    const [rows] = await pool.query(
+      `SELECT l.*,
+        lt_en.notes as notes_en,
+        lt_ar.notes as notes_ar
+      FROM loans l
+      LEFT JOIN loan_translations lt_en ON l.id = lt_en.loan_id AND lt_en.locale = 'en'
+      LEFT JOIN loan_translations lt_ar ON l.id = lt_ar.loan_id AND lt_ar.locale = 'ar'
+      WHERE l.id = ?`,
+      [loanId]
+    ) as any[];
 
-      // Notify customer and employee with EN/AR so each sees in their language
+    const loan = rows[0];
+    const loanData = {
+      id: loan.id,
+      customerId: loan.customer_id,
+      employeeId: loan.employee_id,
+      amount: parseFloat(loan.amount),
+      interestRate: parseFloat(loan.interest_rate),
+      numberOfInstallments: loan.number_of_installments,
+      installmentTotal: parseFloat(loan.installment_total),
+      startDate: loan.start_date ? (String(loan.start_date).slice(0, 10)) : loan.start_date,
+      status: loan.status,
+      notes: loan.notes_en || loan.notes_ar || null,
+      createdAt: loan.created_at,
+      updatedAt: loan.updated_at,
+    };
+
+    try {
       const amountStr = String(parseFloat(loan.amount));
       const [custRow] = await pool.query(
         `SELECT ut_en.name as name_en, ut_ar.name as name_ar FROM users u
@@ -234,9 +245,7 @@ export async function POST(request: NextRequest) {
       const c0 = custRow && custRow[0];
       const custNameEn = (c0 && (c0.name_en || c0.name_ar)) || 'Customer';
       const custNameAr = (c0 && (c0.name_ar || c0.name_en)) || 'عميل';
-
-      try {
-        await createNotificationAndPush(
+      await createNotificationAndPush(
         customerId,
         'New Loan Created',
         'تم إنشاء قرض جديد',
@@ -252,18 +261,11 @@ export async function POST(request: NextRequest) {
         `تم إنشاء قرض للعميل ${custNameAr} (${amountStr}).`,
         'info'
       );
-      } catch (notifyErr) {
-        console.warn('[Loans API] Notify/push failed:', notifyErr);
-      }
-
-      return successResponse(loanData, 'Loan created successfully', 'error.loanCreatedSuccessfully');
-    } catch (error) {
-      await connection.rollback();
-      console.error('[Loans API] Transaction error:', error);
-      throw error;
-    } finally {
-      connection.release();
+    } catch (notifyErr) {
+      console.warn('[Loans API] Notify/push failed:', notifyErr);
     }
+
+    return successResponse(loanData, 'Loan created successfully', 'error.loanCreatedSuccessfully');
   } catch (error: any) {
     console.error('[Loans API] Create loan error:', error);
     console.error('[Loans API] Error stack:', error?.stack);

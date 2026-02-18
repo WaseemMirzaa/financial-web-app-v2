@@ -19,7 +19,7 @@ export function EmployeeDetailClient() {
   const { t, locale } = useLocale();
   const employeeId = params.id as string;
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -40,6 +40,8 @@ export function EmployeeDetailClient() {
         setFormData({
           name: data.data.name,
           email: data.data.email,
+          password: '',
+          confirmPassword: '',
         });
       }
     } catch (error) {
@@ -63,10 +65,12 @@ export function EmployeeDetailClient() {
 
   React.useEffect(() => {
     if (employee) {
-      setFormData({
+      setFormData((prev) => ({
         name: employee.name,
         email: employee.email,
-      });
+        password: prev.password,
+        confirmPassword: prev.confirmPassword,
+      }));
     }
   }, [employee]);
 
@@ -75,6 +79,8 @@ export function EmployeeDetailClient() {
       setFormData({
         name: employee.name,
         email: employee.email,
+        password: '',
+        confirmPassword: '',
       });
       setFormErrors({});
       setSubmitError('');
@@ -94,6 +100,16 @@ export function EmployeeDetailClient() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = t('validation.emailInvalid');
     }
+
+    if (formData.password) {
+      if (formData.password.length < 6) {
+        errors.password = t('validation.passwordMinLength');
+      } else if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = t('validation.passwordMismatch');
+      }
+    } else if (formData.confirmPassword) {
+      errors.password = t('validation.passwordRequired');
+    }
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -109,15 +125,21 @@ export function EmployeeDetailClient() {
     }
     
     try {
+      const payload: { name: string; email: string; password?: string } = {
+        name: formData.name,
+        email: formData.email,
+      };
+      if (formData.password) payload.password = formData.password;
       const response = await fetch(`/api/employees/${employee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
       if (data.success) {
         await fetchEmployee();
         setIsEditModalOpen(false);
+        setFormData((prev) => ({ ...prev, password: '', confirmPassword: '' }));
         setFormErrors({});
         setSubmitError('');
       } else {
@@ -220,6 +242,28 @@ export function EmployeeDetailClient() {
             }}
             error={formErrors.email}
             required
+          />
+          <Input
+            label={t('auth.newPassword')}
+            type="password"
+            value={formData.password}
+            onChange={(e) => {
+              setFormData({ ...formData, password: e.target.value });
+              if (formErrors.password) setFormErrors({ ...formErrors, password: '' });
+            }}
+            error={formErrors.password}
+            placeholder={t('form.placeholder.password')}
+          />
+          <Input
+            label={t('auth.confirmPassword')}
+            type="password"
+            value={formData.confirmPassword}
+            onChange={(e) => {
+              setFormData({ ...formData, confirmPassword: e.target.value });
+              if (formErrors.confirmPassword) setFormErrors({ ...formErrors, confirmPassword: '' });
+            }}
+            error={formErrors.confirmPassword}
+            placeholder={t('form.placeholder.password')}
           />
         </div>
       </Modal>

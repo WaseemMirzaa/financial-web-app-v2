@@ -6,6 +6,7 @@ import {
   serverError,
 } from '@/lib/api';
 import { sendPushNotification } from '@/lib/fcm';
+import { translateToBothLanguages } from '@/lib/translate';
 
 type TargetType = 'all' | 'all_employees' | 'all_customers' | 'selected';
 
@@ -19,8 +20,6 @@ export async function POST(request: NextRequest) {
     const {
       title,
       message,
-      titleAr,
-      messageAr,
       targetType,
       targetUserIds,
       createdBy,
@@ -31,6 +30,21 @@ export async function POST(request: NextRequest) {
         'Title, message, target type, and createdBy are required',
         'error.missingRequiredFields'
       );
+    }
+
+    let titleEn = String(title).trim();
+    let titleArVal = titleEn;
+    let messageEn = String(message).trim();
+    let messageArVal = messageEn;
+    try {
+      const titleTrans = await translateToBothLanguages(titleEn);
+      titleEn = titleTrans.en;
+      titleArVal = titleTrans.ar;
+      const messageTrans = await translateToBothLanguages(messageEn);
+      messageEn = messageTrans.en;
+      messageArVal = messageTrans.ar;
+    } catch (e) {
+      console.warn('Broadcast translation failed, using original:', e);
     }
 
     const validTargetTypes: TargetType[] = [
@@ -75,11 +89,6 @@ export async function POST(request: NextRequest) {
     } else {
       targetUserIdsResolved = targetUserIds;
     }
-
-    const titleEn = title;
-    const messageEn = message;
-    const titleArVal = titleAr ?? title;
-    const messageArVal = messageAr ?? message;
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();

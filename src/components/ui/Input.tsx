@@ -13,9 +13,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       'w-full rounded-xl border px-4 py-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0';
 
     const sizes = {
-      small: 'min-h-[40px] text-sm',
-      medium: 'min-h-[48px] text-base',
-      large: 'min-h-[56px] text-base',
+      small: 'min-h-[44px] sm:min-h-[40px] text-sm',
+      medium: 'min-h-[44px] sm:min-h-[48px] text-sm sm:text-base',
+      large: 'min-h-[48px] sm:min-h-[56px] text-base',
     };
 
     const stateStyles = error

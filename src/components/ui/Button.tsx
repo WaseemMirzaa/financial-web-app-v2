@@ -29,11 +29,11 @@ export function Button({
     destructive: 'bg-error text-white hover:bg-error-dark shadow-sm hover:shadow-md focus:ring-error',
   };
 
-  // Design system: Small 36px, Medium 44px, Large 52px
+  // Touch-friendly: min 44px height on all; responsive padding
   const sizes = {
-    small: 'min-h-[36px] h-9 px-4 text-sm',
-    medium: 'min-h-[44px] h-[44px] px-6 text-base',
-    large: 'min-h-[52px] h-[52px] px-8 text-base',
+    small: 'min-h-[44px] sm:min-h-[36px] h-11 sm:h-9 px-4 text-sm',
+    medium: 'min-h-[44px] h-[44px] px-4 sm:px-6 text-sm sm:text-base',
+    large: 'min-h-[48px] sm:min-h-[52px] h-12 sm:h-[52px] px-5 sm:px-8 text-base',
   };
 
   const disabledStyles = disabled

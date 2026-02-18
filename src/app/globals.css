@@ -90,6 +90,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Touch-friendly: reduce delay on tap (mobile/tablet) */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
 /* Safe area for notched devices (mobile) */
 @supports (padding: env(safe-area-inset-bottom)) {
   .safe-area-pb {

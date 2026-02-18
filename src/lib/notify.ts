@@ -31,13 +31,6 @@ export async function createNotificationAndPush(
       `INSERT INTO notifications (id, user_id, type, is_read) VALUES (?, ?, ?, FALSE)`,
       [notificationId, userId, type]
     );
-    await saveNotificationTranslations(
-      notificationId,
-      titleEn,
-      messageEn,
-      titleAr,
-      messageAr
-    );
     await connection.commit();
     console.log('[Notify] Notification created in DB:', notificationId);
   } catch (err) {
@@ -46,6 +39,18 @@ export async function createNotificationAndPush(
     return null;
   } finally {
     connection.release();
+  }
+
+  try {
+    await saveNotificationTranslations(
+      notificationId,
+      titleEn,
+      messageEn,
+      titleAr,
+      messageAr
+    );
+  } catch (err) {
+    console.error('[Notify] Save notification translations error:', err);
   }
 
   console.log('[Notify] Sending FCM push notification...');

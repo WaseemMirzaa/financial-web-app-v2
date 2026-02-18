@@ -23,7 +23,7 @@ export default function CustomerChatPage() {
       fetchChats();
       fetchAssignedEmployee();
     }
-  }, [user?.id]);
+  }, [user?.id, locale]);
 
   const fetchChats = async () => {
     try {
@@ -78,7 +78,7 @@ export default function CustomerChatPage() {
     if (selectedChat) {
       fetchMessages(selectedChat);
     }
-  }, [selectedChat]);
+  }, [selectedChat, locale]);
 
   // Real-time: poll messages while a chat is open (pause when tab hidden)
   useEffect(() => {
@@ -171,8 +171,8 @@ export default function CustomerChatPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
-          <p className="text-neutral-600">{t('chat.withEmployee')}</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
+          <p className="text-sm sm:text-base text-neutral-600">{t('chat.withEmployee')}</p>
         </div>
         <Card variant="elevated" padding="large">
           <div className="text-center py-12">
@@ -196,23 +196,24 @@ export default function CustomerChatPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
-        <p className="text-neutral-600">{t('chat.withEmployee')}</p>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-900 mb-2">{t('common.chat')}</h1>
+        <p className="text-sm sm:text-base text-neutral-600">{t('chat.withEmployee')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card variant="elevated" padding="none" className="lg:col-span-1">
-          <div className="p-4 border-b border-neutral-100">
-            <h2 className="font-semibold text-neutral-900">{t('chat.chats')}</h2>
+          <div className="p-3 sm:p-4 border-b border-neutral-100">
+            <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
           </div>
           <div className="divide-y divide-neutral-100">
             {chats.map((chat) => (
               <button
                 key={chat.id}
+                type="button"
                 onClick={() => setSelectedChat(chat.id)}
-                className={`w-full p-4 text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 ${
+                className={`w-full p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 touch-manipulation ${
                   selectedChat === chat.id ? 'bg-primary-50' : ''
                 }`}
               >

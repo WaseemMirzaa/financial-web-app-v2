@@ -16,8 +16,6 @@ export default function AdminBroadcastPage() {
   const [formData, setFormData] = useState({
     title: '',
     message: '',
-    titleAr: '',
-    messageAr: '',
     targetType: 'all' as TargetType,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -53,8 +51,6 @@ export default function AdminBroadcastPage() {
         body: JSON.stringify({
           title: formData.title.trim(),
           message: formData.message.trim(),
-          titleAr: formData.titleAr.trim() || undefined,
-          messageAr: formData.messageAr.trim() || undefined,
           targetType: formData.targetType,
           createdBy: user.id,
         }),
@@ -67,8 +63,6 @@ export default function AdminBroadcastPage() {
         setFormData({
           title: '',
           message: '',
-          titleAr: '',
-          messageAr: '',
           targetType: 'all',
         });
       } else {
@@ -136,24 +130,6 @@ export default function AdminBroadcastPage() {
             )}
           </div>
 
-          <Input
-            label={t('broadcast.titleArLabel')}
-            value={formData.titleAr}
-            onChange={(e) => setFormData({ ...formData, titleAr: e.target.value })}
-          />
-
-          <div>
-            <label className="block text-sm font-semibold text-neutral-800 mb-2">
-              {t('broadcast.messageArLabel')}
-            </label>
-            <textarea
-              value={formData.messageAr}
-              onChange={(e) => setFormData({ ...formData, messageAr: e.target.value })}
-              rows={3}
-              className="w-full rounded-xl border border-neutral-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-            />
-          </div>
-
           <div>
             <label className="block text-sm font-semibold text-neutral-800 mb-2">
               {t('broadcast.targetAudience')}
@@ -169,12 +145,12 @@ export default function AdminBroadcastPage() {
             </select>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <Button
               type="submit"
               variant="primary"
               disabled={sending}
-              className="min-w-[160px]"
+              className="w-full sm:w-auto sm:min-w-[160px]"
             >
               <Megaphone className="w-4 h-4 me-2" />
               {sending ? t('broadcast.sending') : t('broadcast.send')}
