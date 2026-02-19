@@ -31,12 +31,33 @@ async function migrate() {
         role ENUM('admin', 'employee', 'customer') NOT NULL,
         avatar VARCHAR(500),
         is_active BOOLEAN DEFAULT TRUE,
+        is_deleted BOOLEAN DEFAULT FALSE,
+        deleted_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_email (email),
-        INDEX idx_role (role)
+        INDEX idx_role (role),
+        INDEX idx_is_deleted (is_deleted)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Add soft-delete columns to users if table already existed (migration).
+    // Archiving: is_deleted + deleted_at. Blocking: is_active. Sign-in and /api/auth/me exclude deleted and inactive users.
+    try {
+      await connection.query(`ALTER TABLE users ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE users ADD INDEX idx_is_deleted (is_deleted)`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
 
     // Create password_reset_tokens table
     await connection.query(`

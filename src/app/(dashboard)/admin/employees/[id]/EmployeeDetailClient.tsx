@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Mail, UserCheck, Users } from 'lucide-react';
+import { ArrowLeft, Edit, Mail, UserCheck, Users, Trash2, UserX } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -25,6 +25,10 @@ export function EmployeeDetailClient() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [assignedCustomers, setAssignedCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   
   React.useEffect(() => {
     fetchEmployee();
@@ -151,6 +155,51 @@ export function EmployeeDetailClient() {
     }
   };
 
+  const handleToggleBlock = async () => {
+    if (!employee) return;
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/employees/${employee.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !employee.isActive }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchEmployee();
+        setBlockConfirmOpen(false);
+      }
+    } catch (error) {
+      console.error('Failed to toggle block:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!employee) return;
+    if (assignedCustomers.length > 0) {
+      setDeleteConfirmOpen(false);
+      return;
+    }
+    setDeleteError('');
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/employees/${employee.id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        router.push('/admin/employees');
+      } else {
+        setDeleteError(data.error || t('error.internalServerError'));
+      }
+    } catch (error) {
+      console.error('Failed to delete employee:', error);
+      setDeleteError(t('error.internalServerError'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -195,10 +244,29 @@ export function EmployeeDetailClient() {
             </Badge>
           </div>
         </div>
-        <Button variant="primary" onClick={handleEdit}>
-          <Edit className="w-4 h-4 me-2" />
-          {t('page.editEmployee')}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary" onClick={handleEdit} size="small">
+            <Edit className="w-4 h-4 me-2" />
+            {t('page.editEmployee')}
+          </Button>
+          <Button
+            variant="outline"
+            size="small"
+            onClick={() => setBlockConfirmOpen(true)}
+          >
+            {employee.isActive ? <UserX className="w-4 h-4 me-2" /> : <UserCheck className="w-4 h-4 me-2" />}
+            {employee.isActive ? t('page.blockEmployee') : t('page.unblockEmployee')}
+          </Button>
+          <Button
+            variant="outline"
+            size="small"
+            onClick={() => { setDeleteError(''); setDeleteConfirmOpen(true); }}
+            className="border-error text-error hover:bg-error-light"
+          >
+            <Trash2 className="w-4 h-4 me-2" />
+            {t('page.deleteEmployee')}
+          </Button>
+        </div>
       </div>
 
       <Modal
@@ -328,6 +396,57 @@ export function EmployeeDetailClient() {
           </div>
         </Card>
       </div>
+
+      <Modal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title={t('page.deleteEmployee')}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} disabled={actionLoading}>
+              {t('common.cancel')}
+            </Button>
+            {assignedCustomers.length > 0 ? (
+              <Button variant="primary" onClick={() => setDeleteConfirmOpen(false)}>
+                {t('common.close')}
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={handleDelete} disabled={actionLoading} className="bg-error hover:bg-error/90">
+                {actionLoading ? t('common.loading') + '...' : t('common.delete')}
+              </Button>
+            )}
+          </>
+        }
+      >
+        <p className="text-neutral-700">
+          {assignedCustomers.length > 0
+            ? t('page.cannotDeleteEmployee', { count: String(assignedCustomers.length) })
+            : t('page.deleteEmployeeConfirm')}
+        </p>
+        {deleteError && (
+          <p className="mt-3 text-sm text-error">{deleteError}</p>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={blockConfirmOpen}
+        onClose={() => setBlockConfirmOpen(false)}
+        title={employee.isActive ? t('page.blockEmployee') : t('page.unblockEmployee')}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setBlockConfirmOpen(false)} disabled={actionLoading}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={handleToggleBlock} disabled={actionLoading}>
+              {actionLoading ? t('common.loading') + '...' : (employee.isActive ? t('page.blockEmployee') : t('page.unblockEmployee'))}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-neutral-700">
+          {employee.isActive ? t('page.blockEmployeeConfirm') : t('page.unblockEmployeeConfirm')}
+        </p>
+      </Modal>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { getFirebaseAnalytics } from '@/lib/firebase';
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
-  const { isInitialized } = useLocale();
+  const { isInitialized, t } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
@@ -22,11 +22,26 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Always exit loading after 2.5s so app never stays stuck
+  // Always exit loading after 1.2s so app never stays stuck
   useEffect(() => {
-    const t = setTimeout(() => setIsChecking(false), 2500);
+    const t = setTimeout(() => setIsChecking(false), 1200);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const schedule = (fn: () => void) => {
+      if (typeof queueMicrotask !== 'undefined') queueMicrotask(fn);
+      else setTimeout(fn, 0);
+    };
+
+    const done = () => {
+      React.startTransition(() => setIsChecking(false));
+    };
+
+    done();
+  }, [isInitialized]);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -97,7 +112,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
   }, [isInitialized, isAuthenticated, user, router, pathname]);
 
   if (!isInitialized || isChecking) {
-    return <Loader fullScreen text="Initializing application..." />;
+    return <Loader fullScreen text={t('common.loading')} />;
   }
 
   return <>{children}</>;

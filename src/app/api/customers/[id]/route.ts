@@ -9,22 +9,48 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const [rows] = await pool.query(
-      `SELECT u.*, 
-        ut_en.name as name_en,
-        ut_ar.name as name_ar,
-        c.phone,
-        c.address,
-        c.assigned_employee_id
-      FROM users u
-      INNER JOIN customers c ON u.id = c.id
-      LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-      LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-      WHERE u.id = ? AND u.role = 'customer'`,
-      [params.id]
-    ) as any[];
+    const id = params?.id;
+    if (!id) {
+      return notFoundError('Customer');
+    }
+    let rows: any[];
+    try {
+      [rows] = await pool.query(
+        `SELECT u.*, 
+          ut_en.name as name_en,
+          ut_ar.name as name_ar,
+          c.phone,
+          c.address,
+          c.assigned_employee_id
+        FROM users u
+        INNER JOIN customers c ON u.id = c.id
+        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+        LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+        WHERE u.id = ? AND u.role = 'customer'`,
+        [id]
+      ) as any[];
+    } catch (e: any) {
+      if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+        [rows] = await pool.query(
+          `SELECT u.*, 
+            ut_en.name as name_en,
+            ut_ar.name as name_ar,
+            c.phone,
+            c.address,
+            c.assigned_employee_id
+          FROM users u
+          INNER JOIN customers c ON u.id = c.id
+          LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+          LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+          WHERE u.id = ? AND u.role = 'customer'`,
+          [id]
+        ) as any[];
+      } else {
+        throw e;
+      }
+    }
 
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       return notFoundError('Customer');
     }
 
@@ -35,7 +61,7 @@ export async function GET(
       name: customer.name_en || customer.email,
       role: customer.role,
       avatar: customer.avatar,
-      isActive: customer.is_active,
+      isActive: Boolean(customer.is_active),
       createdAt: customer.created_at,
       phone: customer.phone,
       address: customer.address,
@@ -45,7 +71,7 @@ export async function GET(
     return successResponse(customerData);
   } catch (error: any) {
     console.error('Get customer error:', error);
-    return serverError();
+    return serverError(error?.message);
   }
 }
 
@@ -55,7 +81,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, email, phone, address, password } = body;
+    const { name, email, phone, address, password, isActive } = body;
 
     // Check if customer exists
     const [existing] = await pool.query(
@@ -99,23 +125,53 @@ export async function PUT(
         [phone || null, address || null, params.id]
       );
 
+      // Update is_active if provided
+      if (typeof isActive === 'boolean') {
+        await connection.query(
+          'UPDATE users SET is_active = ? WHERE id = ?',
+          [isActive, params.id]
+        );
+      }
+
       await connection.commit();
 
-      // Return updated customer
-      const [rows] = await pool.query(
-        `SELECT u.*, 
-          ut_en.name as name_en,
-          ut_ar.name as name_ar,
-          c.phone,
-          c.address,
-          c.assigned_employee_id
-        FROM users u
-        INNER JOIN customers c ON u.id = c.id
-        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-        LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-        WHERE u.id = ?`,
-        [params.id]
-      ) as any[];
+      // Return updated customer (fallback if is_deleted column missing)
+      let rows: any[];
+      try {
+        [rows] = await pool.query(
+          `SELECT u.*, 
+            ut_en.name as name_en,
+            ut_ar.name as name_ar,
+            c.phone,
+            c.address,
+            c.assigned_employee_id
+          FROM users u
+          INNER JOIN customers c ON u.id = c.id
+          LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+          LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+          WHERE u.id = ? AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
+          [params.id]
+        ) as any[];
+      } catch (e: any) {
+        if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+          [rows] = await pool.query(
+            `SELECT u.*, 
+              ut_en.name as name_en,
+              ut_ar.name as name_ar,
+              c.phone,
+              c.address,
+              c.assigned_employee_id
+            FROM users u
+            INNER JOIN customers c ON u.id = c.id
+            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+            WHERE u.id = ?`,
+            [params.id]
+          ) as any[];
+        } else {
+          throw e;
+        }
+      }
 
       const customer = rows[0];
       const customerData = {
@@ -125,7 +181,7 @@ export async function PUT(
         nameKey: customer.name_en ? `user.name.${customer.id}` : undefined,
         role: customer.role,
         avatar: customer.avatar,
-        isActive: customer.is_active,
+        isActive: Boolean(customer.is_active),
         createdAt: customer.created_at,
         phone: customer.phone,
         address: customer.address,
@@ -141,6 +197,58 @@ export async function PUT(
     }
   } catch (error: any) {
     console.error('Update customer error:', error);
-    return serverError();
+    return serverError(error?.message);
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const [existing] = await pool.query(
+      'SELECT id FROM users WHERE id = ? AND role = ?',
+      [params.id, 'customer']
+    ) as any[];
+
+    if (existing.length === 0) {
+      return notFoundError('Customer');
+    }
+
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      await connection.query(
+        'DELETE FROM employee_customer_assignments WHERE customer_id = ?',
+        [params.id]
+      );
+      await connection.query(
+        'UPDATE customers SET assigned_employee_id = NULL WHERE id = ?',
+        [params.id]
+      );
+      try {
+        await connection.query(
+          'UPDATE users SET is_deleted = TRUE, deleted_at = NOW(), is_active = FALSE WHERE id = ?',
+          [params.id]
+        );
+      } catch (e: any) {
+        if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+          await connection.query('UPDATE users SET is_active = FALSE WHERE id = ?', [params.id]);
+        } else {
+          throw e;
+        }
+      }
+      await connection.commit();
+      return successResponse({}, 'Customer deleted successfully', 'error.customerDeletedSuccessfully');
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  } catch (error: any) {
+    console.error('Delete customer error:', error);
+    return serverError(error?.message);
   }
 }

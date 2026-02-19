@@ -30,7 +30,14 @@ export async function POST(request: NextRequest) {
 
     const connection = await pool.getConnection();
     try {
-      await connection.query('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
+      const [updateResult] = await connection.query(
+        'UPDATE users SET password_hash = ? WHERE id = ? AND (is_deleted = FALSE OR is_deleted IS NULL)',
+        [passwordHash, userId]
+      ) as any;
+      if (updateResult?.affectedRows === 0) {
+        await connection.query('DELETE FROM password_reset_tokens WHERE token = ?', [token.trim()]);
+        return errorResponse('Account is no longer active. Please contact support.', 403, 'auth.accountInactive');
+      }
       await connection.query('DELETE FROM password_reset_tokens WHERE token = ?', [token.trim()]);
     } finally {
       connection.release();

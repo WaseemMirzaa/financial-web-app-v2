@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, UserX, UserPlus, Search } from 'lucide-react';
+import { Plus, Edit, UserX, UserPlus, Search, Trash2, UserCheck } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -24,6 +24,10 @@ export default function EmployeesPage() {
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirmEmployee, setDeleteConfirmEmployee] = useState<Employee | null>(null);
+  const [blockConfirmEmployee, setBlockConfirmEmployee] = useState<{ employee: Employee; block: boolean } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     fetchEmployees();
@@ -137,19 +141,50 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleDeactivate = async (employeeId: string) => {
+  const handleToggleBlock = async () => {
+    if (!blockConfirmEmployee) return;
+    setActionLoading(true);
     try {
-      const response = await fetch(`/api/employees/${employeeId}`, {
+      const response = await fetch(`/api/employees/${blockConfirmEmployee.employee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: false }),
+        body: JSON.stringify({ isActive: !blockConfirmEmployee.block }),
       });
       const data = await response.json();
       if (data.success) {
         await fetchEmployees();
+        setBlockConfirmEmployee(null);
       }
     } catch (error) {
-      console.error('Failed to deactivate employee:', error);
+      console.error('Failed to toggle block:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmEmployee) return;
+    const count = deleteConfirmEmployee.assignedCustomerIds?.length ?? 0;
+    if (count > 0) {
+      setDeleteConfirmEmployee(null);
+      return;
+    }
+    setDeleteError('');
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/employees/${deleteConfirmEmployee.id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        await fetchEmployees();
+        setDeleteConfirmEmployee(null);
+      } else {
+        setDeleteError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+      }
+    } catch (error) {
+      console.error('Failed to delete employee:', error);
+      setDeleteError(t('error.internalServerError'));
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -209,7 +244,7 @@ export default function EmployeesPage() {
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.email')}</th>
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('form.assigned')}</th>
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.status')}</th>
-                <th className="px-6 py-4 text-right rtl:text-left text-sm font-semibold text-neutral-900">{t('table.actions')}</th>
+                <th className="px-6 py-4 text-right rtl:text-left text-sm font-semibold text-neutral-900 bg-neutral-50 sticky right-0 shadow-[-4px_0_8px_rgba(0,0,0,0.04)] rtl:shadow-[4px_0_8px_rgba(0,0,0,0.04)]">{t('table.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -237,19 +272,28 @@ export default function EmployeesPage() {
                       {employee.isActive ? t('status.active') : t('status.inactive')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right rtl:text-left" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-6 py-4 text-right rtl:text-left bg-white sticky right-0 shadow-[-4px_0_8px_rgba(0,0,0,0.04)] rtl:shadow-[4px_0_8px_rgba(0,0,0,0.04)]" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end rtl:flex-row-reverse gap-2">
                       <button
                         onClick={() => handleEdit(employee)}
                         className="p-2 hover:bg-neutral-50 rounded-xl transition-colors"
+                        title={t('common.edit')}
                       >
                         <Edit className="w-4 h-4 text-neutral-600" />
                       </button>
                       <button
-                        onClick={() => handleDeactivate(employee.id)}
-                        className="p-2 hover:bg-error-light rounded-xl transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setBlockConfirmEmployee({ employee, block: employee.isActive }); }}
+                        className="p-2 hover:bg-neutral-50 rounded-xl transition-colors"
+                        title={employee.isActive ? t('page.blockEmployee') : t('page.unblockEmployee')}
                       >
-                        <UserX className="w-4 h-4 text-error" />
+                        {employee.isActive ? <UserX className="w-4 h-4 text-neutral-600" /> : <UserCheck className="w-4 h-4 text-success" />}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteError(''); setDeleteConfirmEmployee(employee); }}
+                        className="p-2 hover:bg-error-light rounded-xl transition-colors"
+                        title={t('page.deleteEmployee')}
+                      >
+                        <Trash2 className="w-4 h-4 text-error" />
                       </button>
                     </div>
                   </td>
@@ -302,7 +346,7 @@ export default function EmployeesPage() {
             error={formErrors.email}
             required
           />
-          {!editingEmployee && (
+          {!editingEmployee ? (
             <Input
               label={t('common.password')}
               type="password"
@@ -316,8 +360,84 @@ export default function EmployeesPage() {
               required
               minLength={6}
             />
+          ) : (
+            <Input
+              label={t('common.password')}
+              type="password"
+              value={formData.password}
+              onChange={(e) => {
+                setFormData({ ...formData, password: e.target.value });
+                if (formErrors.password) setFormErrors({ ...formErrors, password: '' });
+              }}
+              error={formErrors.password}
+              placeholder={t('form.placeholder.passwordOptional')}
+              minLength={6}
+            />
           )}
         </div>
+      </Modal>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={deleteConfirmEmployee !== null}
+        onClose={() => setDeleteConfirmEmployee(null)}
+        title={t('page.deleteEmployee')}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setDeleteConfirmEmployee(null)} disabled={actionLoading}>
+              {t('common.cancel')}
+            </Button>
+            {(deleteConfirmEmployee?.assignedCustomerIds?.length ?? 0) > 0 ? (
+              <Button variant="primary" onClick={() => setDeleteConfirmEmployee(null)}>
+                {t('common.close')}
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={handleDelete} disabled={actionLoading} className="bg-error hover:bg-error/90">
+                {actionLoading ? t('common.loading') + '...' : t('common.delete')}
+              </Button>
+            )}
+          </>
+        }
+      >
+        {deleteConfirmEmployee && (
+          <>
+            {(deleteConfirmEmployee.assignedCustomerIds?.length ?? 0) > 0 ? (
+              <p className="text-neutral-700">
+                {t('page.cannotDeleteEmployee', { count: String(deleteConfirmEmployee.assignedCustomerIds!.length) })}
+              </p>
+            ) : (
+              <p className="text-neutral-700">{t('page.deleteEmployeeConfirm')}</p>
+            )}
+            {deleteError && (
+              <div className="mt-3 p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+                {deleteError}
+              </div>
+            )}
+          </>
+        )}
+      </Modal>
+
+      {/* Block/Unblock confirmation modal */}
+      <Modal
+        isOpen={blockConfirmEmployee !== null}
+        onClose={() => setBlockConfirmEmployee(null)}
+        title={blockConfirmEmployee?.block ? t('page.blockEmployee') : t('page.unblockEmployee')}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setBlockConfirmEmployee(null)} disabled={actionLoading}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={handleToggleBlock} disabled={actionLoading}>
+              {actionLoading ? t('common.loading') + '...' : (blockConfirmEmployee?.block ? t('page.blockEmployee') : t('page.unblockEmployee'))}
+            </Button>
+          </>
+        }
+      >
+        {blockConfirmEmployee && (
+          <p className="text-neutral-700">
+            {blockConfirmEmployee.block ? t('page.blockEmployeeConfirm') : t('page.unblockEmployeeConfirm')}
+          </p>
+        )}
       </Modal>
     </div>
   );

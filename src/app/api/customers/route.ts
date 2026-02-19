@@ -5,20 +5,42 @@ import { successResponse, errorResponse, validationError, isValidEmail, serverEr
 
 export async function GET(request: NextRequest) {
   try {
-    const [rows] = await pool.query(
-      `SELECT u.*, 
-        ut_en.name as name_en,
-        ut_ar.name as name_ar,
-        c.phone,
-        c.address,
-        c.assigned_employee_id
-      FROM users u
-      INNER JOIN customers c ON u.id = c.id
-      LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-      LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-      WHERE u.role = 'customer'
-      ORDER BY u.created_at DESC`
-    ) as any[];
+    let rows: any[];
+    try {
+      [rows] = await pool.query(
+        `SELECT u.*, 
+          ut_en.name as name_en,
+          ut_ar.name as name_ar,
+          c.phone,
+          c.address,
+          c.assigned_employee_id
+        FROM users u
+        INNER JOIN customers c ON u.id = c.id
+        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+        LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+        WHERE u.role = 'customer' AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)
+        ORDER BY u.created_at DESC`
+      ) as any[];
+    } catch (e: any) {
+      if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+        [rows] = await pool.query(
+          `SELECT u.*, 
+            ut_en.name as name_en,
+            ut_ar.name as name_ar,
+            c.phone,
+            c.address,
+            c.assigned_employee_id
+          FROM users u
+          INNER JOIN customers c ON u.id = c.id
+          LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+          LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+          WHERE u.role = 'customer' AND u.is_active = TRUE
+          ORDER BY u.created_at DESC`
+        ) as any[];
+      } else {
+        throw e;
+      }
+    }
 
     const customers = rows.map((row: any) => ({
       id: row.id,
@@ -26,7 +48,7 @@ export async function GET(request: NextRequest) {
       name: row.name_en || row.email,
       role: row.role,
       avatar: row.avatar,
-      isActive: row.is_active,
+      isActive: Boolean(row.is_active),
       createdAt: row.created_at,
       phone: row.phone,
       address: row.address,
@@ -113,7 +135,7 @@ export async function POST(request: NextRequest) {
         name: customer.name_en || customer.email,
         role: customer.role,
         avatar: customer.avatar,
-        isActive: customer.is_active,
+        isActive: Boolean(customer.is_active),
         createdAt: customer.created_at,
         phone: customer.phone,
         address: customer.address,

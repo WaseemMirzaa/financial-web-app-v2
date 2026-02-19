@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, UserPlus, Search } from 'lucide-react';
+import { Plus, Edit, UserPlus, Search, Trash2, UserX, UserCheck } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -26,6 +26,9 @@ export default function CustomersPage() {
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirmCustomer, setDeleteConfirmCustomer] = useState<Customer | null>(null);
+  const [blockConfirmCustomer, setBlockConfirmCustomer] = useState<{ customer: Customer; block: boolean } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
@@ -185,6 +188,47 @@ export default function CustomersPage() {
     }
   };
 
+  const handleToggleBlock = async () => {
+    if (!blockConfirmCustomer) return;
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/customers/${blockConfirmCustomer.customer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !blockConfirmCustomer.block }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchCustomers();
+        setBlockConfirmCustomer(null);
+      }
+    } catch (error) {
+      console.error('Failed to toggle block:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmCustomer) return;
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/customers/${deleteConfirmCustomer.id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        await fetchCustomers();
+        setDeleteConfirmCustomer(null);
+      } else {
+        setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+      }
+    } catch (error) {
+      console.error('Failed to delete customer:', error);
+      setSubmitError(t('error.internalServerError'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -230,7 +274,8 @@ export default function CustomersPage() {
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.email')}</th>
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.phone')}</th>
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('form.assignedEmployee')}</th>
-                <th className="px-6 py-4 text-right rtl:text-left text-sm font-semibold text-neutral-900">{t('table.actions')}</th>
+                <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.status')}</th>
+                <th className="px-6 py-4 text-right rtl:text-left text-sm font-semibold text-neutral-900 bg-neutral-50 sticky right-0 shadow-[-4px_0_8px_rgba(0,0,0,0.04)] rtl:shadow-[4px_0_8px_rgba(0,0,0,0.04)]">{t('table.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -255,7 +300,14 @@ export default function CustomersPage() {
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">
                       {assignedEmployee ? assignedEmployee.name : t('detail.unassigned')}
                     </td>
-                    <td className="px-6 py-4 text-right rtl:text-left" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-6 py-4 text-left rtl:text-right">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        customer.isActive !== false ? 'bg-success-light text-success' : 'bg-neutral-200 text-neutral-600'
+                      }`}>
+                        {customer.isActive !== false ? t('status.active') : t('status.inactive')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right rtl:text-left bg-white sticky right-0 shadow-[-4px_0_8px_rgba(0,0,0,0.04)] rtl:shadow-[4px_0_8px_rgba(0,0,0,0.04)]" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end rtl:flex-row-reverse gap-2">
                         <button
                           onClick={() => handleAssign(customer)}
@@ -267,8 +319,23 @@ export default function CustomersPage() {
                         <button
                           onClick={() => handleEdit(customer)}
                           className="p-2 hover:bg-neutral-50 rounded-xl transition-colors"
+                          title={t('common.edit')}
                         >
                           <Edit className="w-4 h-4 text-neutral-600" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setBlockConfirmCustomer({ customer, block: customer.isActive !== false }); }}
+                          className="p-2 hover:bg-neutral-50 rounded-xl transition-colors"
+                          title={customer.isActive !== false ? t('page.blockCustomer') : t('page.unblockCustomer')}
+                        >
+                          {customer.isActive !== false ? <UserX className="w-4 h-4 text-neutral-600" /> : <UserCheck className="w-4 h-4 text-success" />}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirmCustomer(customer); }}
+                          className="p-2 hover:bg-error-light rounded-xl transition-colors"
+                          title={t('page.deleteCustomer')}
+                        >
+                          <Trash2 className="w-4 h-4 text-error" />
                         </button>
                       </div>
                     </td>
@@ -319,7 +386,7 @@ export default function CustomersPage() {
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           />
-          {!editingCustomer && (
+          {!editingCustomer ? (
             <Input
               label={t('common.password')}
               type="password"
@@ -327,6 +394,15 @@ export default function CustomersPage() {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder={t('form.placeholder.password')}
               required
+              minLength={6}
+            />
+          ) : (
+            <Input
+              label={t('common.password')}
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder={t('form.placeholder.passwordOptional')}
               minLength={6}
             />
           )}
@@ -355,6 +431,46 @@ export default function CustomersPage() {
             </button>
           ))}
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteConfirmCustomer !== null}
+        onClose={() => setDeleteConfirmCustomer(null)}
+        title={t('page.deleteCustomer')}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setDeleteConfirmCustomer(null)} disabled={actionLoading}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={handleDelete} disabled={actionLoading} className="bg-error hover:bg-error/90">
+              {actionLoading ? t('common.loading') + '...' : t('common.delete')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-neutral-700">{t('page.deleteCustomerConfirm')}</p>
+      </Modal>
+
+      <Modal
+        isOpen={blockConfirmCustomer !== null}
+        onClose={() => setBlockConfirmCustomer(null)}
+        title={blockConfirmCustomer?.block ? t('page.blockCustomer') : t('page.unblockCustomer')}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setBlockConfirmCustomer(null)} disabled={actionLoading}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={handleToggleBlock} disabled={actionLoading}>
+              {actionLoading ? t('common.loading') + '...' : (blockConfirmCustomer?.block ? t('page.blockCustomer') : t('page.unblockCustomer'))}
+            </Button>
+          </>
+        }
+      >
+        {blockConfirmCustomer && (
+          <p className="text-neutral-700">
+            {blockConfirmCustomer.block ? t('page.blockCustomerConfirm') : t('page.unblockCustomerConfirm')}
+          </p>
+        )}
       </Modal>
     </div>
   );

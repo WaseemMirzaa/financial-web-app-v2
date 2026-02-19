@@ -130,25 +130,37 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const customerId = params.id;
+  if (!customerId) {
+    return errorResponse('Customer ID is required', 400);
+  }
   try {
+    const [customers] = await pool.query(
+      'SELECT id FROM customers WHERE id = ?',
+      [customerId]
+    ) as any[];
+    if (customers.length === 0) {
+      return notFoundError('Customer');
+    }
+
     const connection = await pool.getConnection();
-    await connection.beginTransaction();
-
     try {
-      // Remove assignment
+      await connection.beginTransaction();
       await connection.query(
-        'UPDATE customers SET assigned_employee_id = ? WHERE id = ?',
-        ['', params.id]
+        'UPDATE customers SET assigned_employee_id = NULL WHERE id = ?',
+        [customerId]
       );
-
-      // Remove from employee_customer_assignments
-      await connection.query(
-        'DELETE FROM employee_customer_assignments WHERE customer_id = ?',
-        [params.id]
-      );
-
+      try {
+        await connection.query(
+          'DELETE FROM employee_customer_assignments WHERE customer_id = ?',
+          [customerId]
+        );
+      } catch (e: any) {
+        if (e?.code !== 'ER_NO_SUCH_TABLE' && e?.code !== 'ER_BAD_FIELD_ERROR') {
+          throw e;
+        }
+      }
       await connection.commit();
-
       return successResponse({}, 'Employee assignment removed successfully');
     } catch (error) {
       await connection.rollback();
@@ -158,6 +170,6 @@ export async function DELETE(
     }
   } catch (error: any) {
     console.error('Remove assignment error:', error);
-    return serverError();
+    return serverError(error?.message ?? 'Failed to remove assignment');
   }
 }

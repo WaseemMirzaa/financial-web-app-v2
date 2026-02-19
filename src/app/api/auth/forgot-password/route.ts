@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const [users] = await pool.query(
-      'SELECT id FROM users WHERE email = ? AND is_active = TRUE',
+      'SELECT id FROM users WHERE email = ? AND is_active = TRUE AND (is_deleted = FALSE OR is_deleted IS NULL)',
       [email.trim().toLowerCase()]
     ) as any[];
 

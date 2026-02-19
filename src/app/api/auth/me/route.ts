@@ -13,17 +13,35 @@ export async function GET(request: NextRequest) {
       return unauthorizedError();
     }
 
-    // Get user from database
-    const [users] = await pool.query(
-      `SELECT u.*, 
-        ut_en.name as name_en,
-        ut_ar.name as name_ar
-      FROM users u
-      LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-      LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-      WHERE u.id = ? AND u.is_active = TRUE`,
-      [userId]
-    ) as any[];
+    // Get user from database (with optional is_deleted for pre-migration DBs)
+    let users: any[];
+    try {
+      [users] = await pool.query(
+        `SELECT u.*, 
+          ut_en.name as name_en,
+          ut_ar.name as name_ar
+        FROM users u
+        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+        LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+        WHERE u.id = ? AND u.is_active = TRUE AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
+        [userId]
+      ) as any[];
+    } catch (e: any) {
+      if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+        [users] = await pool.query(
+          `SELECT u.*, 
+            ut_en.name as name_en,
+            ut_ar.name as name_ar
+          FROM users u
+          LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+          LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+          WHERE u.id = ? AND u.is_active = TRUE`,
+          [userId]
+        ) as any[];
+      } else {
+        throw e;
+      }
+    }
 
     if (users.length === 0) {
       return notFoundError('User');
@@ -64,6 +82,6 @@ export async function GET(request: NextRequest) {
     return successResponse(userData);
   } catch (error: any) {
     console.error('Get user error:', error);
-    return serverError();
+    return serverError(error?.message || 'Failed to load user');
   }
 }

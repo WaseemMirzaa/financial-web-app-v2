@@ -40,7 +40,7 @@ export default function LoginPage() {
     try {
       const result = await login(email, password);
       if (!result.success) {
-        setError(result.errorKey ? t(result.errorKey) : (result.error || t('auth.errorOccurred')));
+        setError(result.error || (result.errorKey ? t(result.errorKey) : t('auth.errorOccurred')));
       }
     } catch {
       setError(t('auth.errorOccurred'));

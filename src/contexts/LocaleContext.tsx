@@ -116,6 +116,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'auth.checkEmail': 'Check your email',
     'auth.resetLinkSent': 'If an account exists with this email, you will receive a reset link.',
     'auth.invalidOrExpiredToken': 'Invalid or expired reset link. Please request a new one.',
+    'auth.accountInactive': 'Account is no longer active. Please contact support.',
     'auth.sendOtp': 'Send OTP',
     'auth.otpSent': "We've sent a one-time code to your email. Enter it below along with your new password.",
     'auth.enterOtp': 'Enter OTP',
@@ -163,6 +164,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'form.selectEmployee': 'Select employee',
     'form.placeholder.email': 'name@company.com',
     'form.placeholder.password': '••••••••',
+    'form.placeholder.passwordOptional': 'Leave blank to keep current',
     'form.placeholder.fullName': 'John Doe',
     'form.placeholder.phone': '+1234567890',
     'form.placeholder.address': '123 Main St, City, Country',
@@ -192,6 +194,19 @@ const translations: Record<Locale, Record<string, string>> = {
     'page.assignEmployee': 'Assign Employee',
     'page.changeEmployee': 'Change Employee',
     'page.removeEmployee': 'Remove Employee',
+    'page.deleteEmployee': 'Delete Employee',
+    'page.deleteCustomer': 'Delete Customer',
+    'page.blockEmployee': 'Block Employee',
+    'page.unblockEmployee': 'Unblock Employee',
+    'page.blockCustomer': 'Block Customer',
+    'page.unblockCustomer': 'Unblock Customer',
+    'page.deleteEmployeeConfirm': 'Are you sure you want to delete this employee? This action cannot be undone.',
+    'page.deleteCustomerConfirm': 'Are you sure you want to delete this customer? This action cannot be undone.',
+    'page.cannotDeleteEmployee': 'Cannot delete employee. Please unassign all {count} customer(s) first.',
+    'page.blockEmployeeConfirm': 'Are you sure you want to block this employee? They will not be able to login.',
+    'page.unblockEmployeeConfirm': 'Are you sure you want to unblock this employee?',
+    'page.blockCustomerConfirm': 'Are you sure you want to block this customer? They will not be able to login.',
+    'page.unblockCustomerConfirm': 'Are you sure you want to unblock this customer?',
     
     // Detail Pages
     'detail.employeeInformation': 'Employee Information',
@@ -231,6 +246,9 @@ const translations: Record<Locale, Record<string, string>> = {
     // Status & Badges
     'status.active': 'Active',
     'status.inactive': 'Inactive',
+    'status.deleted': 'Deleted',
+    'status.blocked': 'Blocked',
+    'status.unblocked': 'Unblocked',
     
     // Loan Status
     'loan.status.under_review': 'Under Review',
@@ -359,6 +377,9 @@ const translations: Record<Locale, Record<string, string>> = {
     'error.customerUpdatedSuccessfully': 'Customer updated successfully',
     'error.employeeCreatedSuccessfully': 'Employee created successfully',
     'error.employeeUpdatedSuccessfully': 'Employee updated successfully',
+    'error.employeeDeletedSuccessfully': 'Employee deleted successfully',
+    'error.customerDeletedSuccessfully': 'Customer deleted successfully',
+    'error.cannotDeleteEmployeeWithAssignments': 'Cannot delete employee. Please unassign all customers first.',
     'error.loanCreatedSuccessfully': 'Loan created successfully',
     'error.loanUpdatedSuccessfully': 'Loan updated successfully',
     'error.loanDeletedSuccessfully': 'Loan deleted successfully',
@@ -517,6 +538,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'auth.checkEmail': 'تحقق من بريدك الإلكتروني',
     'auth.resetLinkSent': 'إذا وجد حساب بهذا البريد، ستتلقى رابط إعادة التعيين.',
     'auth.invalidOrExpiredToken': 'الرابط غير صالح أو منتهي. يرجى طلب رابط جديد.',
+    'auth.accountInactive': 'الحساب لم يعد نشطاً. يرجى التواصل مع الدعم.',
     'auth.sendOtp': 'إرسال الرمز',
     'auth.otpSent': 'لقد أرسلنا رمزاً لمرة واحدة إلى بريدك. أدخله أدناه مع كلمة المرور الجديدة.',
     'auth.enterOtp': 'أدخل الرمز',
@@ -564,6 +586,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'form.selectEmployee': 'اختر الموظف',
     'form.placeholder.email': 'name@company.com',
     'form.placeholder.password': '••••••••',
+    'form.placeholder.passwordOptional': 'اتركه فارغاً للإبقاء على الحالي',
     'form.placeholder.fullName': 'أحمد محمد',
     'form.placeholder.phone': '+966501234567',
     'form.placeholder.address': 'الرياض، المملكة العربية السعودية',
@@ -593,6 +616,19 @@ const translations: Record<Locale, Record<string, string>> = {
     'page.assignEmployee': 'تعيين موظف',
     'page.changeEmployee': 'تغيير الموظف',
     'page.removeEmployee': 'إزالة الموظف',
+    'page.deleteEmployee': 'حذف الموظف',
+    'page.deleteCustomer': 'حذف العميل',
+    'page.blockEmployee': 'حظر الموظف',
+    'page.unblockEmployee': 'إلغاء حظر الموظف',
+    'page.blockCustomer': 'حظر العميل',
+    'page.unblockCustomer': 'إلغاء حظر العميل',
+    'page.deleteEmployeeConfirm': 'هل أنت متأكد من حذف هذا الموظف؟ لا يمكن التراجع عن هذا الإجراء.',
+    'page.deleteCustomerConfirm': 'هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع عن هذا الإجراء.',
+    'page.cannotDeleteEmployee': 'لا يمكن حذف الموظف. يرجى إلغاء تعيين جميع العملاء ({count}) أولاً.',
+    'page.blockEmployeeConfirm': 'هل أنت متأكد من حظر هذا الموظف؟ لن يتمكن من تسجيل الدخول.',
+    'page.unblockEmployeeConfirm': 'هل أنت متأكد من إلغاء حظر هذا الموظف؟',
+    'page.blockCustomerConfirm': 'هل أنت متأكد من حظر هذا العميل؟ لن يتمكن من تسجيل الدخول.',
+    'page.unblockCustomerConfirm': 'هل أنت متأكد من إلغاء حظر هذا العميل؟',
     
     // Detail Pages
     'detail.employeeInformation': 'معلومات الموظف',
@@ -632,6 +668,9 @@ const translations: Record<Locale, Record<string, string>> = {
     // Status & Badges
     'status.active': 'نشط',
     'status.inactive': 'غير نشط',
+    'status.deleted': 'محذوف',
+    'status.blocked': 'محظور',
+    'status.unblocked': 'تم إلغاء الحظر',
     
     // Loan Status
     'loan.status.under_review': 'قيد المراجعة',
@@ -760,6 +799,9 @@ const translations: Record<Locale, Record<string, string>> = {
     'error.customerUpdatedSuccessfully': 'تم تحديث العميل بنجاح',
     'error.employeeCreatedSuccessfully': 'تم إنشاء الموظف بنجاح',
     'error.employeeUpdatedSuccessfully': 'تم تحديث الموظف بنجاح',
+    'error.employeeDeletedSuccessfully': 'تم حذف الموظف بنجاح',
+    'error.customerDeletedSuccessfully': 'تم حذف العميل بنجاح',
+    'error.cannotDeleteEmployeeWithAssignments': 'لا يمكن حذف الموظف. يرجى إلغاء تعيين جميع العملاء أولاً.',
     'error.loanCreatedSuccessfully': 'تم إنشاء القرض بنجاح',
     'error.loanUpdatedSuccessfully': 'تم تحديث القرض بنجاح',
     'error.loanDeletedSuccessfully': 'تم حذف القرض بنجاح',
@@ -828,8 +870,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize locale from localStorage and set document attributes on mount
-  useEffect(() => {
+  // Initialize locale from localStorage and set document attributes on mount (useLayoutEffect so ready before paint)
+  useLayoutEffect(() => {
     const storedLocale = getStoredLocale();
     setLocaleState(storedLocale);
     if (typeof window !== 'undefined') {

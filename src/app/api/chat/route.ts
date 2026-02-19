@@ -29,8 +29,7 @@ export async function GET(request: NextRequest) {
     let rows: any[] = [];
 
     if (role === 'admin') {
-      // Admin: see all chats (monitor everything) – all customer_employee and internal_room
-      // Order: pinned first, then by updated_at DESC
+      // Admin: see all chats (monitor everything)
       const [all] = await pool.query(
         `SELECT c.* FROM chats c ORDER BY COALESCE(c.is_pinned, 0) DESC, c.updated_at DESC`
       ) as any[];

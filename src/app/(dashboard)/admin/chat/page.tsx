@@ -374,7 +374,7 @@ export default function AdminChatPage() {
                                 e.stopPropagation();
                                 setDeleteConfirmChat(chat);
                               }}
-                              className="p-2 hover:bg-error-light rounded-lg transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
                               title={t('common.delete')}
                             >
                               <Trash2 className="w-4 h-4 text-error" />
@@ -431,7 +431,7 @@ export default function AdminChatPage() {
                                 e.stopPropagation();
                                 setDeleteConfirmChat(chat);
                               }}
-                              className="p-2 hover:bg-error-light rounded-lg transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
                               title={t('common.delete')}
                             >
                               <Trash2 className="w-4 h-4 text-error" />

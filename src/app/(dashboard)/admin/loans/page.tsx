@@ -406,7 +406,7 @@ export default function LoansPage() {
               {filteredLoans.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-neutral-500">
-                    {searchQuery.trim() ? t('common.noResults') : t('page.noLoansFound')}
+                    {searchQuery.trim() ? t('common.noResults') : t('dashboard.noLoansFound')}
                   </td>
                 </tr>
               ) : (

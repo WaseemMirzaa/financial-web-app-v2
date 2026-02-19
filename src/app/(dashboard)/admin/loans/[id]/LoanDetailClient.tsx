@@ -19,16 +19,21 @@ export function LoanDetailClient() {
   const { t, locale } = useLocale();
   const loanId = params.id as string;
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  
-  
   const [loan, setLoan] = useState<Loan | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
-  React.useEffect(() => {
-    fetchLoan();
-  }, [loanId, locale]);
+  const [formData, setFormData] = useState({
+    amount: '',
+    interestRate: '',
+    numberOfInstallments: '',
+    installmentTotal: '',
+    startDate: '',
+    status: 'under_review' as LoanStatus,
+    notes: '',
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
 
   const fetchLoan = async () => {
     try {
@@ -78,17 +83,10 @@ export function LoanDetailClient() {
       console.error('Failed to fetch employee:', error);
     }
   };
-  const [formData, setFormData] = useState({
-    amount: '',
-    interestRate: '',
-    numberOfInstallments: '',
-    installmentTotal: '',
-    startDate: '',
-    status: 'under_review' as LoanStatus,
-    notes: '',
-  });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [submitError, setSubmitError] = useState('');
+
+  React.useEffect(() => {
+    fetchLoan();
+  }, [loanId, locale]);
 
   if (loading) {
     return (
