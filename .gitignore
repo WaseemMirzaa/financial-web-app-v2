@@ -27,6 +27,10 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# PM2 logs
+logs/
+*.log
+
 # vercel
 .vercel
 

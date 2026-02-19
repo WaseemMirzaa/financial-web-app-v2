@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.gitignore
+.env*.local
+.DS_Store
+*.log
+logs
+.vscode
+.idea
+README.md
+DEPLOY_*.md
+ecosystem.config.js
+scripts

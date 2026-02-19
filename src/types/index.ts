@@ -63,7 +63,8 @@ export interface ChatMessage {
 export interface Chat {
   id: string;
   type: 'customer_employee' | 'internal_room';
-  participantIds: string[];
+  participantIds?: string[];
+  participantNames?: string[]; // Names of other participants (excluding current user)
   roomName?: string; // For internal rooms
   lastMessage?: ChatMessage;
   unreadCount: number;

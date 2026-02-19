@@ -117,6 +117,9 @@ export default function AdminChatPage() {
     if (chat.type === 'internal_room' && chat.roomName) {
       return chat.roomName.toLowerCase().includes(query);
     }
+    if (chat.participantNames && chat.participantNames.length > 0) {
+      return chat.participantNames.some(name => name.toLowerCase().includes(query));
+    }
     return t('chat.customerChat').toLowerCase().includes(query);
   });
 
@@ -258,7 +261,11 @@ export default function AdminChatPage() {
                   }`}
                 >
                   <p className="font-semibold text-neutral-900">
-                    {chat.type === 'internal_room' ? translateRoomName(chat.roomName) : t('chat.customerChat')}
+                    {chat.type === 'internal_room'
+                      ? translateRoomName(chat.roomName)
+                      : chat.participantNames && chat.participantNames.length > 0
+                      ? chat.participantNames.join(', ')
+                      : t('chat.customerChat')}
                   </p>
                   {chat.lastMessage && (
                     <p className="text-sm text-neutral-600 mt-1 truncate">{chat.lastMessage.content}</p>
@@ -277,6 +284,8 @@ export default function AdminChatPage() {
               title={
                 selectedChatData.type === 'internal_room'
                   ? translateRoomName(selectedChatData.roomName)
+                  : selectedChatData.participantNames && selectedChatData.participantNames.length > 0
+                  ? selectedChatData.participantNames.join(', ')
                   : t('chat.customerChat')
               }
               readOnly={selectedChatData.type === 'customer_employee'}

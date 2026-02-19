@@ -71,7 +71,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
 
     if (
       !isAuthenticated &&
-      (pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password')
+      (pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password' || pathname === '/reset-password')
     ) {
       done();
       return;
@@ -81,7 +81,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
       !isAuthenticated &&
       pathname !== '/login' &&
       pathname !== '/signup' &&
-      pathname !== '/forgot-password'
+      pathname !== '/forgot-password' && pathname !== '/reset-password'
     ) {
       schedule(() => router.push('/login'));
       done();

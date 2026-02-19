@@ -1,33 +1,51 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Loader } from '@/components/ui/Loader';
 import { Shield, BarChart3, Users } from 'lucide-react';
 
-export default function ForgotPasswordPage() {
+export default function ResetPasswordPage() {
   const { t, isInitialized } = useLocale();
-  const [email, setEmail] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token') || '';
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [sent, setSent] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (newPassword !== confirmPassword) {
+      setError(t('auth.passwordsDoNotMatch'));
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError(t('auth.passwordMinLength'));
+      return;
+    }
+    if (!token) {
+      setError(t('auth.invalidOrExpiredToken'));
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ token, newPassword }),
       });
       const data = await res.json();
       if (data.success) {
-        setSent(true);
+        setSuccess(true);
+        setTimeout(() => router.push('/login'), 2000);
       } else {
         setError(data.errorKey ? t(data.errorKey) : (data.error || t('auth.errorOccurred')));
       }
@@ -36,13 +54,19 @@ export default function ForgotPasswordPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, newPassword, confirmPassword, t, router]);
+
+  useEffect(() => {
+    if (!token && isInitialized) {
+      setError(t('auth.invalidOrExpiredToken'));
+    }
+  }, [token, isInitialized, t]);
 
   if (!isInitialized) {
     return <Loader fullScreen text={t('common.loading')} />;
   }
 
-  if (sent) {
+  if (success) {
     return (
       <div className="min-h-screen min-h-[100dvh] flex flex-col lg:flex-row bg-page">
         <div className="hidden lg:flex lg:flex-1 relative overflow-hidden min-h-[700px]">
@@ -56,11 +80,11 @@ export default function ForgotPasswordPage() {
             <div className="rounded-full w-14 h-14 bg-success/10 flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">✓</span>
             </div>
-            <h1 className="text-xl font-bold text-neutral-900 mb-2">{t('auth.checkEmail')}</h1>
-            <p className="text-sm text-neutral-600 mb-6">{t('auth.resetLinkSent')}</p>
+            <h1 className="text-xl font-bold text-neutral-900 mb-2">{t('auth.passwordResetSuccess')}</h1>
+            <p className="text-sm text-neutral-600 mb-6">{t('auth.backToLogin')}</p>
             <Link href="/login">
               <Button variant="primary" size="large" className="w-full">
-                {t('auth.backToLogin')}
+                {t('common.login')}
               </Button>
             </Link>
           </div>
@@ -131,50 +155,64 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
           <div className="lg:mb-6">
-            <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 leading-[1.25] tracking-tight text-left rtl:text-right">{t('auth.forgotPasswordTitle')}</h2>
-            <p className="mt-3 text-sm text-neutral-500 text-left rtl:text-right">{t('auth.forgotPasswordDescriptionLink')}</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 leading-[1.25] tracking-tight text-left rtl:text-right">{t('auth.resetPassword')}</h2>
+            <p className="mt-3 text-sm text-neutral-500 text-left rtl:text-right">{t('auth.newPassword')}</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-            <Input
-              label={t('common.email')}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder={t('form.placeholder.email')}
-              size="medium"
-            />
-            {error && (
-              <div className="rounded-xl px-4 py-3 text-sm text-error bg-error-light border border-error/20" role="alert">
-                {error}
-              </div>
-            )}
-            <Button
-              type="submit"
-              variant="primary"
-              size="large"
-              className="w-full mt-6 min-h-[52px] font-semibold"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {t('auth.sendingResetLink')}
-                </span>
-              ) : (
-                t('auth.sendResetLink')
+          {!token ? (
+            <div className="rounded-xl px-4 py-3 text-sm text-error bg-error-light border border-error/20 mb-4" role="alert">
+              {t('auth.invalidOrExpiredToken')}
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+              <Input
+                label={t('auth.newPassword')}
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                placeholder={t('form.placeholder.password')}
+                size="medium"
+              />
+              <Input
+                label={t('auth.confirmPassword')}
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                placeholder={t('form.placeholder.password')}
+                size="medium"
+              />
+              {error && (
+                <div className="rounded-xl px-4 py-3 text-sm text-error bg-error-light border border-error/20" role="alert">
+                  {error}
+                </div>
               )}
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                variant="primary"
+                size="large"
+                className="w-full mt-6 min-h-[52px] font-semibold"
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {t('auth.resettingPassword')}
+                  </span>
+                ) : (
+                  t('auth.resetPassword')
+                )}
+              </Button>
+            </form>
+          )}
 
           <div className="mt-6 sm:mt-8 pt-6 border-t border-neutral-100 text-center">
-            <p className="text-sm text-neutral-500">
-              {t('auth.dontHaveAccount')}{' '}
-              <Link href="/signup" className="text-primary-500 hover:text-primary-600 font-semibold transition-colors">
-                {t('auth.signUpAsCustomer')}
-              </Link>
-            </p>
+            <Link href="/forgot-password" className="text-sm text-primary-500 hover:text-primary-600 font-medium">
+              {t('auth.forgotPassword')}
+            </Link>
           </div>
         </div>
       </div>

@@ -218,7 +218,11 @@ export default function CustomerChatPage() {
                 }`}
               >
                 <p className="font-semibold text-neutral-900">
-                  {assignedEmployee ? assignedEmployee.name : t('chat.employee')}
+                  {chat.participantNames && chat.participantNames.length > 0
+                    ? chat.participantNames[0]
+                    : assignedEmployee
+                    ? assignedEmployee.name
+                    : t('chat.employee')}
                 </p>
                 {chat.lastMessage && (
                   <p className="text-sm text-neutral-600 mt-1 truncate">{chat.lastMessage.content}</p>
@@ -229,11 +233,17 @@ export default function CustomerChatPage() {
         </Card>
 
         <div className="lg:col-span-2">
-          {selectedChatData && assignedEmployee ? (
+          {selectedChatData ? (
             <ChatWindow
               messages={messages}
               onSendMessage={handleSendMessage}
-              title={assignedEmployee.name}
+              title={
+                selectedChatData.participantNames && selectedChatData.participantNames.length > 0
+                  ? selectedChatData.participantNames[0]
+                  : assignedEmployee
+                  ? assignedEmployee.name
+                  : t('chat.employee')
+              }
             />
           ) : (
             <Card variant="elevated" padding="large">

@@ -1,0 +1,40 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/financial-app', '.']
+  
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/financial-app']
+  
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'financial-app'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/financial-app'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - '$PROJECT_ID:us-central1:financial-app-db'
+      - '--set-env-vars'
+      - 'DB_HOST=/cloudsql/$PROJECT_ID:us-central1:financial-app-db,DB_USER=app_user,DB_NAME=financial_app,DB_PORT=3306,NODE_ENV=production'
+      - '--set-secrets'
+      - 'DB_PASSWORD=db-password:latest,SENDGRID_API_KEY=sendgrid-api-key:latest,JWT_SECRET=jwt-secret:latest'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+
+images:
+  - 'gcr.io/$PROJECT_ID/financial-app'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

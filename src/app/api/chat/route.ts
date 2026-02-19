@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get last message and unread count for each chat
+    // Get last message, unread count, and participant names for each chat
     const chats = await Promise.all(
       rows.map(async (chat: any) => {
         const [messages] = await pool.query(
@@ -105,10 +105,31 @@ export async function GET(request: NextRequest) {
           timestamp: messages[0].timestamp,
         } : undefined;
 
+        // Get participant names
+        let participantNames: string[] = [];
+        if (chat.type === 'customer_employee') {
+          const [participants] = await pool.query(
+            `SELECT cp.user_id, u.role,
+              ut_en.name as name_en,
+              ut_ar.name as name_ar
+            FROM chat_participants cp
+            INNER JOIN users u ON cp.user_id = u.id
+            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+            WHERE cp.chat_id = ? AND cp.user_id != ?`,
+            [chat.id, userId]
+          ) as any[];
+          participantNames = participants.map((p: any) => {
+            if (p.role === 'admin') return 'Admin';
+            return p.name_en || p.name_ar || p.user_id;
+          });
+        }
+
         return {
           id: chat.id,
           type: chat.type,
           roomName: chat.room_name,
+          participantNames,
           lastMessage,
           unreadCount: 0, // TODO: Implement unread count
           createdAt: chat.created_at,

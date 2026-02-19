@@ -46,24 +46,67 @@ export function getFirebaseAnalytics(): Analytics | null {
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
-/** Play a short beep (browsers ignore Notification "sound" option). May be blocked by autoplay policy. */
-function playNotificationSound() {
+let notificationAudioContext: AudioContext | null = null;
+let pendingBeep = false;
+let backgroundBeepSetup = false;
+
+/** Unlock audio on user gesture (call after permission grant or first click). */
+function unlockNotificationAudio() {
   if (typeof window === 'undefined') return;
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 800;
-    osc.type = 'sine';
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.2);
+    const ctx = notificationAudioContext ?? new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!notificationAudioContext) notificationAudioContext = ctx;
+    if (ctx.state === 'suspended') ctx.resume();
   } catch {
-    // Autoplay blocked or unsupported
+    // Ignore
   }
+}
+
+/** Play a short beep. Unlock first with unlockNotificationAudio() after user gesture. */
+function playNotificationSound() {
+  if (typeof window === 'undefined') return;
+  const ctx = notificationAudioContext ?? new (window.AudioContext || (window as any).webkitAudioContext)();
+  if (!notificationAudioContext) notificationAudioContext = ctx;
+  const play = () => {
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 800;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.2);
+    } catch {
+      // Ignore
+    }
+  };
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(play).catch(() => {});
+  } else {
+    play();
+  }
+}
+
+/** Listen for background notification and play beep when user returns to tab or opens from notification click. */
+function setupBackgroundBeep() {
+  if (typeof window === 'undefined' || backgroundBeepSetup) return;
+  backgroundBeepSetup = true;
+  if (typeof window !== 'undefined' && window.location.search.includes('fromNotification=1')) {
+    unlockNotificationAudio();
+    setTimeout(() => playNotificationSound(), 100);
+  }
+  navigator.serviceWorker?.addEventListener('message', (e) => {
+    if (e.data?.type === 'PENDING_BEEP') pendingBeep = true;
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && pendingBeep) {
+      pendingBeep = false;
+      playNotificationSound();
+    }
+  });
 }
 
 /**
@@ -83,8 +126,8 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
     // Register service worker first
     if ('serviceWorker' in navigator) {
       try {
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('[FCM Client] Service worker registered:', registration.scope);
+        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        setupBackgroundBeep();
       } catch (swError) {
         console.warn('[FCM Client] Service worker registration failed:', swError);
       }
@@ -98,6 +141,8 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
       console.warn('[FCM Client] Notification permission not granted:', permission);
       return false;
     }
+
+    unlockNotificationAudio();
     
     console.log('[FCM Client] Loading Firebase Messaging...');
     const { getMessaging, getToken, onMessage } = await import('firebase/messaging');
@@ -118,6 +163,7 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
       console.log('[FCM Client] Service worker ready');
     }
     
+    if (!backgroundBeepSetup) setupBackgroundBeep();
     console.log('[FCM Client] Getting FCM token with VAPID key...');
     const token = await getToken(msg, {
       vapidKey: VAPID_KEY || undefined,
@@ -131,6 +177,11 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
     
     console.log('[FCM Client] Token received:', token.substring(0, 20) + '...');
     
+    // Unlock beep on first click (in case permission was granted in a prior session)
+    const once = () => unlockNotificationAudio();
+    document.addEventListener('click', once, { once: true, capture: true });
+    document.addEventListener('keydown', once, { once: true, capture: true });
+
     // Register foreground message handler
     onMessage(msg, (payload) => {
       console.log('[FCM Client] Foreground message received:', payload);

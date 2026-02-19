@@ -28,6 +28,10 @@ messaging.onBackgroundMessage(function(payload) {
     tag: data.notification_id || 'default',
     silent: true,
     vibrate: [200, 100, 200],
+  }).then(function() {
+    return clients.matchAll({ type: 'window', includeUncontrolled: true });
+  }).then(function(clientList) {
+    clientList.forEach(function(c) { c.postMessage({ type: 'PENDING_BEEP' }); });
   });
 });
 
@@ -36,7 +40,7 @@ self.addEventListener('notificationclick', function(event) {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       if (clientList.length > 0) return clientList[0].focus();
-      return clients.openWindow('/');
+      return clients.openWindow('/?fromNotification=1');
     })
   );
 });
