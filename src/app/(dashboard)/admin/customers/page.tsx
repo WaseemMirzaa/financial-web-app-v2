@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, UserPlus } from 'lucide-react';
+import { Plus, Edit, UserPlus, Search } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -25,6 +25,7 @@ export default function CustomersPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchCustomers();
@@ -205,6 +206,21 @@ export default function CustomersPage() {
         </Button>
       </div>
 
+      <Card variant="elevated" padding="large">
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('common.search') + ' ' + t('table.name') + ', ' + t('table.email') + ', ' + t('table.phone') + ', ID'}
+              className="pl-10 rtl:pl-3 rtl:pr-10"
+            />
+          </div>
+        </div>
+      </Card>
+
       <Card variant="elevated" padding="none">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -218,7 +234,14 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {customers.map((customer) => {
+              {customers.filter((customer) => {
+                if (!searchQuery.trim()) return true;
+                const query = searchQuery.toLowerCase();
+                return customer.name.toLowerCase().includes(query) ||
+                       customer.email.toLowerCase().includes(query) ||
+                       (customer.phone && customer.phone.toLowerCase().includes(query)) ||
+                       customer.id.toLowerCase().includes(query);
+              }).map((customer) => {
                 const assignedEmployee = employees.find(e => e.id === customer.assignedEmployeeId);
                 return (
                   <tr

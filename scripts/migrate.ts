@@ -148,11 +148,43 @@ async function migrate() {
         id VARCHAR(255) PRIMARY KEY,
         type ENUM('customer_employee', 'internal_room') NOT NULL,
         room_name VARCHAR(255),
+        is_pinned BOOLEAN DEFAULT FALSE,
+        pinned_at TIMESTAMP NULL,
+        created_by VARCHAR(255) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_type (type)
+        INDEX idx_type (type),
+        INDEX idx_is_pinned (is_pinned),
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Add pinning fields if table exists (migration)
+    try {
+      await connection.query(`ALTER TABLE chats ADD COLUMN is_pinned BOOLEAN DEFAULT FALSE`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chats ADD COLUMN pinned_at TIMESTAMP NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chats ADD COLUMN created_by VARCHAR(255) NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chats ADD INDEX idx_is_pinned (is_pinned)`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chats ADD FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEY' && e.code !== 'ER_CANNOT_ADD_FOREIGN') throw e;
+    }
 
     // Create chat_participants table
     await connection.query(`
@@ -180,15 +212,59 @@ async function migrate() {
         file_url VARCHAR(500),
         file_name VARCHAR(255),
         file_type VARCHAR(50),
+        is_edited BOOLEAN DEFAULT FALSE,
+        edited_at TIMESTAMP NULL,
+        is_deleted BOOLEAN DEFAULT FALSE,
+        deleted_at TIMESTAMP NULL,
+        original_content TEXT NULL,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE,
         FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
         INDEX idx_chat_id (chat_id),
         INDEX idx_sender_id (sender_id),
-        INDEX idx_timestamp (timestamp)
+        INDEX idx_timestamp (timestamp),
+        INDEX idx_is_deleted (is_deleted),
+        INDEX idx_is_edited (is_edited)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Add edit/delete fields if table exists (migration)
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD COLUMN is_edited BOOLEAN DEFAULT FALSE`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD COLUMN edited_at TIMESTAMP NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD COLUMN deleted_at TIMESTAMP NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD COLUMN original_content TEXT NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD INDEX idx_is_deleted (is_deleted)`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD INDEX idx_is_edited (is_edited)`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
 
     // Create chat_message_translations table
     await connection.query(`

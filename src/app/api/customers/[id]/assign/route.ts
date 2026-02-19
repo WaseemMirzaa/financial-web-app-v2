@@ -51,6 +51,29 @@ export async function POST(
         [employeeId, params.id]
       );
 
+      // Create or get existing chat between customer and employee
+      const [existingChats] = await connection.query(
+        `SELECT c.id FROM chats c
+         INNER JOIN chat_participants cp1 ON c.id = cp1.chat_id AND cp1.user_id = ?
+         INNER JOIN chat_participants cp2 ON c.id = cp2.chat_id AND cp2.user_id = ?
+         WHERE c.type = 'customer_employee'`,
+        [params.id, employeeId]
+      ) as any[];
+
+      if (existingChats.length === 0) {
+        // Create new chat
+        const chatId = `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        await connection.query(
+          `INSERT INTO chats (id, type) VALUES (?, 'customer_employee')`,
+          [chatId]
+        );
+        // Add both participants
+        await connection.query(
+          `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)`,
+          [chatId, params.id, chatId, employeeId]
+        );
+      }
+
       await connection.commit();
     } catch (error) {
       await connection.rollback();

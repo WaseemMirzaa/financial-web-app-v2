@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit } from 'lucide-react';
+import { Plus, Edit, Search } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -35,6 +35,7 @@ export default function EmployeeLoansPage() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -104,24 +105,75 @@ export default function EmployeeLoansPage() {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
-    if (!editingLoan && !formData.customerId) {
-      errors.customerId = t('validation.customerRequired');
+    // Customer validation (only for new loans)
+    if (!editingLoan) {
+      if (!formData.customerId || formData.customerId.trim() === '') {
+        errors.customerId = t('validation.customerRequired');
+      }
     }
     
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    // Amount validation
+    if (!formData.amount || formData.amount.trim() === '') {
       errors.amount = t('validation.amountRequired');
+    } else {
+      const amountNum = parseFloat(formData.amount);
+      if (isNaN(amountNum)) {
+        errors.amount = t('validation.amountInvalid');
+      } else if (amountNum <= 0) {
+        errors.amount = t('validation.amountInvalid');
+      } else if (amountNum > 999999999) {
+        errors.amount = t('validation.amountInvalid');
+      }
     }
     
-    if (!formData.interestRate || parseFloat(formData.interestRate) < 0) {
+    // Interest rate validation
+    if (!formData.interestRate || formData.interestRate.trim() === '') {
       errors.interestRate = t('validation.interestRateRequired');
+    } else {
+      const interestRateNum = parseFloat(formData.interestRate);
+      if (isNaN(interestRateNum)) {
+        errors.interestRate = t('validation.interestRateInvalid');
+      } else if (interestRateNum < 0) {
+        errors.interestRate = t('validation.interestRateInvalid');
+      } else if (interestRateNum > 100) {
+        errors.interestRate = t('validation.interestRateInvalid');
+      }
     }
     
-    if (!formData.numberOfInstallments || parseInt(formData.numberOfInstallments) <= 0) {
+    // Number of installments validation
+    if (!formData.numberOfInstallments || formData.numberOfInstallments.trim() === '') {
       errors.numberOfInstallments = t('validation.installmentsRequired');
+    } else {
+      const installmentsNum = parseInt(formData.numberOfInstallments, 10);
+      if (isNaN(installmentsNum)) {
+        errors.numberOfInstallments = t('validation.installmentsInvalid');
+      } else if (installmentsNum <= 0) {
+        errors.numberOfInstallments = t('validation.installmentsInvalid');
+      } else if (!Number.isInteger(installmentsNum)) {
+        errors.numberOfInstallments = t('validation.installmentsInvalid');
+      } else if (installmentsNum > 1000) {
+        errors.numberOfInstallments = t('validation.installmentsInvalid');
+      }
     }
     
-    if (!formData.startDate) {
+    // Installment total validation (optional field)
+    if (formData.installmentTotal && formData.installmentTotal.trim() !== '') {
+      const installmentTotalNum = parseFloat(formData.installmentTotal);
+      if (isNaN(installmentTotalNum)) {
+        errors.installmentTotal = t('validation.amountInvalid');
+      } else if (installmentTotalNum <= 0) {
+        errors.installmentTotal = t('validation.amountInvalid');
+      }
+    }
+    
+    // Start date validation
+    if (!formData.startDate || formData.startDate.trim() === '') {
       errors.startDate = t('validation.startDateRequired');
+    } else {
+      const date = new Date(formData.startDate);
+      if (isNaN(date.getTime())) {
+        errors.startDate = t('validation.startDateRequired');
+      }
     }
     
     setFormErrors(errors);
@@ -138,13 +190,29 @@ export default function EmployeeLoansPage() {
     
     try {
       if (editingLoan) {
+        // Additional validation before API call (should already be validated by validateForm)
         const amountNum = parseFloat(formData.amount);
         const interestRateNum = parseFloat(formData.interestRate);
         const numberOfInstallmentsNum = parseInt(formData.numberOfInstallments, 10);
-        const installmentTotalNum = formData.installmentTotal ? parseFloat(formData.installmentTotal) : undefined;
+        const installmentTotalNum = formData.installmentTotal && formData.installmentTotal.trim() !== '' 
+          ? parseFloat(formData.installmentTotal) 
+          : undefined;
         
-        if (isNaN(amountNum) || isNaN(interestRateNum) || isNaN(numberOfInstallmentsNum)) {
-          setSubmitError(t('validation.invalidNumber'));
+        // Double-check numeric values (should not happen if validateForm worked correctly)
+        if (isNaN(amountNum) || amountNum <= 0) {
+          setSubmitError(t('validation.amountInvalid'));
+          return;
+        }
+        if (isNaN(interestRateNum) || interestRateNum < 0 || interestRateNum > 100) {
+          setSubmitError(t('validation.interestRateInvalid'));
+          return;
+        }
+        if (isNaN(numberOfInstallmentsNum) || numberOfInstallmentsNum <= 0 || !Number.isInteger(numberOfInstallmentsNum)) {
+          setSubmitError(t('validation.installmentsInvalid'));
+          return;
+        }
+        if (installmentTotalNum !== undefined && (isNaN(installmentTotalNum) || installmentTotalNum <= 0)) {
+          setSubmitError(t('validation.amountInvalid'));
           return;
         }
         
@@ -171,13 +239,29 @@ export default function EmployeeLoansPage() {
           setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
         }
       } else {
+        // Additional validation before API call (should already be validated by validateForm)
         const amountNum = parseFloat(formData.amount);
         const interestRateNum = parseFloat(formData.interestRate);
         const numberOfInstallmentsNum = parseInt(formData.numberOfInstallments, 10);
-        const installmentTotalNum = formData.installmentTotal ? parseFloat(formData.installmentTotal) : undefined;
+        const installmentTotalNum = formData.installmentTotal && formData.installmentTotal.trim() !== '' 
+          ? parseFloat(formData.installmentTotal) 
+          : undefined;
         
-        if (isNaN(amountNum) || isNaN(interestRateNum) || isNaN(numberOfInstallmentsNum)) {
-          setSubmitError(t('validation.invalidNumber'));
+        // Double-check numeric values (should not happen if validateForm worked correctly)
+        if (isNaN(amountNum) || amountNum <= 0) {
+          setSubmitError(t('validation.amountInvalid'));
+          return;
+        }
+        if (isNaN(interestRateNum) || interestRateNum < 0 || interestRateNum > 100) {
+          setSubmitError(t('validation.interestRateInvalid'));
+          return;
+        }
+        if (isNaN(numberOfInstallmentsNum) || numberOfInstallmentsNum <= 0 || !Number.isInteger(numberOfInstallmentsNum)) {
+          setSubmitError(t('validation.installmentsInvalid'));
+          return;
+        }
+        if (installmentTotalNum !== undefined && (isNaN(installmentTotalNum) || installmentTotalNum <= 0)) {
+          setSubmitError(t('validation.amountInvalid'));
           return;
         }
         
@@ -220,6 +304,33 @@ export default function EmployeeLoansPage() {
     );
   }
 
+  // Filter loans based on search query
+  const filteredLoans = loans.filter((loan) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const customer = customers.find(c => c.id === loan.customerId);
+    
+    // Search in customer info
+    const customerMatch = customer && (
+      customer.name?.toLowerCase().includes(query) ||
+      customer.email?.toLowerCase().includes(query) ||
+      customer.id?.toLowerCase().includes(query)
+    );
+    
+    // Search in loan info
+    const loanMatch = 
+      formatCurrency(loan.amount, locale).toLowerCase().includes(query) ||
+      loan.amount.toString().includes(query) ||
+      formatPercent(loan.interestRate, locale).toLowerCase().includes(query) ||
+      loan.interestRate.toString().includes(query) ||
+      loan.numberOfInstallments.toString().includes(query) ||
+      t(`loan.status.${loan.status}`).toLowerCase().includes(query) ||
+      loan.status.toLowerCase().includes(query) ||
+      loan.id.toLowerCase().includes(query);
+    
+    return customerMatch || loanMatch;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -232,6 +343,21 @@ export default function EmployeeLoansPage() {
           {t('page.createLoan')}
         </Button>
       </div>
+
+      <Card variant="elevated" padding="large">
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('common.search') + ' ' + t('table.customer') + ', ' + t('table.amount') + ', ' + t('table.status') + '...'}
+              className="pl-10 rtl:pl-3 rtl:pr-10"
+            />
+          </div>
+        </div>
+      </Card>
 
       <Card variant="elevated" padding="none">
         <div className="overflow-x-auto">
@@ -247,7 +373,14 @@ export default function EmployeeLoansPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {loans.map((loan) => {
+              {filteredLoans.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-neutral-500">
+                    {searchQuery.trim() ? t('common.noResults') : t('dashboard.noLoansFound')}
+                  </td>
+                </tr>
+              ) : (
+                filteredLoans.map((loan) => {
                 const customer = customers.find(c => c.id === loan.customerId);
                 return (
                   <tr
@@ -278,7 +411,8 @@ export default function EmployeeLoansPage() {
                     </td>
                   </tr>
                 );
-              })}
+              })
+              )}
             </tbody>
           </table>
         </div>
@@ -373,7 +507,6 @@ export default function EmployeeLoansPage() {
               if (formErrors.installmentTotal) setFormErrors({ ...formErrors, installmentTotal: '' });
             }}
             error={formErrors.installmentTotal}
-            required
           />
           <Input
             label={t('form.startDate')}

@@ -57,6 +57,10 @@ export interface ChatMessage {
   fileUrl?: string;
   fileName?: string;
   fileType?: string;
+  isEdited?: boolean;
+  editedAt?: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
   timestamp: string;
 }
 
@@ -66,7 +70,10 @@ export interface Chat {
   participantIds?: string[];
   participantNames?: string[]; // Names of other participants (excluding current user)
   roomName?: string; // For internal rooms
-  lastMessage?: ChatMessage;
+  isPinned?: boolean;
+  pinnedAt?: string;
+  createdBy?: string;
+  lastMessage?: ChatMessage & { isDeleted?: boolean };
   unreadCount: number;
   createdAt: string;
   updatedAt: string;

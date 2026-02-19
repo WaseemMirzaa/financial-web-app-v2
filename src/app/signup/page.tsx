@@ -11,34 +11,19 @@ import { Loader } from '@/components/ui/Loader';
 import { Shield, BarChart3, Users } from 'lucide-react';
 
 export default function SignupPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: '',
-    address: '',
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { signup, isAuthenticated, user } = useAuth();
   const { t, isInitialized } = useLocale();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      if (user.role === 'customer') {
-        router.push('/customer');
-      } else {
-        router.push('/login');
-      }
-    }
-  }, [isAuthenticated, user, router]);
+    router.push('/login');
+  }, [router]);
 
   // Show loader while locale is being initialized
   if (!isInitialized) {
     return <Loader fullScreen text={t('common.loading')} />;
   }
+
+  return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -8,6 +8,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, email, password, phone, address } = body;
 
+    // Block customer self-registration - customers must be created by admin/employee
+    return errorResponse(
+      'Customer accounts must be created by administrators. Please contact your administrator.',
+      403,
+      'error.customerSignupDisabled'
+    );
+
     // Validation
     const validation = validateRequired({ name, email, password }, ['name', 'email', 'password']);
     if (!validation.valid) {

@@ -28,8 +28,9 @@ export async function GET(request: NextRequest) {
 
     if (role === 'admin') {
       // Admin: see all chats (monitor everything) – all customer_employee and internal_room
+      // Order: pinned first, then by updated_at DESC
       const [all] = await pool.query(
-        `SELECT c.* FROM chats c ORDER BY c.updated_at DESC`
+        `SELECT c.* FROM chats c ORDER BY COALESCE(c.is_pinned, 0) DESC, c.updated_at DESC`
       ) as any[];
       rows = all;
     } else if (role === 'customer') {
@@ -72,17 +73,20 @@ export async function GET(request: NextRequest) {
          ORDER BY c.updated_at DESC`,
         [userId, userId, userId]
       ) as any[];
-      // Merge and sort by updated_at
+      // Merge and sort: pinned first, then by updated_at
       const byId = new Map<string, any>();
       [...customerChats, ...internal].forEach((r: any) => byId.set(r.id, r));
-      rows = Array.from(byId.values()).sort(
-        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-      );
+      rows = Array.from(byId.values()).sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
     }
 
     // Get last message, unread count, and participant names for each chat
     const chats = await Promise.all(
       rows.map(async (chat: any) => {
+        // Get last non-deleted message, or last message if all are deleted
         const [messages] = await pool.query(
           `SELECT cm.*,
             cmt_en.content as content_en,
@@ -100,9 +104,12 @@ export async function GET(request: NextRequest) {
 
         const lastMessage = messages.length > 0 ? {
           id: messages[0].id,
-          content: messages[0].content_en || messages[0].content_ar || '',
+          content: messages[0].is_deleted 
+            ? 'Message deleted' 
+            : (messages[0].content_en || messages[0].content_ar || ''),
           senderName: messages[0].sender_name_en || messages[0].sender_name_ar || '',
           timestamp: messages[0].timestamp,
+          isDeleted: messages[0].is_deleted || false,
         } : undefined;
 
         // Get participant names
@@ -130,6 +137,9 @@ export async function GET(request: NextRequest) {
           type: chat.type,
           roomName: chat.room_name,
           participantNames,
+          isPinned: chat.is_pinned || false,
+          pinnedAt: chat.pinned_at || null,
+          createdBy: chat.created_by || null,
           lastMessage,
           unreadCount: 0, // TODO: Implement unread count
           createdAt: chat.created_at,

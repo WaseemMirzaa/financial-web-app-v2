@@ -11,6 +11,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Chat, ChatMessage } from '@/types';
 import type { Employee } from '@/types';
+import { Pin, PinOff, Trash2, Bookmark } from 'lucide-react';
 
 export default function AdminChatPage() {
   const { t, locale } = useLocale();
@@ -26,6 +27,8 @@ export default function AdminChatPage() {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [creatingRoom, setCreatingRoom] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirmChat, setDeleteConfirmChat] = useState<Chat | null>(null);
+  const [createRoomError, setCreateRoomError] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -50,7 +53,8 @@ export default function AdminChatPage() {
       const data = await response.json();
       if (data.success) {
         setChats(data.data);
-        if (data.data.length > 0) {
+        // Only auto-select first chat if no chat is currently selected
+        if (data.data.length > 0 && !selectedChat) {
           setSelectedChat(data.data[0].id);
           fetchMessages(data.data[0].id);
           fetchParticipants(data.data[0].id);
@@ -109,6 +113,16 @@ export default function AdminChatPage() {
     return () => clearInterval(interval);
   }, [selectedChat, locale]);
 
+  // Real-time: poll chat list for pinning updates (less frequent than messages)
+  useEffect(() => {
+    if (!user?.id) return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchChats();
+    }, 10000); // Refresh chat list every 10 seconds
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   const selectedChatData = chats.find(c => c.id === selectedChat);
   
   const filteredChats = chats.filter((chat) => {
@@ -123,16 +137,25 @@ export default function AdminChatPage() {
     return t('chat.customerChat').toLowerCase().includes(query);
   });
 
+  const pinnedChats = filteredChats.filter(chat => chat.isPinned === true);
+  const unpinnedChats = filteredChats.filter(chat => chat.isPinned !== true);
+
   const roomNameKey: Record<string, string> = {
     'Contracts': 'chat.room.contracts',
     'Follow Up': 'chat.room.followUp',
     'Receipts': 'chat.room.receipts',
   };
-  const translateRoomName = (name: string | undefined) =>
-    (name && roomNameKey[name] ? t(roomNameKey[name]) : name) || '';
+  const translateRoomName = (name: string | undefined | null) => {
+    if (!name) return '';
+    return (roomNameKey[name] ? t(roomNameKey[name]) : name) || '';
+  };
 
   const handleCreateRoom = async () => {
-    if (!roomName.trim() || selectedEmployeeIds.length === 0 || !user?.id) return;
+    if (!roomName.trim() || selectedEmployeeIds.length === 0 || !user?.id) {
+      setCreateRoomError('Room name and at least one employee are required');
+      return;
+    }
+    setCreateRoomError('');
     setCreatingRoom(true);
     try {
       const response = await fetch('/api/chat/create-room', {
@@ -143,16 +166,22 @@ export default function AdminChatPage() {
       const data = await response.json();
       if (data.success && data.data) {
         const newChat = data.data as Chat;
-        setChats((prev) => [newChat, ...prev]);
+        // Refresh the full chat list to get proper ordering (pinned first)
+        await fetchChats();
+        // Select the newly created chat
         setSelectedChat(newChat.id);
         fetchMessages(newChat.id);
         fetchParticipants(newChat.id);
         setIsCreateRoomModalOpen(false);
         setRoomName('');
         setSelectedEmployeeIds([]);
+        setCreateRoomError('');
+      } else {
+        setCreateRoomError(data.errorKey ? t(data.errorKey) : (data.error || 'Failed to create room'));
       }
     } catch (error) {
       console.error('Failed to create room:', error);
+      setCreateRoomError('Failed to create room. Please try again.');
     } finally {
       setCreatingRoom(false);
     }
@@ -162,6 +191,44 @@ export default function AdminChatPage() {
     setSelectedEmployeeIds((prev) =>
       prev.includes(employeeId) ? prev.filter((id) => id !== employeeId) : [...prev, employeeId]
     );
+  };
+
+  const handlePinToggle = async (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/chat/${chatId}/pin?userId=${user.id}`, {
+        method: 'PUT',
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Refresh chat list to update pinned status
+        await fetchChats();
+      } else {
+        console.error('Pin toggle failed:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to toggle pin:', error);
+    }
+  };
+
+  const handleDeleteRoom = async () => {
+    if (!deleteConfirmChat || !user?.id) return;
+    try {
+      const response = await fetch(`/api/chat/${deleteConfirmChat.id}?userId=${user.id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (selectedChat === deleteConfirmChat.id) {
+          setSelectedChat(null);
+        }
+        await fetchChats();
+        setDeleteConfirmChat(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete room:', error);
+    }
   };
 
   const handleSendMessage = async (content: string, file?: File) => {
@@ -245,33 +312,137 @@ export default function AdminChatPage() {
               className="text-sm"
             />
           </div>
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-neutral-100 overflow-y-auto flex-1">
             {filteredChats.length === 0 ? (
               <div className="p-4 text-center text-neutral-500">
                 <p>{searchQuery ? t('common.noResults') : t('chat.noChats')}</p>
               </div>
             ) : (
-              filteredChats.map((chat) => (
-                <button
-                  key={chat.id}
-                  type="button"
-                  onClick={() => setSelectedChat(chat.id)}
-                  className={`w-full p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 touch-manipulation ${
-                    selectedChat === chat.id ? 'bg-primary-50' : ''
-                  }`}
-                >
-                  <p className="font-semibold text-neutral-900">
-                    {chat.type === 'internal_room'
-                      ? translateRoomName(chat.roomName)
-                      : chat.participantNames && chat.participantNames.length > 0
-                      ? chat.participantNames.join(', ')
-                      : t('chat.customerChat')}
-                  </p>
-                  {chat.lastMessage && (
-                    <p className="text-sm text-neutral-600 mt-1 truncate">{chat.lastMessage.content}</p>
-                  )}
-                </button>
-              ))
+              <>
+                {pinnedChats.length > 0 && (
+                  <>
+                    <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase bg-neutral-50 sticky top-0">
+                      {t('chat.pinnedRooms')}
+                    </div>
+                    {pinnedChats.map((chat) => (
+                      <div
+                        key={chat.id}
+                        className={`flex items-center group ${
+                          selectedChat === chat.id ? 'bg-primary-50' : ''
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSelectedChat(chat.id)}
+                          className="flex-1 p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors touch-manipulation"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Pin className="w-4 h-4 text-primary-600 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-neutral-900">
+                                {chat.type === 'internal_room'
+                                  ? translateRoomName(chat.roomName)
+                                  : chat.participantNames && chat.participantNames.length > 0
+                                  ? chat.participantNames.join(', ')
+                                  : t('chat.customerChat')}
+                              </p>
+                              {chat.lastMessage && (
+                                <p className={`text-sm mt-1 truncate ${
+                                  chat.lastMessage.isDeleted 
+                                    ? 'text-neutral-400 italic' 
+                                    : 'text-neutral-600'
+                                }`}>
+                                  {chat.lastMessage.content}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                        <div className="flex items-center gap-1 px-2">
+                          <button
+                            type="button"
+                            onClick={(e) => handlePinToggle(chat.id, e)}
+                            className="p-2 hover:bg-error-light rounded-lg transition-colors"
+                            title={t('chat.unpinRoom')}
+                          >
+                            <PinOff className="w-4 h-4 text-error" strokeWidth={2.5} />
+                          </button>
+                          {chat.type === 'internal_room' && chat.createdBy && chat.createdBy === user?.id && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirmChat(chat);
+                              }}
+                              className="p-2 hover:bg-error-light rounded-lg transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                              title={t('common.delete')}
+                            >
+                              <Trash2 className="w-4 h-4 text-error" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {unpinnedChats.length > 0 && (
+                  <>
+                    {pinnedChats.length > 0 && (
+                      <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase bg-neutral-50 sticky top-0">
+                        {t('chat.allRooms')}
+                      </div>
+                    )}
+                    {unpinnedChats.map((chat) => (
+                      <div
+                        key={chat.id}
+                        className={`flex items-center group ${
+                          selectedChat === chat.id ? 'bg-primary-50' : ''
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSelectedChat(chat.id)}
+                          className="flex-1 p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors touch-manipulation"
+                        >
+                          <p className="font-semibold text-neutral-900">
+                            {chat.type === 'internal_room'
+                              ? translateRoomName(chat.roomName)
+                              : chat.participantNames && chat.participantNames.length > 0
+                              ? chat.participantNames.join(', ')
+                              : t('chat.customerChat')}
+                          </p>
+                          {chat.lastMessage && chat.lastMessage.content && (
+                            <p className="text-sm text-neutral-600 mt-1 truncate">{chat.lastMessage.content}</p>
+                          )}
+                        </button>
+                        <div className="flex items-center gap-1 px-2">
+                          <button
+                            type="button"
+                            onClick={(e) => handlePinToggle(chat.id, e)}
+                            className="p-2 hover:bg-primary-50 rounded-lg transition-colors"
+                            title={t('chat.pinRoom')}
+                          >
+                            <Pin className="w-4 h-4 text-primary-600" fill="currentColor" strokeWidth={2} />
+                          </button>
+                          {chat.type === 'internal_room' && chat.createdBy && chat.createdBy === user?.id && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirmChat(chat);
+                              }}
+                              className="p-2 hover:bg-error-light rounded-lg transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                              title={t('common.delete')}
+                            >
+                              <Trash2 className="w-4 h-4 text-error" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </>
             )}
           </div>
         </Card>
@@ -281,6 +452,41 @@ export default function AdminChatPage() {
             <ChatWindow
               messages={messages}
               onSendMessage={handleSendMessage}
+              chatId={selectedChat}
+              onMessageUpdate={(update) => {
+                if (!update || !selectedChat) return;
+                if (update.type === 'messageEdited') {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === update.message.id
+                        ? { ...m, ...update.message, content: update.message.content ?? m.content }
+                        : m
+                    )
+                  );
+                  setChats((prev) =>
+                    prev.map((c) => {
+                      if (c.id !== selectedChat) return c;
+                      if (c.lastMessage?.id === update.message.id)
+                        return { ...c, lastMessage: { ...c.lastMessage, content: update.message.content ?? c.lastMessage!.content, isEdited: true } };
+                      return c;
+                    })
+                  );
+                } else if (update.type === 'messageDeleted') {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === update.messageId ? { ...m, isDeleted: true, content: '' } : m
+                    )
+                  );
+                  setChats((prev) =>
+                    prev.map((c) => {
+                      if (c.id !== selectedChat) return c;
+                      if (c.lastMessage?.id === update.messageId)
+                        return { ...c, lastMessage: { ...c.lastMessage!, content: 'Message deleted', isDeleted: true } };
+                      return c;
+                    })
+                  );
+                }
+              }}
               title={
                 selectedChatData.type === 'internal_room'
                   ? translateRoomName(selectedChatData.roomName)
@@ -343,6 +549,11 @@ export default function AdminChatPage() {
               )}
             </div>
           </div>
+          {createRoomError && (
+            <div className="rounded-xl px-4 py-3 text-sm text-error bg-error-light border border-error/20">
+              {createRoomError}
+            </div>
+          )}
           <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4">
             <Button
               variant="secondary"
@@ -350,6 +561,7 @@ export default function AdminChatPage() {
                 setIsCreateRoomModalOpen(false);
                 setRoomName('');
                 setSelectedEmployeeIds([]);
+                setCreateRoomError('');
               }}
               className="w-full sm:w-auto"
             >
@@ -362,6 +574,39 @@ export default function AdminChatPage() {
               className="w-full sm:w-auto"
             >
               {creatingRoom ? t('common.loading') + '...' : t('chat.createRoom')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Room Confirmation Modal */}
+      <Modal
+        isOpen={deleteConfirmChat !== null}
+        onClose={() => setDeleteConfirmChat(null)}
+        title={t('chat.deleteRoom')}
+      >
+        <div className="space-y-4">
+          <p className="text-neutral-700">
+            {t('chat.deleteRoomConfirm', { 
+              roomName: deleteConfirmChat?.type === 'internal_room' 
+                ? translateRoomName(deleteConfirmChat?.roomName) 
+                : '' 
+            })}
+          </p>
+          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteConfirmChat(null)}
+              className="w-full sm:w-auto"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleDeleteRoom}
+              className="w-full sm:w-auto bg-error hover:bg-error-dark"
+            >
+              {t('common.delete')}
             </Button>
           </div>
         </div>

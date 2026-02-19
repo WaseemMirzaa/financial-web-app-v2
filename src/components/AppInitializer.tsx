@@ -71,8 +71,14 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
 
     if (
       !isAuthenticated &&
-      (pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password' || pathname === '/reset-password')
+      (pathname === '/login' || pathname === '/forgot-password' || pathname === '/reset-password')
     ) {
+      done();
+      return;
+    }
+
+    if (pathname === '/signup') {
+      schedule(() => router.push('/login'));
       done();
       return;
     }
@@ -80,7 +86,6 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     if (
       !isAuthenticated &&
       pathname !== '/login' &&
-      pathname !== '/signup' &&
       pathname !== '/forgot-password' && pathname !== '/reset-password'
     ) {
       schedule(() => router.push('/login'));

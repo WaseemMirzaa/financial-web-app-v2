@@ -109,7 +109,7 @@ export async function GET(
     const accessErr = await checkCanReadChat(chatId, userId);
     if (accessErr) return accessErr;
 
-    // Get messages for the chat
+    // Get messages for the chat (include deleted messages but mark them)
     const [messages] = await pool.query(
       `SELECT cm.*,
         cmt_en.content as content_en,
@@ -140,10 +140,14 @@ export async function GET(
         senderId: msg.sender_id,
         senderName,
         senderRole: msg.sender_role,
-        content,
+        content: msg.is_deleted ? '' : content,
         fileUrl: msg.file_url,
         fileName: msg.file_name,
         fileType: msg.file_type,
+        isEdited: !!(msg.is_edited),
+        editedAt: msg.edited_at || null,
+        isDeleted: !!(msg.is_deleted),
+        deletedAt: msg.deleted_at || null,
         timestamp: msg.timestamp,
       };
     });

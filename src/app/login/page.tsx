@@ -177,15 +177,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Signup link */}
-          <div className="mt-6 sm:mt-8 pt-6 border-t border-neutral-100 text-center">
-            <p className="text-sm text-neutral-500">
-              {t('auth.dontHaveAccount')}{' '}
-              <Link href="/signup" className="text-primary-500 hover:text-primary-600 font-semibold transition-colors">
-                {t('auth.signUpAsCustomer')}
-              </Link>
-            </p>
-          </div>
 
           {/* Demo credentials */}
           <div className="mt-4 pt-6 border-t border-neutral-100">

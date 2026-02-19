@@ -237,6 +237,41 @@ export default function CustomerChatPage() {
             <ChatWindow
               messages={messages}
               onSendMessage={handleSendMessage}
+              chatId={selectedChat}
+              onMessageUpdate={(update) => {
+                if (!update || !selectedChat) return;
+                if (update.type === 'messageEdited') {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === update.message.id
+                        ? { ...m, ...update.message, content: update.message.content ?? m.content }
+                        : m
+                    )
+                  );
+                  setChats((prev) =>
+                    prev.map((c) => {
+                      if (c.id !== selectedChat) return c;
+                      if (c.lastMessage?.id === update.message.id)
+                        return { ...c, lastMessage: { ...c.lastMessage, content: update.message.content ?? c.lastMessage!.content, isEdited: true } };
+                      return c;
+                    })
+                  );
+                } else if (update.type === 'messageDeleted') {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === update.messageId ? { ...m, isDeleted: true, content: '' } : m
+                    )
+                  );
+                  setChats((prev) =>
+                    prev.map((c) => {
+                      if (c.id !== selectedChat) return c;
+                      if (c.lastMessage?.id === update.messageId)
+                        return { ...c, lastMessage: { ...c.lastMessage!, content: 'Message deleted', isDeleted: true } };
+                      return c;
+                    })
+                  );
+                }
+              }}
               title={
                 selectedChatData.participantNames && selectedChatData.participantNames.length > 0
                   ? selectedChatData.participantNames[0]

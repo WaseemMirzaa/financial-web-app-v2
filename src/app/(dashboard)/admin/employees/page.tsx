@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, UserX, UserPlus } from 'lucide-react';
+import { Plus, Edit, UserX, UserPlus, Search } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -23,6 +23,7 @@ export default function EmployeesPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchEmployees();
@@ -184,6 +185,21 @@ export default function EmployeesPage() {
         </div>
       </div>
 
+      <Card variant="elevated" padding="large">
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('common.search') + ' ' + t('table.name') + ', ' + t('table.email')}
+              className="pl-10 rtl:pl-3 rtl:pr-10"
+            />
+          </div>
+        </div>
+      </Card>
+
       <Card variant="elevated" padding="none">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
@@ -197,7 +213,11 @@ export default function EmployeesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {employees.map((employee) => (
+              {employees.filter((employee) => {
+                if (!searchQuery.trim()) return true;
+                const query = searchQuery.toLowerCase();
+                return employee.name.toLowerCase().includes(query) || employee.email.toLowerCase().includes(query);
+              }).map((employee) => (
                 <tr
                   key={employee.id}
                   onClick={() => router.push(`/admin/employees/${employee.id}`)}
