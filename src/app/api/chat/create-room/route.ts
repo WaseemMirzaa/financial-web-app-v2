@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       id: c.id,
       type: c.type,
       roomName: c.room_name,
-      isPinned: c.is_pinned || false,
+      isPinned: Boolean(c.is_pinned),
       pinnedAt: c.pinned_at || null,
       createdBy: c.created_by || null,
       lastMessage: undefined,

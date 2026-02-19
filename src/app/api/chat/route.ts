@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
           type: chat.type,
           roomName: chat.room_name,
           participantNames,
-          isPinned: chat.is_pinned || false,
+          isPinned: Boolean(chat.is_pinned),
           pinnedAt: chat.pinned_at || null,
           createdBy: chat.created_by || null,
           lastMessage,

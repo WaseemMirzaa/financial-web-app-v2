@@ -308,6 +308,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'chat.noEmployees': 'No employees available',
     'chat.pinnedRooms': 'Pinned Rooms',
     'chat.allRooms': 'All Rooms',
+    'chat.pinned': 'Pinned',
     'chat.pinRoom': 'Pin Room',
     'chat.unpinRoom': 'Unpin Room',
     'chat.roomPinned': 'Room pinned',
@@ -730,6 +731,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'chat.noEmployees': 'لا يوجد موظفون متاحون',
     'chat.pinnedRooms': 'الغرف المثبتة',
     'chat.allRooms': 'جميع الغرف',
+    'chat.pinned': 'مثبت',
     'chat.pinRoom': 'تثبيت الغرفة',
     'chat.unpinRoom': 'إلغاء تثبيت الغرفة',
     'chat.roomPinned': 'تم تثبيت الغرفة',
@@ -867,10 +869,12 @@ const translations: Record<Locale, Record<string, string>> = {
 };
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
+  const [locale, setLocaleState] = useState<Locale>(() =>
+    typeof window !== 'undefined' ? getStoredLocale() : 'en'
+  );
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize locale from localStorage and set document attributes on mount (useLayoutEffect so ready before paint)
+  // Set document attributes and mark initialized (useLayoutEffect so ready before paint)
   useLayoutEffect(() => {
     const storedLocale = getStoredLocale();
     setLocaleState(storedLocale);

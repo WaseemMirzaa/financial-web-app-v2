@@ -337,7 +337,7 @@ export default function AdminChatPage() {
                           className="flex-1 p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors touch-manipulation"
                         >
                           <div className="flex items-center gap-2">
-                            <Pin className="w-4 h-4 text-primary-600 shrink-0" />
+                            <Pin className="w-4 h-4 text-error shrink-0" fill="currentColor" strokeWidth={2} aria-label={t('chat.pinned')} />
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-neutral-900">
                                 {chat.type === 'internal_room'
@@ -362,7 +362,7 @@ export default function AdminChatPage() {
                           <button
                             type="button"
                             onClick={(e) => handlePinToggle(chat.id, e)}
-                            className="p-2 hover:bg-error-light rounded-lg transition-colors"
+                            className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
                             title={t('chat.unpinRoom')}
                           >
                             <PinOff className="w-4 h-4 text-error" strokeWidth={2.5} />
@@ -419,10 +419,10 @@ export default function AdminChatPage() {
                           <button
                             type="button"
                             onClick={(e) => handlePinToggle(chat.id, e)}
-                            className="p-2 hover:bg-primary-50 rounded-lg transition-colors"
+                            className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
                             title={t('chat.pinRoom')}
                           >
-                            <Pin className="w-4 h-4 text-primary-600" fill="currentColor" strokeWidth={2} />
+                            <Pin className="w-4 h-4 text-error" strokeWidth={2} />
                           </button>
                           {chat.type === 'internal_room' && chat.createdBy && chat.createdBy === user?.id && (
                             <button

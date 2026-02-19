@@ -5,6 +5,7 @@ import { User, UserRole } from '@/types';
 
 interface AuthContextType {
   user: User | null;
+  isVerifying: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; errorKey?: string; error?: string }>;
   signup: (name: string, email: string, password: string, phone?: string, address?: string) => Promise<{ success: boolean; errorKey?: string; error?: string }>;
   logout: () => void;
@@ -15,41 +16,39 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    // Check localStorage for persisted session and verify with API
     const verifySession = async () => {
       const storedUser = localStorage.getItem('user');
-      if (storedUser) {
+      if (!storedUser) {
+        setIsVerifying(false);
+        return;
+      }
+      try {
+        const parsedUser = JSON.parse(storedUser);
         try {
-          const parsedUser = JSON.parse(storedUser);
-          
-          // Verify session with API using stored user ID
-          try {
-            const response = await fetch(`/api/auth/me?userId=${parsedUser.id}`, {
-              method: 'GET',
-              credentials: 'include',
-            });
-            
-            const data = await response.json();
-            if (data.success && data.data) {
-              // Session is valid, update user
-              setUser(data.data);
-              localStorage.setItem('user', JSON.stringify(data.data));
-            } else {
-              // Session invalid, clear storage
-              setUser(null);
-              localStorage.removeItem('user');
-            }
-          } catch (error) {
-            // If API call fails, use stored user but mark as potentially stale
-            console.warn('Failed to verify session, using cached user:', error);
-            setUser(parsedUser);
+          const response = await fetch(`/api/auth/me?userId=${parsedUser.id}`, {
+            method: 'GET',
+            credentials: 'include',
+          });
+          const data = await response.json();
+          if (data.success && data.data) {
+            setUser(data.data);
+            localStorage.setItem('user', JSON.stringify(data.data));
+          } else {
+            setUser(null);
+            localStorage.removeItem('user');
           }
-        } catch (e) {
-          localStorage.removeItem('user');
-          setUser(null);
+        } catch (error) {
+          console.warn('Failed to verify session, using cached user:', error);
+          setUser(parsedUser);
         }
+      } catch (e) {
+        localStorage.removeItem('user');
+        setUser(null);
+      } finally {
+        setIsVerifying(false);
       }
     };
 
@@ -134,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, isVerifying, login, signup, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,7 +8,7 @@ import { Loader } from '@/components/ui/Loader';
 import { getFirebaseAnalytics } from '@/lib/firebase';
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isVerifying } = useAuth();
   const { isInitialized, t } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -111,7 +111,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     done();
   }, [isInitialized, isAuthenticated, user, router, pathname]);
 
-  if (!isInitialized || isChecking) {
+  if (isVerifying || !isInitialized || isChecking) {
     return <Loader fullScreen text={t('common.loading')} />;
   }
 
