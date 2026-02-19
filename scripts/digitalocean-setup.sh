@@ -18,7 +18,7 @@ GITHUB_REPO="${GITHUB_REPO:-https://github.com/WaseemMirzaa/financial-web-app.gi
 BRANCH="${BRANCH:-backend}"
 APP_DIR="${APP_DIR:-/var/www/financial-web-app}"
 APP_USER="${APP_USER:-www-data}"
-NODE_VERSION="${NODE_VERSION:-20}"
+NODE_VERSION="${NODE_VERSION:-20.19.6}"
 PORT="${PORT:-3000}"
 
 # DB (use for managed DB or local MySQL)
@@ -44,9 +44,18 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y git curl ufw
 
-echo "=== Installing Node.js ${NODE_VERSION} (via NodeSource) ==="
-curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
-apt-get install -y nodejs
+echo "=== Installing Node.js ${NODE_VERSION} (via nvm) ==="
+# Install nvm
+export NVM_DIR="$HOME/.nvm"
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+# Install specific Node version
+nvm install ${NODE_VERSION}
+nvm use ${NODE_VERSION}
+nvm alias default ${NODE_VERSION}
+# Make node/npm available system-wide
+ln -sf "$NVM_DIR/versions/node/$(nvm version)/bin/node" /usr/local/bin/node
+ln -sf "$NVM_DIR/versions/node/$(nvm version)/bin/npm" /usr/local/bin/npm
 
 echo "=== Optional: install MySQL server on this droplet ==="
 if [[ "$INSTALL_MYSQL" =~ ^[yY] ]]; then
