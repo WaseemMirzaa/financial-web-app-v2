@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * DELETE /api/chat/[id]
- * Delete a chat room (admin only, creator only)
+ * Delete a chat room (admin only; any room)
  */
 export async function DELETE(
   request: NextRequest,
@@ -30,25 +30,13 @@ export async function DELETE(
       return unauthorizedError();
     }
 
-    // Get chat and check if user created it
     const [chats] = await pool.query(
-      'SELECT created_by, type FROM chats WHERE id = ?',
+      'SELECT id FROM chats WHERE id = ?',
       [chatId]
     ) as any[];
 
     if (chats.length === 0) {
       return errorResponse('Chat not found', 404, 'error.chatNotFound');
-    }
-
-    const chat = chats[0];
-
-    // Only allow deletion of internal rooms created by this admin
-    if (chat.type !== 'internal_room') {
-      return errorResponse('Only internal rooms can be deleted', 400, 'error.cannotDeleteChatType');
-    }
-
-    if (chat.created_by !== userId) {
-      return errorResponse('Only the room creator can delete it', 403, 'error.onlyCreatorCanDelete');
     }
 
     // Delete chat (cascade will handle messages, participants, translations)

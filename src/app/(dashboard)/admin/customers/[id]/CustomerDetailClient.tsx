@@ -29,6 +29,7 @@ export function CustomerDetailClient() {
   const [customerLoans, setCustomerLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [removeError, setRemoveError] = useState('');
@@ -255,16 +256,20 @@ export function CustomerDetailClient() {
   };
 
   const handleDelete = async () => {
-    if (!customer) return;
+    if (!customer || customerLoans.length > 0) return;
+    setDeleteError('');
     setActionLoading(true);
     try {
       const response = await fetch(`/api/customers/${customer.id}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
         router.push('/admin/customers');
+      } else {
+        setDeleteError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
       console.error('Failed to delete customer:', error);
+      setDeleteError(t('error.internalServerError'));
     } finally {
       setActionLoading(false);
     }
@@ -332,8 +337,9 @@ export function CustomerDetailClient() {
           <Button
             variant="outline"
             size="small"
-            onClick={() => setDeleteConfirmOpen(true)}
-            className="border-error text-error hover:bg-error-light"
+            onClick={() => { setDeleteError(''); setDeleteConfirmOpen(true); }}
+            disabled={customerLoans.length > 0}
+            className="border-error text-error hover:bg-error-light disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Trash2 className="w-4 h-4 me-2" />
             {t('page.deleteCustomer')}
@@ -572,13 +578,21 @@ export function CustomerDetailClient() {
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} disabled={actionLoading}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" onClick={handleDelete} disabled={actionLoading} className="bg-error hover:bg-error/90">
+            <Button variant="primary" onClick={handleDelete} disabled={actionLoading || customerLoans.length > 0} className="bg-error hover:bg-error/90">
               {actionLoading ? t('common.loading') + '...' : t('common.delete')}
             </Button>
           </>
         }
       >
-        <p className="text-neutral-700">{t('page.deleteCustomerConfirm')}</p>
+        <div className="space-y-3">
+          {customerLoans.length > 0 && (
+            <p className="text-error text-sm font-medium">{t('error.customerHasLoans')}</p>
+          )}
+          {deleteError && (
+            <p className="text-error text-sm">{deleteError}</p>
+          )}
+          <p className="text-neutral-700">{t('page.deleteCustomerConfirm')}</p>
+        </div>
       </Modal>
 
       <Modal

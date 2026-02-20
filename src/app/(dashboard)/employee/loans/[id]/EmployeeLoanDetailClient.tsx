@@ -23,6 +23,7 @@ export function EmployeeLoanDetailClient() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loan, setLoan] = useState<Loan | null>(null);
   const [customer, setCustomer] = useState<any>(null);
+  const [customerDeleted, setCustomerDeleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     amount: '',
@@ -72,6 +73,10 @@ export function EmployeeLoanDetailClient() {
       const data = await response.json();
       if (data.success) {
         setCustomer(data.data);
+        setCustomerDeleted(false);
+      } else if (response.status === 404) {
+        setCustomer(null);
+        setCustomerDeleted(true);
       }
     } catch (error) {
       console.error('Failed to fetch customer:', error);
@@ -235,7 +240,11 @@ export function EmployeeLoanDetailClient() {
             </div>
             <h2 className="text-xl font-semibold text-neutral-900">{t('detail.customer')}</h2>
           </div>
-          {customer ? (
+          {customerDeleted ? (
+            <div className="p-4 bg-neutral-50 rounded-lg text-left rtl:text-right">
+              <p className="font-semibold text-neutral-500">{t('detail.deletedCustomer')}</p>
+            </div>
+          ) : customer ? (
             <div
               onClick={() => router.push(`/employee/customers/${customer.id}`)}
               className="p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200 text-left rtl:text-right"
@@ -244,7 +253,7 @@ export function EmployeeLoanDetailClient() {
               <p className="text-sm text-neutral-600 mt-1">{customer.email}</p>
             </div>
           ) : (
-            <p className="text-neutral-500 text-sm">{t('detail.customerNotFound')}</p>
+            <p className="text-neutral-500 text-sm">{t('detail.unknown')}</p>
           )}
         </Card>
       </div>

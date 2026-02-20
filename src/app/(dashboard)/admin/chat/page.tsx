@@ -333,11 +333,14 @@ export default function AdminChatPage() {
                       >
                         <button
                           type="button"
-                          onClick={() => setSelectedChat(chat.id)}
+                          onClick={(e) => {
+                            setSelectedChat(chat.id);
+                            (e.currentTarget as HTMLElement).blur();
+                          }}
                           className="flex-1 p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors touch-manipulation"
                         >
                           <div className="flex items-center gap-2">
-                            <Pin className="w-4 h-4 text-error shrink-0" fill="currentColor" strokeWidth={2} aria-label={t('chat.pinned')} />
+                            <Pin className="w-4 h-4 text-primary-600 shrink-0" fill="currentColor" strokeWidth={2} aria-label={t('chat.pinned')} />
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-neutral-900">
                                 {chat.type === 'internal_room'
@@ -362,24 +365,22 @@ export default function AdminChatPage() {
                           <button
                             type="button"
                             onClick={(e) => handlePinToggle(chat.id, e)}
-                            className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
+                            className="p-2 hover:bg-primary-50 rounded-lg transition-colors shrink-0"
                             title={t('chat.unpinRoom')}
                           >
-                            <PinOff className="w-4 h-4 text-error" strokeWidth={2.5} />
+                            <PinOff className="w-4 h-4 text-primary-600" strokeWidth={2.5} />
                           </button>
-                          {chat.type === 'internal_room' && chat.createdBy && chat.createdBy === user?.id && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteConfirmChat(chat);
-                              }}
-                              className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
-                              title={t('common.delete')}
-                            >
-                              <Trash2 className="w-4 h-4 text-error" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirmChat(chat);
+                            }}
+                            className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
+                            title={t('common.delete')}
+                          >
+                            <Trash2 className="w-4 h-4 text-error" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -401,7 +402,10 @@ export default function AdminChatPage() {
                       >
                         <button
                           type="button"
-                          onClick={() => setSelectedChat(chat.id)}
+                          onClick={(e) => {
+                            setSelectedChat(chat.id);
+                            (e.currentTarget as HTMLElement).blur();
+                          }}
                           className="flex-1 p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors touch-manipulation"
                         >
                           <p className="font-semibold text-neutral-900">
@@ -419,24 +423,22 @@ export default function AdminChatPage() {
                           <button
                             type="button"
                             onClick={(e) => handlePinToggle(chat.id, e)}
-                            className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
+                            className="p-2 hover:bg-primary-50 rounded-lg transition-colors shrink-0"
                             title={t('chat.pinRoom')}
                           >
-                            <Pin className="w-4 h-4 text-error" strokeWidth={2} />
+                            <Pin className="w-4 h-4 text-primary-600" strokeWidth={2} />
                           </button>
-                          {chat.type === 'internal_room' && chat.createdBy && chat.createdBy === user?.id && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteConfirmChat(chat);
-                              }}
-                              className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
-                              title={t('common.delete')}
-                            >
-                              <Trash2 className="w-4 h-4 text-error" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirmChat(chat);
+                            }}
+                            className="p-2 hover:bg-error-light rounded-lg transition-colors shrink-0"
+                            title={t('common.delete')}
+                          >
+                            <Trash2 className="w-4 h-4 text-error" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -590,7 +592,7 @@ export default function AdminChatPage() {
             {t('chat.deleteRoomConfirm', { 
               roomName: deleteConfirmChat?.type === 'internal_room' 
                 ? translateRoomName(deleteConfirmChat?.roomName) 
-                : '' 
+                : (deleteConfirmChat?.participantNames?.length ? deleteConfirmChat.participantNames.join(', ') : t('chat.customerChat'))
             })}
           </p>
           <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4">

@@ -215,6 +215,18 @@ export async function DELETE(
       return notFoundError('Customer');
     }
 
+    const [loans] = await pool.query(
+      'SELECT id FROM loans WHERE customer_id = ?',
+      [params.id]
+    ) as any[];
+    if (loans.length > 0) {
+      return errorResponse(
+        'Customer cannot be deleted. Delete all loans first.',
+        400,
+        'error.customerHasLoans'
+      );
+    }
+
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
@@ -227,6 +239,18 @@ export async function DELETE(
         'UPDATE customers SET assigned_employee_id = NULL WHERE id = ?',
         [params.id]
       );
+      const [customerChats] = await connection.query(
+        'SELECT chat_id FROM chat_participants WHERE user_id = ?',
+        [params.id]
+      ) as any[];
+      const chatIds = customerChats.map((r: any) => r.chat_id);
+      if (chatIds.length > 0) {
+        const placeholders = chatIds.map(() => '?').join(',');
+        await connection.query(
+          `DELETE FROM chats WHERE id IN (${placeholders})`,
+          chatIds
+        );
+      }
       try {
         await connection.query(
           'UPDATE users SET is_deleted = TRUE, deleted_at = NOW(), is_active = FALSE WHERE id = ?',

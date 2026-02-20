@@ -389,7 +389,7 @@ export default function EmployeeLoansPage() {
                     className="hover:bg-neutral-50 cursor-pointer transition-colors"
                   >
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900 font-medium">
-                      {customer ? customer.name : '-'}
+                      {customer ? customer.name : t('detail.deletedCustomer')}
                     </td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900">
                       {formatCurrency(loan.amount, locale)}

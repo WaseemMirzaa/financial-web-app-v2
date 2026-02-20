@@ -29,14 +29,21 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   const [editContent, setEditContent] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteConfirmMessageId, setDeleteConfirmMessageId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const { t, locale } = useLocale();
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const scrollToBottom = () => {
+      el.scrollTop = el.scrollHeight;
+    };
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scrollToBottom);
+    });
+  }, [messages, chatId]);
 
   const handleSend = () => {
     if (inputValue.trim() || selectedFile) {
@@ -136,7 +143,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
           <h3 className="text-base sm:text-lg font-semibold text-neutral-900 truncate">{title}</h3>
         </div>
       )}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-3 sm:space-y-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-neutral-500">
             {t('chat.noMessages')}
@@ -269,7 +276,6 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
       {!readOnly && (
       <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-neutral-200 space-y-2 shrink-0 bg-white">

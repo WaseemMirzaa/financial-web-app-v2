@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Search } from 'lucide-react';
+import { Plus, Edit, Search, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -10,12 +10,14 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 
 export default function LoansPage() {
   const router = useRouter();
   const { t, locale } = useLocale();
+  const { user } = useAuth();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -36,16 +38,20 @@ export default function LoansPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirmLoan, setDeleteConfirmLoan] = useState<Loan | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
-    fetchLoans();
+    if (user?.id) fetchLoans();
     fetchCustomers();
     fetchEmployees();
-  }, [locale]);
+  }, [locale, user?.id]);
 
   const fetchLoans = async () => {
+    if (!user?.id) return;
     try {
-      const response = await fetch(`/api/loans?locale=${locale}`);
+      const response = await fetch(`/api/loans?locale=${locale}&userId=${user.id}`);
       const data = await response.json();
       if (data.success) {
         setLoans(data.data);
@@ -113,6 +119,27 @@ export default function LoansPage() {
       notes: loan.notes || '',
     });
     setIsModalOpen(true);
+  };
+
+  const handleDeleteLoan = async () => {
+    if (!deleteConfirmLoan || !user?.id) return;
+    setDeleteError('');
+    setDeleteLoading(true);
+    try {
+      const response = await fetch(`/api/loans/${deleteConfirmLoan.id}?userId=${user.id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        await fetchLoans();
+        setDeleteConfirmLoan(null);
+      } else {
+        setDeleteError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+      }
+    } catch (error) {
+      console.error('Failed to delete loan:', error);
+      setDeleteError(t('error.internalServerError'));
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -420,7 +447,7 @@ export default function LoansPage() {
                     className="hover:bg-neutral-50 cursor-pointer transition-colors"
                   >
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900 font-medium">
-                      {customer ? customer.name : loan.customerId}
+                      {customer ? customer.name : t('detail.deletedCustomer')}
                     </td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">
                       {employee ? employee.name : loan.employeeId}
@@ -434,12 +461,22 @@ export default function LoansPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-right rtl:text-left" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => handleEdit(loan)}
-                        className="p-2 hover:bg-neutral-50 rounded-xl transition-colors"
-                      >
-                        <Edit className="w-4 h-4 text-neutral-600" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleEdit(loan)}
+                          className="p-2 hover:bg-neutral-50 rounded-xl transition-colors"
+                          title={t('page.editLoan')}
+                        >
+                          <Edit className="w-4 h-4 text-neutral-600" />
+                        </button>
+                        <button
+                          onClick={() => { setDeleteError(''); setDeleteConfirmLoan(loan); }}
+                          className="p-2 hover:bg-error-light rounded-xl transition-colors"
+                          title={t('page.deleteLoan')}
+                        >
+                          <Trash2 className="w-4 h-4 text-error" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -599,6 +636,25 @@ export default function LoansPage() {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full h-24 px-4 py-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteConfirmLoan !== null}
+        onClose={() => !deleteLoading && setDeleteConfirmLoan(null)}
+        title={t('page.deleteLoan')}
+      >
+        <div className="space-y-4">
+          {deleteError && <p className="text-error text-sm">{deleteError}</p>}
+          <p className="text-neutral-700">{t('page.deleteLoanConfirm')}</p>
+          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4">
+            <Button variant="secondary" onClick={() => setDeleteConfirmLoan(null)} disabled={deleteLoading}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={handleDeleteLoan} disabled={deleteLoading} className="bg-error hover:bg-error-dark">
+              {deleteLoading ? t('common.loading') : t('common.delete')}
+            </Button>
           </div>
         </div>
       </Modal>

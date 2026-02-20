@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 import { saveLoanNotesTranslations } from '@/lib/translations';
 import { translateToBothLanguages } from '@/lib/translate';
-import { successResponse, errorResponse, notFoundError, serverError } from '@/lib/api';
+import { successResponse, errorResponse, notFoundError, serverError, unauthorizedError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -211,7 +211,18 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check if loan exists
+    const userId = request.nextUrl.searchParams.get('userId');
+    if (!userId) {
+      return unauthorizedError();
+    }
+    const [users] = await pool.query(
+      'SELECT role FROM users WHERE id = ?',
+      [userId]
+    ) as any[];
+    if (users.length === 0 || users[0].role !== 'admin') {
+      return unauthorizedError();
+    }
+
     const [existing] = await pool.query(
       'SELECT id FROM loans WHERE id = ?',
       [params.id]

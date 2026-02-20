@@ -212,7 +212,10 @@ export default function CustomerChatPage() {
               <button
                 key={chat.id}
                 type="button"
-                onClick={() => setSelectedChat(chat.id)}
+                onClick={(e) => {
+                  setSelectedChat(chat.id);
+                  (e.currentTarget as HTMLElement).blur();
+                }}
                 className={`w-full p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 touch-manipulation ${
                   selectedChat === chat.id ? 'bg-primary-50' : ''
                 }`}

@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const employeeId = searchParams.get('employeeId');
     const status = searchParams.get('status');
     const locale = searchParams.get('locale') || 'en';
+    const userId = searchParams.get('userId');
 
     let query = `
       SELECT l.*,
@@ -25,6 +26,16 @@ export async function GET(request: NextRequest) {
       WHERE 1=1
     `;
     const params: any[] = [];
+
+    if (userId) {
+      const [users] = await pool.query(
+        'SELECT role FROM users WHERE id = ?',
+        [userId]
+      ) as any[];
+      if (users.length > 0 && users[0].role === 'admin') {
+        query += ` AND l.customer_id IN (SELECT id FROM users WHERE role = 'customer' AND (is_deleted = FALSE OR is_deleted IS NULL))`;
+      }
+    }
 
     if (customerId) {
       query += ' AND l.customer_id = ?';

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, User, UserCheck, Calendar, DollarSign, Percent, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, User, UserCheck, Calendar, DollarSign, Percent, FileText, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus, Customer } from '@/types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 
@@ -17,12 +18,17 @@ export function LoanDetailClient() {
   const params = useParams();
   const router = useRouter();
   const { t, locale } = useLocale();
+  const { user } = useAuth();
   const loanId = params.id as string;
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loan, setLoan] = useState<Loan | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [employee, setEmployee] = useState<any>(null);
+  const [employeeDeleted, setEmployeeDeleted] = useState(false);
+  const [customerDeleted, setCustomerDeleted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     amount: '',
     interestRate: '',
@@ -66,6 +72,10 @@ export function LoanDetailClient() {
       const data = await response.json();
       if (data.success) {
         setCustomer(data.data);
+        setCustomerDeleted(false);
+      } else if (response.status === 404) {
+        setCustomer(null);
+        setCustomerDeleted(true);
       }
     } catch (error) {
       console.error('Failed to fetch customer:', error);
@@ -78,6 +88,10 @@ export function LoanDetailClient() {
       const data = await response.json();
       if (data.success) {
         setEmployee(data.data);
+        setEmployeeDeleted(false);
+      } else if (response.status === 404) {
+        setEmployee(null);
+        setEmployeeDeleted(true);
       }
     } catch (error) {
       console.error('Failed to fetch employee:', error);
@@ -181,6 +195,25 @@ export function LoanDetailClient() {
     }
   };
 
+  const handleDeleteLoan = async () => {
+    if (!loan || !user?.id) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/loans/${loan.id}?userId=${user.id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        router.push('/admin/loans');
+      } else {
+        setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+      }
+    } catch (error) {
+      console.error('Failed to delete loan:', error);
+      setSubmitError(t('error.internalServerError'));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -200,10 +233,16 @@ export function LoanDetailClient() {
           </div>
           <p className="text-neutral-600 text-left rtl:text-right">{t('form.created')} {formatDate(loan.createdAt, locale)}</p>
         </div>
-        <Button variant="primary" onClick={() => setIsEditModalOpen(true)}>
-          <Edit className="w-4 h-4 me-2" />
-          {t('page.editLoan')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="primary" onClick={() => setIsEditModalOpen(true)}>
+            <Edit className="w-4 h-4 me-2" />
+            {t('page.editLoan')}
+          </Button>
+          <Button variant="outline" onClick={() => setDeleteConfirmOpen(true)} className="text-error border-error hover:bg-error-light">
+            <Trash2 className="w-4 h-4 me-2" />
+            {t('page.deleteLoan')}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -248,23 +287,43 @@ export function LoanDetailClient() {
           <div className="space-y-4">
             <div className="text-left rtl:text-right">
               <p className="text-sm text-neutral-600 mb-1">{t('detail.customer')}</p>
-              <div
-                onClick={() => router.push(`/admin/customers/${loan.customerId}`)}
-                className="p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors"
-              >
-                <p className="font-semibold text-neutral-900">{customer?.name || t('detail.unknown')}</p>
-                <p className="text-sm text-neutral-600">{customer?.email}</p>
-              </div>
+              {customerDeleted ? (
+                <div className="p-3 bg-neutral-50 rounded-lg">
+                  <p className="font-semibold text-neutral-500">{t('detail.deletedCustomer')}</p>
+                </div>
+              ) : customer ? (
+                <div
+                  onClick={() => router.push(`/admin/customers/${loan.customerId}`)}
+                  className="p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors"
+                >
+                  <p className="font-semibold text-neutral-900">{customer.name}</p>
+                  <p className="text-sm text-neutral-600">{customer.email}</p>
+                </div>
+              ) : (
+                <div className="p-3 bg-neutral-50 rounded-lg">
+                  <p className="font-semibold text-neutral-500">{t('detail.unknown')}</p>
+                </div>
+              )}
             </div>
             <div className="text-left rtl:text-right">
               <p className="text-sm text-neutral-600 mb-1">{t('detail.assignedEmployee')}</p>
-              <div
-                onClick={() => router.push(`/admin/employees/${loan.employeeId}`)}
-                className="p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors"
-              >
-                <p className="font-semibold text-neutral-900">{employee?.name || t('detail.unknown')}</p>
-                <p className="text-sm text-neutral-600">{employee?.email}</p>
-              </div>
+              {employeeDeleted ? (
+                <div className="p-3 bg-neutral-50 rounded-lg">
+                  <p className="font-semibold text-neutral-500">{t('detail.deletedEmployee')}</p>
+                </div>
+              ) : employee ? (
+                <div
+                  onClick={() => router.push(`/admin/employees/${loan.employeeId}`)}
+                  className="p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors"
+                >
+                  <p className="font-semibold text-neutral-900">{employee.name}</p>
+                  <p className="text-sm text-neutral-600">{employee.email}</p>
+                </div>
+              ) : (
+                <div className="p-3 bg-neutral-50 rounded-lg">
+                  <p className="font-semibold text-neutral-500">{t('detail.unknown')}</p>
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -379,6 +438,24 @@ export function LoanDetailClient() {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full h-24 px-4 py-3 rounded-lg border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteConfirmOpen}
+        onClose={() => !deleting && setDeleteConfirmOpen(false)}
+        title={t('page.deleteLoan')}
+      >
+        <div className="space-y-4">
+          <p className="text-neutral-700">{t('page.deleteLoanConfirm')}</p>
+          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end pt-4">
+            <Button variant="secondary" onClick={() => setDeleteConfirmOpen(false)} disabled={deleting}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={handleDeleteLoan} disabled={deleting} className="bg-error hover:bg-error-dark">
+              {deleting ? t('common.loading') : t('common.delete')}
+            </Button>
           </div>
         </div>
       </Modal>

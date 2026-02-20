@@ -218,6 +218,7 @@ export default function CustomersPage() {
       if (data.success) {
         await fetchCustomers();
         setDeleteConfirmCustomer(null);
+        setSubmitError('');
       } else {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
@@ -331,7 +332,7 @@ export default function CustomersPage() {
                           {customer.isActive !== false ? <UserX className="w-4 h-4 text-neutral-600" /> : <UserCheck className="w-4 h-4 text-success" />}
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteConfirmCustomer(customer); }}
+                          onClick={(e) => { e.stopPropagation(); setSubmitError(''); setDeleteConfirmCustomer(customer); }}
                           className="p-2 hover:bg-error-light rounded-xl transition-colors"
                           title={t('page.deleteCustomer')}
                         >
@@ -435,11 +436,11 @@ export default function CustomersPage() {
 
       <Modal
         isOpen={deleteConfirmCustomer !== null}
-        onClose={() => setDeleteConfirmCustomer(null)}
+        onClose={() => { setDeleteConfirmCustomer(null); setSubmitError(''); }}
         title={t('page.deleteCustomer')}
         footer={
           <>
-            <Button variant="outline" onClick={() => setDeleteConfirmCustomer(null)} disabled={actionLoading}>
+            <Button variant="outline" onClick={() => { setDeleteConfirmCustomer(null); setSubmitError(''); }} disabled={actionLoading}>
               {t('common.cancel')}
             </Button>
             <Button variant="primary" onClick={handleDelete} disabled={actionLoading} className="bg-error hover:bg-error/90">
@@ -448,7 +449,10 @@ export default function CustomersPage() {
           </>
         }
       >
-        <p className="text-neutral-700">{t('page.deleteCustomerConfirm')}</p>
+        <div className="space-y-3">
+          {submitError && <p className="text-error text-sm">{submitError}</p>}
+          <p className="text-neutral-700">{t('page.deleteCustomerConfirm')}</p>
+        </div>
       </Modal>
 
       <Modal
