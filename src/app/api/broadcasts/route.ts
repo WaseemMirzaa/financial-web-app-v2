@@ -5,7 +5,8 @@ import {
   validationError,
   serverError,
 } from '@/lib/api';
-import { sendPushNotification } from '@/lib/fcm';
+// Firebase FCM push notifications disabled
+// import { sendPushNotification } from '@/lib/fcm';
 import { translateToBothLanguages } from '@/lib/translate';
 
 export const dynamic = 'force-dynamic';
@@ -142,12 +143,8 @@ export async function POST(request: NextRequest) {
       await connection.commit();
       connection.release();
 
-      // Send push notifications (with translations); do not block response
-      Promise.allSettled(
-        targetUserIdsResolved.map((uid) =>
-          sendPushNotification(uid, titleEn, titleArVal, messageEn, messageArVal)
-        )
-      ).catch((err) => console.warn('Broadcast push send:', err));
+      // Firebase FCM push notifications disabled - using in-app notifications only
+      // Push notifications removed
 
       return successResponse(
         { id: broadcastId, notificationsCreated: targetUserIdsResolved.length },
