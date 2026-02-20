@@ -31,19 +31,89 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   const [deleteConfirmMessageId, setDeleteConfirmMessageId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevMessageCountRef = useRef<number>(0);
+  const isUserScrollingRef = useRef<boolean>(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const { t, locale } = useLocale();
 
+  // Track user scroll to prevent auto-scroll when user scrolls up
   useEffect(() => {
     const el = messagesContainerRef.current;
     if (!el) return;
-    const scrollToBottom = () => {
-      el.scrollTop = el.scrollHeight;
+
+    const handleScroll = () => {
+      const threshold = 100; // pixels from bottom
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+      isUserScrollingRef.current = !isNearBottom;
+
+      // Clear any pending scroll timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = null;
+      }
     };
-    requestAnimationFrame(() => {
-      requestAnimationFrame(scrollToBottom);
-    });
-  }, [messages, chatId]);
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Reset scroll state when switching chats
+  useEffect(() => {
+    prevMessageCountRef.current = 0;
+    isUserScrollingRef.current = false;
+  }, [chatId]);
+
+  // Auto-scroll only when new messages are added and user is near bottom
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+
+    const currentMessageCount = messages.length;
+    const hasNewMessages = currentMessageCount > prevMessageCountRef.current;
+    const isInitialLoad = prevMessageCountRef.current === 0 && currentMessageCount > 0;
+    prevMessageCountRef.current = currentMessageCount;
+
+    // Auto-scroll if:
+    // 1. Initial load (first messages), OR
+    // 2. New messages added and user is near bottom
+    if (isInitialLoad || (hasNewMessages && !isUserScrollingRef.current)) {
+      const scrollToBottom = () => {
+        if (el && (isInitialLoad || !isUserScrollingRef.current)) {
+          el.scrollTop = el.scrollHeight;
+        }
+      };
+      requestAnimationFrame(() => {
+        requestAnimationFrame(scrollToBottom);
+      });
+    }
+  }, [messages.length]);
+
+  // Handle image load - scroll only once per image if user is near bottom
+  const handleImageLoad = () => {
+    const el = messagesContainerRef.current;
+    if (!el || isUserScrollingRef.current) return;
+
+    // Debounce scroll to avoid multiple scrolls during image loading
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (el && !isUserScrollingRef.current) {
+        const threshold = 150;
+        const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+        if (isNearBottom) {
+          el.scrollTop = el.scrollHeight;
+        }
+      }
+      scrollTimeoutRef.current = null;
+    }, 100);
+  };
 
   const handleSend = () => {
     if (inputValue.trim() || selectedFile) {
@@ -251,7 +321,12 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                           <div className="mb-2">
                             {message.fileType?.startsWith('image/') ? (
                               <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block">
-                                <img src={fileUrl} alt={message.fileName || ''} className="max-w-full max-h-48 rounded object-contain" />
+                                <img 
+                                  src={fileUrl} 
+                                  alt={message.fileName || ''} 
+                                  className="max-w-full max-h-48 rounded object-contain" 
+                                  onLoad={handleImageLoad}
+                                />
                               </a>
                             ) : (
                               <a
