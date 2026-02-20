@@ -134,29 +134,34 @@ export async function GET(request: NextRequest) {
         }
 
         // Get unread count: messages after last_read_at timestamp
-        const [readStatus] = await pool.query(
-          `SELECT last_read_at FROM chat_read_status WHERE chat_id = ? AND user_id = ?`,
-          [chat.id, userId]
-        ) as any[];
-        
-        const lastReadAt = readStatus.length > 0 ? readStatus[0].last_read_at : null;
-        
         let unreadCount = 0;
-        if (lastReadAt) {
-          const [unreadMessages] = await pool.query(
-            `SELECT COUNT(*) as count FROM chat_messages 
-             WHERE chat_id = ? AND sender_id != ? AND timestamp > ? AND is_deleted = FALSE`,
-            [chat.id, userId, lastReadAt]
-          ) as any[];
-          unreadCount = unreadMessages[0]?.count || 0;
-        } else if (lastMessage) {
-          // If never read and there are messages, count messages not sent by user
-          const [allUnread] = await pool.query(
-            `SELECT COUNT(*) as count FROM chat_messages 
-             WHERE chat_id = ? AND sender_id != ? AND is_deleted = FALSE`,
+        try {
+          const [readStatus] = await pool.query(
+            `SELECT last_read_at FROM chat_read_status WHERE chat_id = ? AND user_id = ?`,
             [chat.id, userId]
           ) as any[];
-          unreadCount = allUnread[0]?.count || 0;
+          
+          const lastReadAt = readStatus.length > 0 ? readStatus[0].last_read_at : null;
+          
+          if (lastReadAt) {
+            const [unreadMessages] = await pool.query(
+              `SELECT COUNT(*) as count FROM chat_messages 
+               WHERE chat_id = ? AND sender_id != ? AND timestamp > ? AND is_deleted = FALSE`,
+              [chat.id, userId, lastReadAt]
+            ) as any[];
+            unreadCount = unreadMessages[0]?.count || 0;
+          } else if (lastMessage) {
+            // If never read and there are messages, count messages not sent by user
+            const [allUnread] = await pool.query(
+              `SELECT COUNT(*) as count FROM chat_messages 
+               WHERE chat_id = ? AND sender_id != ? AND is_deleted = FALSE`,
+              [chat.id, userId]
+            ) as any[];
+            unreadCount = allUnread[0]?.count || 0;
+          }
+        } catch (unreadError) {
+          console.warn('Failed to get unread count for chat', chat.id, unreadError);
+          // Continue with unreadCount = 0 if query fails
         }
 
         return {
