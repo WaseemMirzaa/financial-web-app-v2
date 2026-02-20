@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     await writeFile(filePath, Buffer.from(bytes));
 
-    const fileUrl = `/assets/${fileName}`;
+    // Use API route for file serving to ensure proper access
+    const fileUrl = `/api/assets/${fileName}`;
     return successResponse({
       fileUrl,
       fileName: file.name,
