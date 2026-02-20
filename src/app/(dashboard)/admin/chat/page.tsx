@@ -66,12 +66,12 @@ export default function AdminChatPage() {
       const data = await response.json();
       if (data.success) {
         setChats(data.data);
-        // Only auto-select first chat if no chat is currently selected
-        if (data.data.length > 0 && !selectedChat) {
-          setSelectedChat(data.data[0].id);
-          fetchMessages(data.data[0].id);
-          fetchParticipants(data.data[0].id);
-        }
+        setSelectedChat((current) => {
+          if (data.data.length === 0) return null;
+          const stillExists = current && data.data.some((c: Chat) => c.id === current);
+          if (stillExists) return current;
+          return data.data[0].id;
+        });
       }
     } catch (error) {
       console.error('Failed to fetch chats:', error);

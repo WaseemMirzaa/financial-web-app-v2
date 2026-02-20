@@ -45,12 +45,11 @@ export default function CustomerChatPage() {
       if (data.success) {
         const customerChats = data.data.filter((c: Chat) => c.type === 'customer_employee');
         setChats(customerChats);
-        if (customerChats.length > 0) {
-          setSelectedChat((current) => {
-            const stillExists = current && customerChats.some((c: Chat) => c.id === current);
-            return stillExists ? current : customerChats[0].id;
-          });
-        }
+        setSelectedChat((current) => {
+          if (customerChats.length === 0) return null;
+          const stillExists = current && customerChats.some((c: Chat) => c.id === current);
+          return stillExists ? current : customerChats[0].id;
+        });
       }
     } catch (error) {
       console.error('Failed to fetch chats:', error);

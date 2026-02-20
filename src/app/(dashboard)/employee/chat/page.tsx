@@ -55,12 +55,11 @@ export default function EmployeeChatPage() {
       const data = await response.json();
       if (data.success) {
         setChats(data.data);
-        if (data.data.length > 0) {
-          setSelectedChat((current) => {
-            const stillExists = current && data.data.some((c: Chat) => c.id === current);
-            return stillExists ? current : data.data[0].id;
-          });
-        }
+        setSelectedChat((current) => {
+          if (data.data.length === 0) return null;
+          const stillExists = current && data.data.some((c: Chat) => c.id === current);
+          return stillExists ? current : data.data[0].id;
+        });
       }
     } catch (error) {
       console.error('Failed to fetch chats:', error);
