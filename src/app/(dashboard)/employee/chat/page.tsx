@@ -56,8 +56,10 @@ export default function EmployeeChatPage() {
       if (data.success) {
         setChats(data.data);
         if (data.data.length > 0) {
-          setSelectedChat(data.data[0].id);
-          fetchMessages(data.data[0].id);
+          setSelectedChat((current) => {
+            const stillExists = current && data.data.some((c: Chat) => c.id === current);
+            return stillExists ? current : data.data[0].id;
+          });
         }
       }
     } catch (error) {

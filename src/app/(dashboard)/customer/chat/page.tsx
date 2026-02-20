@@ -46,8 +46,10 @@ export default function CustomerChatPage() {
         const customerChats = data.data.filter((c: Chat) => c.type === 'customer_employee');
         setChats(customerChats);
         if (customerChats.length > 0) {
-          setSelectedChat(customerChats[0].id);
-          fetchMessages(customerChats[0].id);
+          setSelectedChat((current) => {
+            const stillExists = current && customerChats.some((c: Chat) => c.id === current);
+            return stillExists ? current : customerChats[0].id;
+          });
         }
       }
     } catch (error) {

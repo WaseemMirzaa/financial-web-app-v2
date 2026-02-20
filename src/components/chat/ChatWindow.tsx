@@ -31,7 +31,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   const [deleteConfirmMessageId, setDeleteConfirmMessageId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const prevMessageCountRef = useRef<number>(0);
+  const prevLastMessageIdRef = useRef<string | null>(null);
   const isUserScrollingRef = useRef<boolean>(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
@@ -66,47 +66,30 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
     };
   }, []);
 
-  // Reset scroll state when switching chats
+  // Reset when switching chats
   useEffect(() => {
-    prevMessageCountRef.current = 0;
+    prevLastMessageIdRef.current = null;
     isUserScrollingRef.current = false;
   }, [chatId]);
 
-  // Auto-scroll only when new messages are added and user is near bottom
+  // Auto-scroll only on first load or when a real new message appears (last message id changed)
+  const lastMessageId = messages.length > 0 ? messages[messages.length - 1]?.id ?? null : null;
   useEffect(() => {
     const el = messagesContainerRef.current;
     if (!el) return;
+    const isInitialLoad = prevLastMessageIdRef.current === null && messages.length > 0;
+    const lastMessageIdChanged = lastMessageId !== null && lastMessageId !== prevLastMessageIdRef.current;
+    prevLastMessageIdRef.current = lastMessageId;
 
-    const currentMessageCount = messages.length;
-    const hasNewMessages = currentMessageCount > prevMessageCountRef.current;
-    const isInitialLoad = prevMessageCountRef.current === 0 && currentMessageCount > 0;
-    prevMessageCountRef.current = currentMessageCount;
+    if (!isInitialLoad && !lastMessageIdChanged) return;
 
-    // Check current scroll position before auto-scrolling
-    const checkAndScroll = () => {
-      if (!el) return;
-      const threshold = 150;
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      const isNearBottom = distanceFromBottom < threshold;
-      
-      // Only auto-scroll if:
-      // 1. Initial load (first messages), OR
-      // 2. New messages added AND user is near bottom (hasn't scrolled up)
-      if (isInitialLoad || (hasNewMessages && isNearBottom && !isUserScrollingRef.current)) {
-        el.scrollTop = el.scrollHeight;
-        // Reset scroll state after scrolling to bottom
-        if (isInitialLoad) {
-          isUserScrollingRef.current = false;
-        }
-      }
-    };
-
-    if (isInitialLoad || hasNewMessages) {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(checkAndScroll);
-      });
+    // Scroll to bottom on initial load or when a new message is added
+    const shouldScroll = isInitialLoad || lastMessageIdChanged;
+    if (shouldScroll) {
+      el.scrollTop = el.scrollHeight;
+      if (isInitialLoad) isUserScrollingRef.current = false;
     }
-  }, [messages.length]);
+  }, [lastMessageId, messages.length]);
 
   // Handle image load - scroll only once per image if user is near bottom
   const handleImageLoad = () => {
