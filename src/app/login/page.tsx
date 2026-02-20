@@ -8,14 +8,16 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Loader } from '@/components/ui/Loader';
-import { Shield, BarChart3, Users, ChevronDown } from 'lucide-react';
+import { Shield, BarChart3, Users } from 'lucide-react';
+// import { ChevronDown } from 'lucide-react'; // Demo credentials hidden
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
+  // Demo credentials hidden
+  // const [showDemo, setShowDemo] = useState(false);
   const { login, isAuthenticated, user } = useAuth();
   const { t, isInitialized } = useLocale();
   const router = useRouter();
@@ -178,9 +180,8 @@ export default function LoginPage() {
             </Button>
           </form>
 
-
-          {/* Demo credentials */}
-          <div className="mt-4 pt-6 border-t border-neutral-100">
+          {/* Demo credentials - Hidden */}
+          {/* <div className="mt-4 pt-6 border-t border-neutral-100">
             <button
               type="button"
               onClick={() => setShowDemo(!showDemo)}
@@ -208,7 +209,7 @@ export default function LoginPage() {
                 </div>
               </div>
             )}
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
