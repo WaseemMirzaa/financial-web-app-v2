@@ -1,9 +1,17 @@
 import { NextRequest } from 'next/server';
-import pool from '@/lib/db';
-import { hashPassword } from '@/lib/auth';
-import { successResponse, errorResponse, validationError, serverError } from '@/lib/api';
+// Password reset disabled
+// import pool from '@/lib/db';
+// import { hashPassword } from '@/lib/auth';
+import { errorResponse } from '@/lib/api';
+// import { successResponse, validationError, serverError } from '@/lib/api';
 
+/**
+ * DISABLED: Password reset functionality is disabled
+ */
 export async function POST(request: NextRequest) {
+  return errorResponse('Password reset is disabled', 403, 'auth.passwordResetDisabled');
+  
+  /* COMMENTED OUT - Password reset disabled
   try {
     const body = await request.json();
     const { token, newPassword } = body;
@@ -48,4 +56,5 @@ export async function POST(request: NextRequest) {
     console.error('Reset password error:', error);
     return serverError();
   }
+  */
 }

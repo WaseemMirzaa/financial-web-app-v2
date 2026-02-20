@@ -14,6 +14,13 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
+  
+  // Redirect to login - password reset is disabled
+  useEffect(() => {
+    if (isInitialized) {
+      router.push('/login');
+    }
+  }, [isInitialized, router]);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);

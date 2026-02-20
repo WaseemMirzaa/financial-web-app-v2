@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Button } from '@/components/ui/Button';
@@ -10,6 +11,14 @@ import { Shield, BarChart3, Users } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const { t, isInitialized } = useLocale();
+  const router = useRouter();
+  
+  // Redirect to login - password reset is disabled
+  useEffect(() => {
+    if (isInitialized) {
+      router.push('/login');
+    }
+  }, [isInitialized, router]);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

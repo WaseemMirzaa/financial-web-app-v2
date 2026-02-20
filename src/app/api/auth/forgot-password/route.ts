@@ -1,12 +1,20 @@
 import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import pool from '@/lib/db';
-import { sendPasswordResetEmail } from '@/lib/email';
-import { successResponse, validationError, isValidEmail, serverError } from '@/lib/api';
+// Password reset disabled
+// import { sendPasswordResetEmail } from '@/lib/email';
+import { errorResponse } from '@/lib/api';
+// import { successResponse, validationError, isValidEmail, serverError } from '@/lib/api';
 
 const TOKEN_EXPIRY_HOURS = 1;
 
+/**
+ * DISABLED: Password reset functionality is disabled
+ */
 export async function POST(request: NextRequest) {
+  return errorResponse('Password reset is disabled', 403, 'auth.passwordResetDisabled');
+  
+  /* COMMENTED OUT - Password reset disabled
   try {
     const body = await request.json();
     const { email } = body;
@@ -48,4 +56,5 @@ export async function POST(request: NextRequest) {
     console.error('Forgot password error:', error);
     return serverError();
   }
+  */
 }

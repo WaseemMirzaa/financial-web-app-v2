@@ -132,9 +132,10 @@ export default function LoginPage() {
                 <label htmlFor="login-password" className="block text-sm font-semibold text-neutral-800">
                   {t('common.password')}
                 </label>
-                <Link href="/forgot-password" className="text-sm text-primary-500 hover:text-primary-600 font-medium">
+                {/* Password reset disabled */}
+                {/* <Link href="/forgot-password" className="text-sm text-primary-500 hover:text-primary-600 font-medium">
                   {t('auth.forgotPassword')}
-                </Link>
+                </Link> */}
               </div>
               <Input
                 id="login-password"
