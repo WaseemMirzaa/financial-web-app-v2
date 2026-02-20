@@ -82,11 +82,12 @@ export function NotificationProvider({ children, userId, locale }: { children: R
         const prevUnreadIds = prevUnreadIdsRef.current;
         
         // Play beep if there are new unread notifications that weren't in previous set
-        // Skip on initial load (when prevUnreadIds is empty and this is the first fetch)
-        if (prevUnreadIds.size >= 0 && prevUnreadIds.size !== newUnreadIds.size) {
+        // Only play if we had previous notifications (not initial load)
+        if (prevUnreadIds.size > 0) {
           const hasNewUnread = Array.from(newUnreadIds).some(id => !prevUnreadIds.has(id));
           if (hasNewUnread) {
-            playBeepSound();
+            // Small delay to ensure audio context is ready
+            setTimeout(() => playBeepSound(), 100);
           }
         }
         

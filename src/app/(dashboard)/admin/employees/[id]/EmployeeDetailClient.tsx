@@ -202,7 +202,7 @@ export function EmployeeDetailClient() {
       if (data.success) {
         router.push('/admin/employees');
       } else {
-        setDeleteError(data.error || t('error.internalServerError'));
+        setDeleteError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
       console.error('Failed to delete employee:', error);
@@ -430,13 +430,17 @@ export function EmployeeDetailClient() {
           </>
         }
       >
-        <p className="text-neutral-700">
-          {assignedCustomers.length > 0
-            ? t('page.cannotDeleteEmployee', { count: String(assignedCustomers.length) })
-            : t('page.deleteEmployeeConfirm')}
-        </p>
+        {assignedCustomers.length > 0 ? (
+          <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+            {t('error.cannotDeleteEmployeeWithAssignments')}
+          </div>
+        ) : (
+          <p className="text-neutral-700">{t('page.deleteEmployeeConfirm')}</p>
+        )}
         {deleteError && (
-          <p className="mt-3 text-sm text-error">{deleteError}</p>
+          <div className="mt-3 p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+            {deleteError}
+          </div>
         )}
       </Modal>
 

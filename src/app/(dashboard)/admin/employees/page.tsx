@@ -175,7 +175,7 @@ export default function EmployeesPage() {
     if (!deleteConfirmEmployee) return;
     const count = deleteConfirmEmployee.assignedCustomerIds?.length ?? 0;
     if (count > 0) {
-      setDeleteConfirmEmployee(null);
+      setDeleteError(t('error.cannotDeleteEmployeeWithAssignments'));
       return;
     }
     setDeleteError('');
@@ -400,9 +400,9 @@ export default function EmployeesPage() {
         {deleteConfirmEmployee && (
           <>
             {(deleteConfirmEmployee.assignedCustomerIds?.length ?? 0) > 0 ? (
-              <p className="text-neutral-700">
-                {t('page.cannotDeleteEmployee', { count: String(deleteConfirmEmployee.assignedCustomerIds!.length) })}
-              </p>
+              <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+                {t('error.cannotDeleteEmployeeWithAssignments')}
+              </div>
             ) : (
               <p className="text-neutral-700">{t('page.deleteEmployeeConfirm')}</p>
             )}
