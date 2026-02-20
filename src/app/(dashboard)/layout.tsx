@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
-import { registerFCMToken } from '@/lib/firebase';
+// Firebase FCM registration disabled
+// import { registerFCMToken } from '@/lib/firebase';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Loader } from '@/components/ui/Loader';
@@ -28,11 +29,12 @@ export default function DashboardLayout({
     }
   }, [isAuthenticated, router]);
 
-  useEffect(() => {
-    if (user && user.id) {
-      registerFCMToken(user.id);
-    }
-  }, [user && user.id]);
+  // Firebase FCM registration disabled - using in-app notifications only
+  // useEffect(() => {
+  //   if (user && user.id) {
+  //     registerFCMToken(user.id);
+  //   }
+  // }, [user && user.id]);
 
   if (!isAuthenticated || !user) {
     return (

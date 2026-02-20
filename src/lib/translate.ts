@@ -12,11 +12,16 @@ export interface TranslateOptions {
 
 /**
  * Translate text using Google Translate API
+ * DISABLED: Always returns original text for both languages
  */
 export async function translateText(
   text: string,
   options: TranslateOptions
 ): Promise<string> {
+  // Google Translate API disabled - always return original text
+  return text;
+  
+  /* COMMENTED OUT - Google Translate API
   console.log('[Translate] translateText called:', { text: text.substring(0, 50), options });
   
   // If no API key is configured, return original text
@@ -75,12 +80,18 @@ export async function translateText(
     console.error('[Translate] Translation error:', error);
     return text; // Return original text on error
   }
+  */
 }
 
 /**
  * Detect language of text
+ * DISABLED: Always returns 'en'
  */
 export async function detectLanguage(text: string): Promise<string> {
+  // Google Translate API disabled - always return 'en'
+  return 'en';
+  
+  /* COMMENTED OUT - Google Translate API
   console.log('[Translate] detectLanguage called:', { text: text.substring(0, 50) });
   
   if (!GOOGLE_TRANSLATE_API_KEY) {
@@ -115,15 +126,21 @@ export async function detectLanguage(text: string): Promise<string> {
     console.error('[Translate] Language detection error:', error);
     return 'en';
   }
+  */
 }
 
 /**
  * Translate text to both English and Arabic
+ * DISABLED: Always returns same text for both languages
  */
 export async function translateToBothLanguages(
   text: string,
   sourceLanguage?: string
 ): Promise<{ en: string; ar: string }> {
+  // Google Translate API disabled - return same text for both languages
+  return { en: text, ar: text };
+  
+  /* COMMENTED OUT - Google Translate API
   console.log('[Translate] translateToBothLanguages called:', { 
     text: text.substring(0, 50), 
     sourceLanguage 
@@ -171,4 +188,5 @@ export async function translateToBothLanguages(
   const result = { en, ar };
   console.log('[Translate] Final result:', { en: result.en.substring(0, 50), ar: result.ar.substring(0, 50) });
   return result;
+  */
 }

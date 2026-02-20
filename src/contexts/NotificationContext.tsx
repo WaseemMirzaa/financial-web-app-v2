@@ -18,6 +18,20 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export function NotificationProvider({ children, userId, locale }: { children: ReactNode; userId?: string; locale?: string }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
+  const prevUnreadIdsRef = React.useRef<Set<string>>(new Set());
+
+  const playBeepSound = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const audio = new Audio('/notification-beep.wav');
+      audio.volume = 0.5;
+      audio.play().catch((err) => {
+        console.warn('Failed to play notification sound:', err);
+      });
+    } catch (error) {
+      console.warn('Failed to create audio for notification sound:', error);
+    }
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
@@ -28,14 +42,34 @@ export function NotificationProvider({ children, userId, locale }: { children: R
       const response = await fetch(`/api/notifications?${params.toString()}`);
       const data = await response.json();
       if (data.success) {
-        setNotifications(data.data);
+        const newNotifications = data.data;
+        // Check for new unread notifications
+        const newUnreadIds = new Set(
+          newNotifications
+            .filter((n: Notification) => !n.isRead)
+            .map((n: Notification) => n.id)
+        );
+        const prevUnreadIds = prevUnreadIdsRef.current;
+        
+        // If there are new unread notifications that weren't in previous set, play beep
+        if (prevUnreadIds.size > 0) {
+          const hasNewUnread = Array.from(newUnreadIds).some(id => !prevUnreadIds.has(id));
+          if (hasNewUnread) {
+            playBeepSound();
+          }
+        } else if (newUnreadIds.size > 0) {
+          // First load with unread notifications - don't beep
+        }
+        
+        prevUnreadIdsRef.current = newUnreadIds;
+        setNotifications(newNotifications);
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
       setLoading(false);
     }
-  }, [userId, locale]);
+  }, [userId, locale, playBeepSound]);
 
   useEffect(() => {
     if (userId) {

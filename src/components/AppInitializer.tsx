@@ -5,7 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Loader } from '@/components/ui/Loader';
-import { getFirebaseAnalytics } from '@/lib/firebase';
+// Firebase analytics disabled
+// import { getFirebaseAnalytics } from '@/lib/firebase';
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isVerifying } = useAuth();
@@ -14,13 +15,14 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
 
-  useEffect(() => {
-    try {
-      getFirebaseAnalytics();
-    } catch {
-      // ignore
-    }
-  }, []);
+  // Firebase analytics disabled
+  // useEffect(() => {
+  //   try {
+  //     getFirebaseAnalytics();
+  //   } catch {
+  //     // ignore
+  //   }
+  // }, []);
 
   // Always exit loading after 1.2s so app never stays stuck
   useEffect(() => {

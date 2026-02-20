@@ -4,10 +4,18 @@ import { successResponse, validationError, serverError } from '@/lib/api';
 
 /**
  * POST /api/fcm/register
- * Register an FCM token for the current user (for push notifications).
- * Body: { userId: string, token: string, deviceLabel?: string }
+ * DISABLED: Firebase FCM push notifications are disabled.
+ * Using in-app notifications only (polled every 15s).
  */
 export async function POST(request: NextRequest) {
+  // Firebase FCM disabled - return success but don't register token
+  return successResponse(
+    { registered: false, message: 'FCM disabled - using in-app notifications only' },
+    'FCM disabled',
+    'fcm.disabled'
+  );
+  
+  /* COMMENTED OUT - Firebase FCM registration
   try {
     const body = await request.json();
     const { userId, token, deviceLabel } = body;
@@ -44,4 +52,5 @@ export async function POST(request: NextRequest) {
     console.error('[FCM API] Register error:', error);
     return serverError();
   }
+  */
 }
