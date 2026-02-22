@@ -169,11 +169,16 @@ export default function CustomersPage() {
         if (data.success) {
           const newId = data.data?.id;
           if (newId && Array.isArray(assignedEmployeeIds) && assignedEmployeeIds.length > 0) {
-            await fetch(`/api/customers/${newId}/assign`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ employeeIds: assignedEmployeeIds }),
-            });
+            try {
+              const assignRes = await fetch(`/api/customers/${newId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employeeIds: assignedEmployeeIds }),
+              });
+              await assignRes.json();
+            } catch (_) {
+              // Customer created; assign best-effort
+            }
           }
           await fetchCustomers();
           setIsModalOpen(false);

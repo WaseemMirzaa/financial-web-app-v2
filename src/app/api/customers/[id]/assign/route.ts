@@ -72,6 +72,7 @@ export async function POST(
       connection.release();
     }
 
+    // Send notifications asynchronously so the API responds quickly
     const [custNames] = await pool.query(
       `SELECT ut_en.name as name_en, ut_ar.name as name_ar FROM users u
        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
@@ -82,37 +83,50 @@ export async function POST(
     const customerNameEn = custNames?.[0]?.name_en || custNames?.[0]?.name_ar || 'Customer';
     const customerNameAr = custNames?.[0]?.name_ar || custNames?.[0]?.name_en || 'عميل';
 
-    for (const eid of employeeIds) {
-      await createNotificationAndPush(
-        eid,
-        'New Customer Assigned',
-        'تم تعيين عميل جديد',
-        `${customerNameEn} has been assigned to you`,
-        `تم تعيين ${customerNameAr} لك`,
-        'info'
-      );
-    }
-    const [firstEmpNames] = await pool.query(
-      `SELECT ut_en.name as name_en, ut_ar.name as name_ar FROM users u
-       LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-       LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-       WHERE u.id = ?`,
-      [employeeIds[0]]
-    ) as any[];
-    const employeeNameEn = firstEmpNames?.[0]?.name_en || firstEmpNames?.[0]?.name_ar || 'Employee';
-    const employeeNameAr = firstEmpNames?.[0]?.name_ar || firstEmpNames?.[0]?.name_en || 'موظف';
-    await createNotificationAndPush(
-      customerId,
-      'Employee Assigned to You',
-      'تم تعيين موظف لك',
-      employeeIds.length > 1
-        ? `${employeeIds.length} team members assigned as your contacts`
-        : `${employeeNameEn} has been assigned as your contact`,
-      employeeIds.length > 1
-        ? `تم تعيين ${employeeIds.length} أعضاء الفريق كجهة اتصالك`
-        : `تم تعيين ${employeeNameAr} كجهة اتصالك`,
-      'info'
-    );
+    const notifyEmployeeIds = [...employeeIds];
+    setImmediate(() => {
+      (async () => {
+        for (const eid of notifyEmployeeIds) {
+          try {
+            await createNotificationAndPush(
+              eid,
+              'New Customer Assigned',
+              'تم تعيين عميل جديد',
+              `${customerNameEn} has been assigned to you`,
+              `تم تعيين ${customerNameAr} لك`,
+              'info'
+            );
+          } catch (e) {
+            console.error('[Assign] Notify employee error:', e);
+          }
+        }
+        try {
+          const [firstEmpNames] = await pool.query(
+            `SELECT ut_en.name as name_en, ut_ar.name as name_ar FROM users u
+             LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+             LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+             WHERE u.id = ?`,
+            [notifyEmployeeIds[0]]
+          ) as any[];
+          const employeeNameEn = firstEmpNames?.[0]?.name_en || firstEmpNames?.[0]?.name_ar || 'Employee';
+          const employeeNameAr = firstEmpNames?.[0]?.name_ar || firstEmpNames?.[0]?.name_en || 'موظف';
+          await createNotificationAndPush(
+            customerId,
+            'Employee Assigned to You',
+            'تم تعيين موظف لك',
+            notifyEmployeeIds.length > 1
+              ? `${notifyEmployeeIds.length} team members assigned as your contacts`
+              : `${employeeNameEn} has been assigned as your contact`,
+            notifyEmployeeIds.length > 1
+              ? `تم تعيين ${notifyEmployeeIds.length} أعضاء الفريق كجهة اتصالك`
+              : `تم تعيين ${employeeNameAr} كجهة اتصالك`,
+            'info'
+          );
+        } catch (e) {
+          console.error('[Assign] Notify customer error:', e);
+        }
+      })();
+    });
 
     return successResponse({}, employeeIds.length > 1 ? 'Employees assigned successfully' : 'Employee assigned successfully');
   } catch (error: any) {
