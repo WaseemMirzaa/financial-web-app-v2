@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Plus, Edit, UserPlus, Search, Trash2, UserX, UserCheck } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Loader } from '@/components/ui/Loader';
-import { useLocale } from '@/contexts/LocaleContext';
-import { Customer } from '@/types';
+import { Card } from '../../../../components/ui/Card';
+import { Button } from '../../../../components/ui/Button';
+import { Modal } from '../../../../components/ui/Modal';
+import { Input } from '../../../../components/ui/Input';
+import { Loader } from '../../../../components/ui/Loader';
+import { useLocale } from '../../../../contexts/LocaleContext';
+import { Customer } from '../../../../types';
 
 export default function CustomersPage() {
   const router = useRouter();
