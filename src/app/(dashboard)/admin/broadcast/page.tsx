@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { Megaphone } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { useLocale } from '@/contexts/LocaleContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { Card } from '../../../../components/ui/Card';
+import { Button } from '../../../../components/ui/Button';
+import { Input } from '../../../../components/ui/Input';
+import { useLocale } from '../../../../contexts/LocaleContext';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 type TargetType = 'all' | 'all_employees' | 'all_customers';
 
