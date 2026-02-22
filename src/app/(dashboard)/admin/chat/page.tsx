@@ -2,17 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Card } from '@/components/ui/Card';
-import { ChatWindow } from '@/components/chat/ChatWindow';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Loader } from '@/components/ui/Loader';
-import { useLocale } from '@/contexts/LocaleContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNotifications } from '@/contexts/NotificationContext';
-import { Chat, ChatMessage } from '@/types';
-import type { Employee } from '@/types';
+import { Card } from '../../../../components/ui/Card';
+import { ChatWindow } from '../../../../components/chat/ChatWindow';
+import { Button } from '../../../../components/ui/Button';
+import { Modal } from '../../../../components/ui/Modal';
+import { Input } from '../../../../components/ui/Input';
+import { Loader } from '../../../../components/ui/Loader';
+import { useLocale } from '../../../../contexts/LocaleContext';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { useNotifications } from '../../../../contexts/NotificationContext';
+import { Chat, ChatMessage } from '../../../../types';
+import type { Employee } from '../../../../types';
 import { Pin, PinOff, Trash2, Bookmark } from 'lucide-react';
 
 export default function AdminChatPage() {
