@@ -65,6 +65,11 @@ export async function GET(
     }
 
     const customer = rows[0];
+    const [assignRows] = await pool.query(
+      'SELECT employee_id FROM employee_customer_assignments WHERE customer_id = ? ORDER BY employee_id',
+      [id]
+    ) as any[];
+    const assignedEmployeeIds = assignRows?.map((r: any) => r.employee_id) || [];
     const customerData = {
       id: customer.id,
       email: customer.email,
@@ -75,7 +80,8 @@ export async function GET(
       createdAt: customer.created_at,
       phone: customer.phone,
       address: customer.address,
-      assignedEmployeeId: customer.assigned_employee_id || '',
+      assignedEmployeeId: customer.assigned_employee_id || (assignedEmployeeIds[0] || ''),
+      assignedEmployeeIds,
     };
 
     return successResponse(customerData);

@@ -42,18 +42,36 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const customers = rows.map((row: any) => ({
-      id: row.id,
-      email: row.email,
-      name: row.name_en || row.email,
-      role: row.role,
-      avatar: row.avatar,
-      isActive: Boolean(row.is_active),
-      createdAt: row.created_at,
-      phone: row.phone,
-      address: row.address,
-      assignedEmployeeId: row.assigned_employee_id || '',
-    }));
+    const customerIds = rows.map((r: any) => r.id);
+    let assignmentsMap: Record<string, string[]> = {};
+    if (customerIds.length > 0) {
+      const placeholders = customerIds.map(() => '?').join(',');
+      const [assignments] = await pool.query(
+        `SELECT customer_id, employee_id FROM employee_customer_assignments WHERE customer_id IN (${placeholders})`,
+        customerIds
+      ) as any[];
+      for (const a of assignments || []) {
+        if (!assignmentsMap[a.customer_id]) assignmentsMap[a.customer_id] = [];
+        assignmentsMap[a.customer_id].push(a.employee_id);
+      }
+    }
+
+    const customers = rows.map((row: any) => {
+      const assignedIds = assignmentsMap[row.id] || [];
+      return {
+        id: row.id,
+        email: row.email,
+        name: row.name_en || row.email,
+        role: row.role,
+        avatar: row.avatar,
+        isActive: Boolean(row.is_active),
+        createdAt: row.created_at,
+        phone: row.phone,
+        address: row.address,
+        assignedEmployeeId: row.assigned_employee_id || (assignedIds[0] || ''),
+        assignedEmployeeIds: assignedIds.length > 0 ? assignedIds : (row.assigned_employee_id ? [row.assigned_employee_id] : []),
+      };
+    });
 
     return successResponse(customers);
   } catch (error: any) {

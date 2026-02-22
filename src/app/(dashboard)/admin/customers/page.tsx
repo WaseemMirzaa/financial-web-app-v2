@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Plus, Edit, UserPlus, Search, Trash2, UserX, UserCheck } from 'lucide-react';
+import { Plus, Edit, UserPlus, Search, Trash2, UserX, UserCheck, X } from 'lucide-react';
 import { Card } from '../../../../components/ui/Card';
 import { Button } from '../../../../components/ui/Button';
 import { Modal } from '../../../../components/ui/Modal';
@@ -22,7 +22,7 @@ export default function CustomersPage() {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '', assignedEmployeeIds: [] as string[] });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -75,7 +75,7 @@ export default function CustomersPage() {
 
   const handleCreate = () => {
     setEditingCustomer(null);
-    setFormData({ name: '', email: '', phone: '', address: '', password: '' });
+    setFormData({ name: '', email: '', phone: '', address: '', password: '', assignedEmployeeIds: [] });
     setFormErrors({});
     setSubmitError('');
     setIsModalOpen(true);
@@ -159,13 +159,22 @@ export default function CustomersPage() {
           setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
         }
       } else {
+        const { assignedEmployeeIds, ...createPayload } = formData;
         const response = await fetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(createPayload),
         });
         const data = await response.json();
         if (data.success) {
+          const newId = data.data?.id;
+          if (newId && Array.isArray(assignedEmployeeIds) && assignedEmployeeIds.length > 0) {
+            await fetch(`/api/customers/${newId}/assign`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ employeeIds: assignedEmployeeIds }),
+            });
+          }
           await fetchCustomers();
           setIsModalOpen(false);
           setFormErrors({});
@@ -182,21 +191,48 @@ export default function CustomersPage() {
     }
   };
 
+  const currentAssignedIds = (selectedCustomer?.assignedEmployeeIds && selectedCustomer.assignedEmployeeIds.length > 0)
+    ? selectedCustomer.assignedEmployeeIds
+    : (selectedCustomer?.assignedEmployeeId ? [selectedCustomer.assignedEmployeeId] : []);
+
   const handleAssignEmployee = async (employeeId: string) => {
     if (!selectedCustomer) return;
+    const nextIds = [...currentAssignedIds, employeeId];
     try {
       const response = await fetch(`/api/customers/${selectedCustomer.id}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId }),
+        body: JSON.stringify({ employeeIds: nextIds }),
       });
       const data = await response.json();
       if (data.success) {
-        await fetchCustomers();
-        setIsAssignModalOpen(false);
+        const list = await fetch('/api/customers').then(r => r.json());
+        if (list.success && list.data) {
+          setCustomers(list.data);
+          const updated = list.data.find((c: Customer) => c.id === selectedCustomer.id);
+          if (updated) setSelectedCustomer(updated);
+        }
       }
     } catch (error) {
       console.error('Failed to assign employee:', error);
+    }
+  };
+
+  const handleRemoveAssignedEmployee = async (employeeId: string) => {
+    if (!selectedCustomer) return;
+    try {
+      const response = await fetch(`/api/customers/${selectedCustomer.id}/assign?employeeId=${encodeURIComponent(employeeId)}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        const list = await fetch('/api/customers').then(r => r.json());
+        if (list.success && list.data) {
+          setCustomers(list.data);
+          const updated = list.data.find((c: Customer) => c.id === selectedCustomer.id);
+          if (updated) setSelectedCustomer(updated);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to remove employee:', error);
     }
   };
 
@@ -419,6 +455,29 @@ export default function CustomersPage() {
               minLength={6}
             />
           )}
+          {!editingCustomer && employees.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">{t('form.assignedEmployee')} (optional)</label>
+              <div className="max-h-40 overflow-y-auto space-y-2 border border-neutral-200 rounded-lg p-3">
+                {employees.map((emp) => (
+                  <label key={emp.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.assignedEmployeeIds.includes(emp.id)}
+                      onChange={(e) => {
+                        const ids = e.target.checked
+                          ? [...formData.assignedEmployeeIds, emp.id]
+                          : formData.assignedEmployeeIds.filter((id) => id !== emp.id);
+                        setFormData({ ...formData, assignedEmployeeIds: ids });
+                      }}
+                      className="rounded border-neutral-300"
+                    />
+                    <span className="text-sm text-neutral-900">{emp.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -432,17 +491,45 @@ export default function CustomersPage() {
           </Button>
         }
       >
-        <div className="space-y-2">
-          {employees.map((employee) => (
-            <button
-              key={employee.id}
-              onClick={() => handleAssignEmployee(employee.id)}
-              className="w-full p-4 text-left rtl:text-right hover:bg-neutral-50 rounded-lg border border-neutral-200 transition-colors"
-            >
-              <p className="font-semibold text-neutral-900">{employee.name}</p>
-              <p className="text-sm text-neutral-600">{employee.email}</p>
-            </button>
-          ))}
+        <div className="space-y-4">
+          {currentAssignedIds.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-neutral-700 mb-2">{t('detail.assignedEmployee')}</p>
+              <ul className="space-y-1 mb-3">
+                {currentAssignedIds.map((eid) => {
+                  const emp = employees.find(e => e.id === eid);
+                  return emp ? (
+                    <li key={eid} className="flex items-center justify-between p-2 rounded-lg bg-neutral-50">
+                      <span className="text-neutral-900">{emp.name}</span>
+                      <button type="button" onClick={() => handleRemoveAssignedEmployee(eid)} className="p-1 hover:bg-neutral-200 rounded" title={t('common.remove')}>
+                        <X className="w-4 h-4 text-neutral-500" />
+                      </button>
+                    </li>
+                  ) : null;
+                })}
+              </ul>
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-medium text-neutral-700 mb-2">Add employee</p>
+            {employees.filter((e) => !currentAssignedIds.includes(e.id)).length === 0 ? (
+              <p className="text-neutral-500 text-sm">All employees are already assigned.</p>
+            ) : (
+              <div className="space-y-1">
+                {employees.filter((e) => !currentAssignedIds.includes(e.id)).map((employee) => (
+                  <button
+                    key={employee.id}
+                    type="button"
+                    onClick={() => handleAssignEmployee(employee.id)}
+                    className="w-full p-3 text-left rtl:text-right hover:bg-neutral-50 rounded-lg border border-neutral-200 transition-colors"
+                  >
+                    <p className="font-semibold text-neutral-900">{employee.name}</p>
+                    <p className="text-sm text-neutral-600">{employee.email}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </Modal>
 

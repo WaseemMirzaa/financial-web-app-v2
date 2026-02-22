@@ -22,6 +22,8 @@ export interface Employee extends User {
 export interface Customer extends User {
   role: 'customer';
   assignedEmployeeId: string;
+  /** All employee ids assigned to this customer (from employee_customer_assignments) */
+  assignedEmployeeIds?: string[];
   phone?: string;
   address?: string;
 }

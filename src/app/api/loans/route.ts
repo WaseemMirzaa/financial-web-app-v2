@@ -91,7 +91,8 @@ export async function POST(request: NextRequest) {
     
     const {
       customerId,
-      employeeId,
+      employeeId: bodyEmployeeId,
+      employeeIds: rawEmployeeIds,
       amount,
       interestRate,
       numberOfInstallments,
@@ -101,10 +102,22 @@ export async function POST(request: NextRequest) {
       notes,
     } = body;
 
-    // Validate required fields
-    if (!customerId || !employeeId) {
-      console.log('[Loans API] Missing customerId or employeeId');
-      return validationError('Customer and employee are required', 'error.missingRequiredFields');
+    const employeeIdsArray = Array.isArray(rawEmployeeIds) && rawEmployeeIds.length > 0
+      ? rawEmployeeIds.filter((id: string) => id && typeof id === 'string')
+      : null;
+    const employeeId = employeeIdsArray ? employeeIdsArray[0] : bodyEmployeeId;
+
+    if (!customerId) {
+      return validationError('Customer is required', 'error.missingRequiredFields');
+    }
+    if (!employeeId) {
+      return validationError('At least one employee is required', 'error.missingRequiredFields');
+    }
+    if (employeeIdsArray) {
+      for (const eid of employeeIdsArray) {
+        const [emp] = await pool.query('SELECT id FROM users WHERE id = ? AND role = ?', [eid, 'employee']) as any[];
+        if (emp.length === 0) return notFoundError('Employee');
+      }
     }
     
     const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -147,14 +160,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if employee exists
-    const [employees] = await pool.query(
-      'SELECT id FROM users WHERE id = ? AND role = ?',
-      [employeeId, 'employee']
-    ) as any[];
-
-    if (employees.length === 0) {
-      return notFoundError('Employee');
+    if (!employeeIdsArray) {
+      const [employees] = await pool.query(
+        'SELECT id FROM users WHERE id = ? AND role = ?',
+        [employeeId, 'employee']
+      ) as any[];
+      if (employees.length === 0) return notFoundError('Employee');
     }
 
     const loanId = `loan-${Date.now()}`;
@@ -198,30 +209,55 @@ export async function POST(request: NextRequest) {
         ]
       );
 
-      // Ensure customer is assigned to the selected employee (for chat, employee's customer list, etc.)
       await connection.query(
         'UPDATE customers SET assigned_employee_id = ? WHERE id = ?',
         [employeeId, customerId]
       );
-      await connection.query(
-        `INSERT IGNORE INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)`,
-        [employeeId, customerId]
-      );
 
-      // Unified loan chat: one chat per loan, shared by all employees on the loan
       const loanChatId = `chat-loan-${loanId}`;
       await connection.query(
         `INSERT INTO chats (id, type, loan_id) VALUES (?, 'customer_employee', ?)`,
         [loanChatId, loanId]
       );
+
+      const idsToAdd = employeeIdsArray ?? [employeeId];
+      for (const eid of idsToAdd) {
+        await connection.query(
+          `INSERT IGNORE INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)`,
+          [eid, customerId]
+        );
+        await connection.query(
+          `INSERT INTO loan_employees (loan_id, employee_id) VALUES (?, ?)`,
+          [loanId, eid]
+        );
+        await connection.query(
+          `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)`,
+          [loanChatId, eid]
+        );
+      }
       await connection.query(
-        `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)`,
-        [loanChatId, customerId, loanChatId, employeeId]
+        `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)`,
+        [loanChatId, customerId]
       );
-      await connection.query(
-        `INSERT INTO loan_employees (loan_id, employee_id) VALUES (?, ?)`,
-        [loanId, employeeId]
-      );
+
+      if (!employeeIdsArray) {
+        const [assignRows] = await connection.query(
+          'SELECT employee_id FROM employee_customer_assignments WHERE customer_id = ?',
+          [customerId]
+        ) as any[];
+        const allEmployeeIds = [...new Set(assignRows?.map((r: any) => r.employee_id) || [])];
+        for (const eid of allEmployeeIds) {
+          if (eid === employeeId) continue;
+          await connection.query(
+            'INSERT IGNORE INTO loan_employees (loan_id, employee_id) VALUES (?, ?)',
+            [loanId, eid]
+          );
+          await connection.query(
+            'INSERT IGNORE INTO chat_participants (chat_id, user_id) VALUES (?, ?)',
+            [loanChatId, eid]
+          );
+        }
+      }
 
       await connection.commit();
     } catch (error) {

@@ -5,8 +5,7 @@ import {
   validationError,
   serverError,
 } from '@/lib/api';
-// Firebase FCM push notifications disabled
-// import { sendPushNotification } from '@/lib/fcm';
+import { createNotificationAndPush } from '@/lib/notify';
 import { translateToBothLanguages } from '@/lib/translate';
 
 export const dynamic = 'force-dynamic';
@@ -123,28 +122,22 @@ export async function POST(request: NextRequest) {
           `INSERT INTO broadcast_targets (broadcast_id, target_role, target_user_id) VALUES (?, ?, ?)`,
           [broadcastId, role, userId]
         );
-
-        const notificationId = `notification-${Date.now()}-${userId}-${Math.random().toString(36).substr(2, 6)}`;
-        await connection.query(
-          `INSERT INTO notifications (id, user_id, type, is_read) VALUES (?, ?, 'info', FALSE)`,
-          [notificationId, userId]
-        );
-
-        await connection.query(
-          `INSERT INTO notification_translations (notification_id, locale, title, message) VALUES (?, 'en', ?, ?)`,
-          [notificationId, titleEn, messageEn]
-        );
-        await connection.query(
-          `INSERT INTO notification_translations (notification_id, locale, title, message) VALUES (?, 'ar', ?, ?)`,
-          [notificationId, titleArVal, messageArVal]
-        );
       }
 
       await connection.commit();
       connection.release();
 
-      // Firebase FCM push notifications disabled - using in-app notifications only
-      // Push notifications removed
+      // Create in-app notifications (and optional push) for each target so they see it in the bell and hear the beep
+      for (const userId of targetUserIdsResolved) {
+        await createNotificationAndPush(
+          userId,
+          titleEn,
+          titleArVal,
+          messageEn,
+          messageArVal,
+          'info'
+        );
+      }
 
       return successResponse(
         { id: broadcastId, notificationsCreated: targetUserIdsResolved.length },

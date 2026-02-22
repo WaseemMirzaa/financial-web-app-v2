@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Plus, Edit, Search, Trash2 } from 'lucide-react';
+import { Plus, Edit, Search, Trash2, X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -29,6 +29,7 @@ export default function LoansPage() {
   const [formData, setFormData] = useState({
     customerId: '',
     employeeId: '',
+    loanEmployeeIds: [] as string[],
     amount: '',
     interestRate: '',
     numberOfInstallments: '',
@@ -106,6 +107,7 @@ export default function LoansPage() {
     setFormData({
       customerId: '',
       employeeId: '',
+      loanEmployeeIds: [],
       amount: '',
       interestRate: '',
       numberOfInstallments: '',
@@ -164,8 +166,8 @@ export default function LoansPage() {
       if (!formData.customerId || formData.customerId.trim() === '') {
         errors.customerId = t('validation.customerRequired');
       }
-      if (!formData.employeeId || formData.employeeId.trim() === '') {
-        errors.employeeId = t('validation.employeeRequired');
+      if (!formData.loanEmployeeIds || formData.loanEmployeeIds.length === 0) {
+        errors.loanEmployeeIds = t('validation.employeeRequired');
       }
     }
     
@@ -324,7 +326,7 @@ export default function LoansPage() {
         
         const loanData = {
           customerId: formData.customerId,
-          employeeId: formData.employeeId,
+          employeeIds: formData.loanEmployeeIds,
           amount: amountNum,
           interestRate: interestRateNum,
           numberOfInstallments: numberOfInstallmentsNum,
@@ -534,8 +536,13 @@ export default function LoansPage() {
                   }))}
                   value={formData.customerId}
                   onChange={(id) => {
-                    setFormData({ ...formData, customerId: id });
+                    const cust = customers.find((c: any) => c.id === id);
+                    const ids = (cust?.assignedEmployeeIds && cust.assignedEmployeeIds.length > 0)
+                      ? [...cust.assignedEmployeeIds]
+                      : [];
+                    setFormData({ ...formData, customerId: id, loanEmployeeIds: ids });
                     if (formErrors.customerId) setFormErrors({ ...formErrors, customerId: '' });
+                    if (formErrors.loanEmployeeIds) setFormErrors({ ...formErrors, loanEmployeeIds: '' });
                   }}
                   placeholder={t('form.selectCustomer')}
                   error={!!formErrors.customerId}
@@ -547,25 +554,46 @@ export default function LoansPage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">{t('form.employee')}</label>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">{t('detail.assignedEmployeesOnLoan')}</label>
+                <p className="text-xs text-neutral-500 mb-2">First is primary. All are added to this loan&apos;s chat.</p>
+                {formData.loanEmployeeIds.length > 0 && (
+                  <ul className="space-y-1 mb-3">
+                    {formData.loanEmployeeIds.map((eid, idx) => {
+                      const emp = employees.find((e: any) => e.id === eid);
+                      return (
+                        <li key={eid} className="flex items-center justify-between p-2 rounded-lg bg-neutral-50">
+                          <span className="text-neutral-900">{emp ? emp.name : eid}{idx === 0 ? ' (Primary)' : ''}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = formData.loanEmployeeIds.filter((id) => id !== eid);
+                              setFormData({ ...formData, loanEmployeeIds: next });
+                              if (formErrors.loanEmployeeIds) setFormErrors({ ...formErrors, loanEmployeeIds: '' });
+                            }}
+                            className="p-1 hover:bg-neutral-200 rounded"
+                          >
+                            <X className="w-4 h-4 text-neutral-500" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
                 <SearchableSelect
-                  options={employees.map((e) => ({
-                    id: e.id,
-                    label: e.name,
-                    sublabel: e.email,
-                  }))}
-                  value={formData.employeeId}
+                  options={employees
+                    .filter((e: any) => !formData.loanEmployeeIds.includes(e.id))
+                    .map((e: any) => ({ id: e.id, label: e.name, sublabel: e.email }))}
+                  value=""
                   onChange={(id) => {
-                    setFormData({ ...formData, employeeId: id });
-                    if (formErrors.employeeId) setFormErrors({ ...formErrors, employeeId: '' });
+                    setFormData({ ...formData, loanEmployeeIds: [...formData.loanEmployeeIds, id] });
+                    if (formErrors.loanEmployeeIds) setFormErrors({ ...formErrors, loanEmployeeIds: '' });
                   }}
-                  placeholder={t('form.selectEmployee')}
-                  error={!!formErrors.employeeId}
-                  required
-                  aria-label={t('form.employee')}
+                  placeholder={t('detail.addEmployeeToLoan')}
+                  error={!!formErrors.loanEmployeeIds}
+                  aria-label={t('detail.addEmployeeToLoan')}
                 />
-                {formErrors.employeeId && (
-                  <p className="mt-2 text-sm text-error">{formErrors.employeeId}</p>
+                {formErrors.loanEmployeeIds && (
+                  <p className="mt-2 text-sm text-error">{formErrors.loanEmployeeIds}</p>
                 )}
               </div>
             </>

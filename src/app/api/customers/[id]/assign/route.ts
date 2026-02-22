@@ -9,71 +9,61 @@ export async function POST(
 ) {
   try {
     const body = await request.json();
-    const { employeeId } = body;
+    const { employeeId, employeeIds: rawEmployeeIds } = body;
+    const customerId = params.id;
 
-    if (!employeeId) {
-      return errorResponse('Employee ID is required', 400, 'error.employeeIdRequired');
+    const employeeIds = Array.isArray(rawEmployeeIds)
+      ? rawEmployeeIds.filter((id: string) => id && typeof id === 'string')
+      : employeeId ? [employeeId] : [];
+
+    if (employeeIds.length === 0) {
+      return errorResponse('Employee ID or employeeIds array is required', 400, 'error.employeeIdRequired');
     }
 
-    // Check if customer exists
-    const [customers] = await pool.query(
-      'SELECT id FROM customers WHERE id = ?',
-      [params.id]
-    ) as any[];
+    const [customers] = await pool.query('SELECT id FROM customers WHERE id = ?', [customerId]) as any[];
+    if (customers.length === 0) return notFoundError('Customer');
 
-    if (customers.length === 0) {
-      return notFoundError('Customer');
-    }
-
-    // Check if employee exists
-    const [employees] = await pool.query(
-      'SELECT id FROM users WHERE id = ? AND role = ?',
-      [employeeId, 'employee']
-    ) as any[];
-
-    if (employees.length === 0) {
-      return notFoundError('Employee');
+    for (const eid of employeeIds) {
+      const [emp] = await pool.query('SELECT id FROM users WHERE id = ? AND role = ?', [eid, 'employee']) as any[];
+      if (emp.length === 0) return notFoundError('Employee');
     }
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
     try {
-      // Update customer assignment
+      const primaryId = employeeIds[0];
       await connection.query(
         'UPDATE customers SET assigned_employee_id = ? WHERE id = ?',
-        [employeeId, params.id]
+        [primaryId, customerId]
       );
-
-      // Add to employee_customer_assignments if not exists
       await connection.query(
-        `INSERT IGNORE INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)`,
-        [employeeId, params.id]
+        'DELETE FROM employee_customer_assignments WHERE customer_id = ?',
+        [customerId]
       );
-
-      // Create or get existing chat between customer and employee
-      const [existingChats] = await connection.query(
-        `SELECT c.id FROM chats c
-         INNER JOIN chat_participants cp1 ON c.id = cp1.chat_id AND cp1.user_id = ?
-         INNER JOIN chat_participants cp2 ON c.id = cp2.chat_id AND cp2.user_id = ?
-         WHERE c.type = 'customer_employee'`,
-        [params.id, employeeId]
-      ) as any[];
-
-      if (existingChats.length === 0) {
-        // Create new chat
-        const chatId = `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      for (const eid of employeeIds) {
         await connection.query(
-          `INSERT INTO chats (id, type) VALUES (?, 'customer_employee')`,
-          [chatId]
-        );
-        // Add both participants
-        await connection.query(
-          `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)`,
-          [chatId, params.id, chatId, employeeId]
+          `INSERT IGNORE INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)`,
+          [eid, customerId]
         );
       }
-
+      for (const eid of employeeIds) {
+        const [existingChats] = await connection.query(
+          `SELECT c.id FROM chats c
+           INNER JOIN chat_participants cp1 ON c.id = cp1.chat_id AND cp1.user_id = ?
+           INNER JOIN chat_participants cp2 ON c.id = cp2.chat_id AND cp2.user_id = ?
+           WHERE c.type = 'customer_employee' AND c.loan_id IS NULL`,
+          [customerId, eid]
+        ) as any[];
+        if (existingChats.length === 0) {
+          const chatId = `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          await connection.query(`INSERT INTO chats (id, type) VALUES (?, 'customer_employee')`, [chatId]);
+          await connection.query(
+            `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)`,
+            [chatId, customerId, chatId, eid]
+          );
+        }
+      }
       await connection.commit();
     } catch (error) {
       await connection.rollback();
@@ -82,44 +72,49 @@ export async function POST(
       connection.release();
     }
 
-    // Notify employee and customer with EN/AR (after commit so recipient sees in their language)
     const [custNames] = await pool.query(
       `SELECT ut_en.name as name_en, ut_ar.name as name_ar FROM users u
        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
        LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
        WHERE u.id = ?`,
-      [params.id]
+      [customerId]
     ) as any[];
-    const [empNames] = await pool.query(
+    const customerNameEn = custNames?.[0]?.name_en || custNames?.[0]?.name_ar || 'Customer';
+    const customerNameAr = custNames?.[0]?.name_ar || custNames?.[0]?.name_en || 'عميل';
+
+    for (const eid of employeeIds) {
+      await createNotificationAndPush(
+        eid,
+        'New Customer Assigned',
+        'تم تعيين عميل جديد',
+        `${customerNameEn} has been assigned to you`,
+        `تم تعيين ${customerNameAr} لك`,
+        'info'
+      );
+    }
+    const [firstEmpNames] = await pool.query(
       `SELECT ut_en.name as name_en, ut_ar.name as name_ar FROM users u
        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
        LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
        WHERE u.id = ?`,
-      [employeeId]
+      [employeeIds[0]]
     ) as any[];
-    const customerNameEn = custNames?.[0]?.name_en || custNames?.[0]?.name_ar || 'Customer';
-    const customerNameAr = custNames?.[0]?.name_ar || custNames?.[0]?.name_en || 'عميل';
-    const employeeNameEn = empNames?.[0]?.name_en || empNames?.[0]?.name_ar || 'Employee';
-    const employeeNameAr = empNames?.[0]?.name_ar || empNames?.[0]?.name_en || 'موظف';
-
+    const employeeNameEn = firstEmpNames?.[0]?.name_en || firstEmpNames?.[0]?.name_ar || 'Employee';
+    const employeeNameAr = firstEmpNames?.[0]?.name_ar || firstEmpNames?.[0]?.name_en || 'موظف';
     await createNotificationAndPush(
-      employeeId,
-      'New Customer Assigned',
-      'تم تعيين عميل جديد',
-      `${customerNameEn} has been assigned to you`,
-      `تم تعيين ${customerNameAr} لك`,
-      'info'
-    );
-    await createNotificationAndPush(
-      params.id,
+      customerId,
       'Employee Assigned to You',
       'تم تعيين موظف لك',
-      `${employeeNameEn} has been assigned as your contact`,
-      `تم تعيين ${employeeNameAr} كجهة اتصالك`,
+      employeeIds.length > 1
+        ? `${employeeIds.length} team members assigned as your contacts`
+        : `${employeeNameEn} has been assigned as your contact`,
+      employeeIds.length > 1
+        ? `تم تعيين ${employeeIds.length} أعضاء الفريق كجهة اتصالك`
+        : `تم تعيين ${employeeNameAr} كجهة اتصالك`,
       'info'
     );
 
-    return successResponse({}, 'Employee assigned successfully');
+    return successResponse({}, employeeIds.length > 1 ? 'Employees assigned successfully' : 'Employee assigned successfully');
   } catch (error: any) {
     console.error('Assign employee error:', error);
     return serverError();
@@ -131,37 +126,38 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const customerId = params.id;
-  if (!customerId) {
-    return errorResponse('Customer ID is required', 400);
-  }
+  const employeeId = request.nextUrl.searchParams.get('employeeId');
+  if (!customerId) return errorResponse('Customer ID is required', 400);
   try {
-    const [customers] = await pool.query(
-      'SELECT id FROM customers WHERE id = ?',
-      [customerId]
-    ) as any[];
-    if (customers.length === 0) {
-      return notFoundError('Customer');
-    }
+    const [customers] = await pool.query('SELECT id, assigned_employee_id FROM customers WHERE id = ?', [customerId]) as any[];
+    if (customers.length === 0) return notFoundError('Customer');
 
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
-      await connection.query(
-        'UPDATE customers SET assigned_employee_id = NULL WHERE id = ?',
-        [customerId]
-      );
-      try {
+      if (employeeId) {
         await connection.query(
-          'DELETE FROM employee_customer_assignments WHERE customer_id = ?',
-          [customerId]
+          'DELETE FROM employee_customer_assignments WHERE customer_id = ? AND employee_id = ?',
+          [customerId, employeeId]
         );
-      } catch (e: any) {
-        if (e?.code !== 'ER_NO_SUCH_TABLE' && e?.code !== 'ER_BAD_FIELD_ERROR') {
-          throw e;
+        const currentPrimary = customers[0].assigned_employee_id;
+        if (currentPrimary === employeeId) {
+          const [remaining] = await connection.query(
+            'SELECT employee_id FROM employee_customer_assignments WHERE customer_id = ? ORDER BY employee_id LIMIT 1',
+            [customerId]
+          ) as any[];
+          const newPrimary = remaining?.[0]?.employee_id ?? null;
+          await connection.query(
+            'UPDATE customers SET assigned_employee_id = ? WHERE id = ?',
+            [newPrimary, customerId]
+          );
         }
+      } else {
+        await connection.query('UPDATE customers SET assigned_employee_id = NULL WHERE id = ?', [customerId]);
+        await connection.query('DELETE FROM employee_customer_assignments WHERE customer_id = ?', [customerId]);
       }
       await connection.commit();
-      return successResponse({}, 'Employee assignment removed successfully');
+      return successResponse({}, employeeId ? 'Employee unassigned successfully' : 'Employee assignment removed successfully');
     } catch (error) {
       await connection.rollback();
       throw error;

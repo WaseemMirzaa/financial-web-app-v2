@@ -101,6 +101,90 @@ export async function POST(
   }
 }
 
+/** PUT: set full list of employees on the loan; syncs loan_employees and loan chat participants */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const loanId = params.id;
+    const body = await request.json();
+    const rawIds = body.employeeIds;
+    const employeeIds = Array.isArray(rawIds) ? rawIds.filter((id: string) => id && typeof id === 'string') : [];
+    if (employeeIds.length === 0) return validationError('employeeIds array with at least one id is required', 'error.missingRequiredFields');
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [loan] = await connection.query(
+        'SELECT id, customer_id FROM loans WHERE id = ?',
+        [loanId]
+      ) as any[];
+      if (loan.length === 0) {
+        await connection.rollback();
+        return notFoundError('Loan');
+      }
+      const customerId = loan[0].customer_id;
+
+      for (const eid of employeeIds) {
+        const [emp] = await connection.query(
+          'SELECT id FROM users WHERE id = ? AND role = ?',
+          [eid, 'employee']
+        ) as any[];
+        if (emp.length === 0) {
+          await connection.rollback();
+          return notFoundError('Employee');
+        }
+      }
+
+      const primaryId = employeeIds[0];
+      await connection.query('UPDATE loans SET employee_id = ? WHERE id = ?', [primaryId, loanId]);
+      await connection.query('DELETE FROM loan_employees WHERE loan_id = ?', [loanId]);
+      for (const eid of employeeIds) {
+        await connection.query(
+          'INSERT INTO loan_employees (loan_id, employee_id) VALUES (?, ?)',
+          [loanId, eid]
+        );
+        await connection.query(
+          'INSERT IGNORE INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)',
+          [eid, customerId]
+        );
+      }
+
+      const [chatRows] = await connection.query(
+        'SELECT id FROM chats WHERE loan_id = ? LIMIT 1',
+        [loanId]
+      ) as any[];
+      if (chatRows.length > 0) {
+        const chatId = chatRows[0].id;
+        await connection.query('DELETE FROM chat_participants WHERE chat_id = ?', [chatId]);
+        await connection.query(
+          'INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)',
+          [chatId, customerId]
+        );
+        for (const eid of employeeIds) {
+          await connection.query(
+            'INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)',
+            [chatId, eid]
+          );
+        }
+      }
+
+      await connection.commit();
+      return successResponse({ updated: true });
+    } catch (e) {
+      await connection.rollback();
+      throw e;
+    } finally {
+      connection.release();
+    }
+  } catch (error: any) {
+    console.error('Set loan employees error:', error);
+    return serverError();
+  }
+}
+
 /** DELETE: remove an employee from the loan and from the loan chat (chat is not deleted) */
 export async function DELETE(
   request: NextRequest,

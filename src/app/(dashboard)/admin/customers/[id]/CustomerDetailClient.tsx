@@ -25,7 +25,7 @@ export function CustomerDetailClient() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [assignedEmployee, setAssignedEmployee] = useState<any>(null);
+  const [assignedEmployees, setAssignedEmployees] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [customerLoans, setCustomerLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,10 +67,11 @@ export function CustomerDetailClient() {
           password: '',
           confirmPassword: '',
         });
-        if (data.data.assignedEmployeeId) {
-          fetchAssignedEmployee(data.data.assignedEmployeeId);
+        const ids = data.data.assignedEmployeeIds || (data.data.assignedEmployeeId ? [data.data.assignedEmployeeId] : []);
+        if (ids.length > 0) {
+          fetchAssignedEmployees(ids);
         } else {
-          setAssignedEmployee(null);
+          setAssignedEmployees([]);
         }
       }
     } catch (error) {
@@ -80,15 +81,20 @@ export function CustomerDetailClient() {
     }
   };
 
-  const fetchAssignedEmployee = async (employeeId: string) => {
+  const fetchAssignedEmployees = async (employeeIds: string[]) => {
+    if (!employeeIds.length) {
+      setAssignedEmployees([]);
+      return;
+    }
     try {
-      const response = await fetch(`/api/employees/${employeeId}`);
-      const data = await response.json();
-      if (data.success) {
-        setAssignedEmployee(data.data);
-      }
+      const results = await Promise.all(
+        employeeIds.map((id) => fetch(`/api/employees/${id}`).then((r) => r.json()))
+      );
+      const list = results.filter((r) => r.success && r.data).map((r) => r.data);
+      setAssignedEmployees(list);
     } catch (error) {
-      console.error('Failed to fetch employee:', error);
+      console.error('Failed to fetch assigned employees:', error);
+      setAssignedEmployees([]);
     }
   };
 
@@ -210,11 +216,16 @@ export function CustomerDetailClient() {
 
   const handleAssignEmployee = async (employeeId: string) => {
     if (!customer) return;
+    const currentIds = customer.assignedEmployeeIds || (customer.assignedEmployeeId ? [customer.assignedEmployeeId] : []);
+    if (currentIds.includes(employeeId)) {
+      setIsAssignModalOpen(false);
+      return;
+    }
     try {
       const response = await fetch(`/api/customers/${customer.id}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId }),
+        body: JSON.stringify({ employeeIds: [...currentIds, employeeId] }),
       });
       const data = await response.json();
       if (data.success) {
@@ -226,17 +237,15 @@ export function CustomerDetailClient() {
     }
   };
 
-  const handleRemoveEmployee = async () => {
+  const handleRemoveEmployee = async (employeeId: string) => {
     if (!customer) return;
     setRemoveError('');
     try {
-      const response = await fetch(`/api/customers/${customer.id}/assign`, {
+      const response = await fetch(`/api/customers/${customer.id}/assign?employeeId=${encodeURIComponent(employeeId)}`, {
         method: 'DELETE',
       });
       const data = await response.json();
       if (data.success) {
-        setAssignedEmployee(null);
-        setCustomer((prev) => prev ? { ...prev, assignedEmployeeId: '' } : null);
         await fetchCustomer();
       } else {
         setRemoveError(data.error || t('error.internalServerError'));
@@ -486,17 +495,6 @@ export function CustomerDetailClient() {
             {removeError && (
               <p className="text-sm text-error w-full">{removeError}</p>
             )}
-            {(assignedEmployee || customer?.assignedEmployeeId) ? (
-              <Button
-                variant="outline"
-                size="small"
-                onClick={handleRemoveEmployee}
-                className="whitespace-nowrap flex-shrink-0"
-              >
-                <X className="w-4 h-4 me-2" />
-                {t('page.removeEmployee')}
-              </Button>
-            ) : null}
             <Button
               variant="primary"
               size="small"
@@ -504,16 +502,34 @@ export function CustomerDetailClient() {
               className="whitespace-nowrap flex-shrink-0"
             >
               <UserPlus className="w-4 h-4 me-2" />
-              {assignedEmployee ? t('page.changeEmployee') : t('page.assignEmployee')}
+              {t('page.assignEmployee')}
             </Button>
           </div>
-          {assignedEmployee ? (
-            <div
-              onClick={() => router.push(`/admin/employees/${assignedEmployee.id}`)}
-              className="p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors border border-transparent hover:border-neutral-200 text-left rtl:text-right"
-            >
-              <p className="font-semibold text-neutral-900">{assignedEmployee.name}</p>
-              <p className="text-sm text-neutral-600 mt-1">{assignedEmployee.email}</p>
+          {assignedEmployees.length > 0 ? (
+            <div className="space-y-2">
+              {assignedEmployees.map((emp) => (
+                <div
+                  key={emp.id}
+                  className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200 text-left rtl:text-right"
+                >
+                  <div
+                    onClick={() => router.push(`/admin/employees/${emp.id}`)}
+                    className="flex-1 min-w-0 cursor-pointer hover:bg-neutral-100 rounded-lg -m-2 p-2 transition-colors"
+                  >
+                    <p className="font-semibold text-neutral-900">{emp.name}</p>
+                    <p className="text-sm text-neutral-600 mt-1">{emp.email}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => handleRemoveEmployee(emp.id)}
+                    className="shrink-0 ml-2"
+                    aria-label={t('page.removeEmployee')}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           ) : (
             <p className="text-neutral-500 text-sm">{t('detail.noEmployeeAssigned')}</p>
@@ -569,16 +585,21 @@ export function CustomerDetailClient() {
         }
       >
         <div className="space-y-2">
-          {employees.map((employee) => (
-            <button
-              key={employee.id}
-              onClick={() => handleAssignEmployee(employee.id)}
-              className="w-full p-4 text-left rtl:text-right hover:bg-neutral-50 rounded-lg border border-neutral-200 transition-colors"
-            >
-              <p className="font-semibold text-neutral-900">{employee.name}</p>
-              <p className="text-sm text-neutral-600">{employee.email}</p>
-            </button>
-          ))}
+          {employees
+            .filter((employee) => !(customer?.assignedEmployeeIds || (customer?.assignedEmployeeId ? [customer.assignedEmployeeId] : [])).includes(employee.id))
+            .map((employee) => (
+              <button
+                key={employee.id}
+                onClick={() => handleAssignEmployee(employee.id)}
+                className="w-full p-4 text-left rtl:text-right hover:bg-neutral-50 rounded-lg border border-neutral-200 transition-colors"
+              >
+                <p className="font-semibold text-neutral-900">{employee.name}</p>
+                <p className="text-sm text-neutral-600">{employee.email}</p>
+              </button>
+            ))}
+          {employees.length > 0 && employees.every((e) => (customer?.assignedEmployeeIds || (customer?.assignedEmployeeId ? [customer.assignedEmployeeId] : [])).includes(e.id)) && (
+            <p className="text-neutral-500 text-sm">All employees are already assigned.</p>
+          )}
         </div>
       </Modal>
 

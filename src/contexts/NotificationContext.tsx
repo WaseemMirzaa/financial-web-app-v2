@@ -27,6 +27,16 @@ export function NotificationProvider({ children, userId, locale }: { children: R
   const audioContextRef = React.useRef<AudioContext | null>(null);
   const notificationAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const permissionRequestedRef = React.useRef<boolean>(false);
+  const mountedRef = React.useRef<boolean>(true);
+  const initialFetchDoneRef = React.useRef<boolean>(false);
+  React.useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+  React.useEffect(() => {
+    initialFetchDoneRef.current = false;
+    prevUnreadIdsRef.current = new Set();
+  }, [userId]);
 
   // Unlock audio and request notification permission on first user interaction (browser requirement)
   useEffect(() => {
@@ -63,8 +73,10 @@ export function NotificationProvider({ children, userId, locale }: { children: R
     if (typeof window === 'undefined') return;
     try {
       const ctx = audioContextRef.current;
-      if (ctx) {
-        if (ctx.state === 'suspended') ctx.resume();
+      if (ctx && ctx.destination) {
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -83,12 +95,16 @@ export function NotificationProvider({ children, userId, locale }: { children: R
         audio.volume = 0.5;
         audio.play().catch(() => {});
       } else {
-        const fallback = new Audio(NOTIFICATION_SOUND_PATH);
-        fallback.volume = 0.5;
-        fallback.play().catch(() => {});
+        try {
+          const fallback = new Audio(NOTIFICATION_SOUND_PATH);
+          fallback.volume = 0.5;
+          fallback.play().catch(() => {});
+        } catch {
+          // no audio file or not allowed
+        }
       }
-    } catch (error) {
-      console.warn('Failed to play notification sound:', error);
+    } catch {
+      // ignore any beep errors to avoid affecting app stability
     }
   }, []);
 
@@ -109,39 +125,50 @@ export function NotificationProvider({ children, userId, locale }: { children: R
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
     try {
-      setLoading(true);
+      if (mountedRef.current) setLoading(true);
       const params = new URLSearchParams({ userId });
       if (locale) params.set('locale', locale);
       const response = await fetch(`/api/notifications?${params.toString()}`);
       const data = await response.json();
-      if (data.success) {
-        const newNotifications = data.data;
+      if (!mountedRef.current) return;
+      if (data.success && Array.isArray(data.data)) {
+        const newNotifications = data.data as AppNotification[];
         const newUnreadIds = new Set(
           newNotifications
             .filter((n: AppNotification) => !n.isRead)
             .map((n: AppNotification) => n.id)
         );
         const prevUnreadIds = prevUnreadIdsRef.current;
-        const hasNewUnread = Array.from(newUnreadIds).some(id => !prevUnreadIds.has(id));
+        const isInitialFetch = !initialFetchDoneRef.current;
+        initialFetchDoneRef.current = true;
 
-        if (hasNewUnread) {
+        // Only beep for unreads that appeared after we started (skip on first fetch / re-login / navigate back)
+        const hasNewUnreadSinceLastFetch = Array.from(newUnreadIds).some(id => !prevUnreadIds.has(id));
+
+        if (hasNewUnreadSinceLastFetch && !isInitialFetch) {
           const latestNew = newNotifications.find((n: AppNotification) => !n.isRead && !prevUnreadIds.has(n.id));
           if (latestNew && typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
-            showSystemNotification(
-              latestNew.title || 'Notification',
-              latestNew.message || ''
-            );
+            try {
+              showSystemNotification(
+                latestNew.title || 'Notification',
+                latestNew.message || ''
+              );
+            } catch {
+              // ignore
+            }
           }
-          setTimeout(() => playBeepSound(), 100);
+          setTimeout(() => {
+            if (mountedRef.current) playBeepSound();
+          }, 100);
         }
 
         prevUnreadIdsRef.current = newUnreadIds;
         setNotifications(newNotifications);
       }
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      if (mountedRef.current) console.error('Failed to fetch notifications:', error);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, [userId, locale, playBeepSound, showSystemNotification]);
 
@@ -158,10 +185,10 @@ export function NotificationProvider({ children, userId, locale }: { children: R
     return () => window.removeEventListener('focus', onFocus);
   }, [userId, fetchNotifications]);
 
-  // Realtime: poll every 5s so sound plays soon after notification is received
+  // Realtime: poll every 10s (reduced from 5s to lower load; beep still plays on new unread)
   useEffect(() => {
     if (!userId) return;
-    const interval = setInterval(() => fetchNotifications(), 5000);
+    const interval = setInterval(() => fetchNotifications(), 10000);
     return () => clearInterval(interval);
   }, [userId, fetchNotifications]);
 
