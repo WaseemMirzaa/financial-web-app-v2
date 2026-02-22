@@ -38,13 +38,16 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   const { user } = useAuth();
   const { t, locale } = useLocale();
 
+  // Keep cursor at end after type; after paste use paste position. Scroll input to show cursor.
   useEffect(() => {
-    if (pasteCursorRef.current !== null && messageInputRef.current) {
-      const pos = pasteCursorRef.current;
-      messageInputRef.current.setSelectionRange(pos, pos);
-      messageInputRef.current.focus();
-      pasteCursorRef.current = null;
-    }
+    const el = messageInputRef.current;
+    if (!el) return;
+    const pos = pasteCursorRef.current !== null ? pasteCursorRef.current : inputValue.length;
+    if (pasteCursorRef.current !== null) pasteCursorRef.current = null;
+    requestAnimationFrame(() => {
+      el.setSelectionRange(pos, pos);
+      el.scrollTop = el.scrollHeight;
+    });
   }, [inputValue]);
 
   // Track user scroll to prevent auto-scroll when user scrolls up
@@ -370,9 +373,9 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
         )}
       </div>
       {!readOnly && (
-      <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-neutral-200 space-y-2 shrink-0 bg-white">
+      <div className="px-3 sm:px-6 py-4 sm:py-5 border-t border-neutral-200 shrink-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
         {selectedFile && (
-          <div className="flex items-center gap-2 text-sm text-neutral-600 min-w-0">
+          <div className="flex items-center gap-2 text-sm text-neutral-600 min-w-0 mb-3">
             <Paperclip className="w-4 h-4 shrink-0" />
             <span className="truncate flex-1 min-w-0">{selectedFile.name}</span>
             <button
@@ -388,7 +391,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-end gap-2 sm:gap-3 min-w-0">
           <input
             ref={fileInputRef}
             type="file"
@@ -399,7 +402,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
           />
           <label
             htmlFor="file-input"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-neutral-50 rounded-xl cursor-pointer transition-colors shrink-0 touch-manipulation"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-neutral-50 rounded-xl cursor-pointer transition-colors shrink-0 touch-manipulation border border-transparent hover:border-neutral-200 mb-1"
           >
             <Paperclip className="w-5 h-5 text-neutral-600" />
           </label>
@@ -425,11 +428,11 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
               }
             }}
             placeholder={t('chat.typeMessage')}
-            className="flex-1 min-w-0 min-h-[44px] max-h-[160px] py-3 px-4 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-y whitespace-pre-wrap"
-            rows={2}
+            rows={3}
+            className="flex-1 min-w-0 min-h-[72px] max-h-[220px] py-3.5 px-4 rounded-2xl border border-neutral-200 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 resize-y whitespace-pre-wrap break-words shadow-sm"
           />
-          <Button onClick={handleSend} variant="primary" size="medium" className="shrink-0 min-w-[44px]">
-            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+          <Button onClick={handleSend} variant="primary" size="medium" className="shrink-0 min-w-[48px] min-h-[48px] sm:min-h-[72px] self-end mb-0.5">
+            <Send className="w-5 h-5" />
           </Button>
         </div>
       </div>
