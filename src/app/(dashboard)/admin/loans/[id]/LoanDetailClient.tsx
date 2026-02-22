@@ -330,28 +330,8 @@ export function LoanDetailClient() {
                 </div>
               )}
             </div>
-            <div className="text-left rtl:text-right">
-              <p className="text-sm text-neutral-600 mb-1">{t('detail.assignedEmployee')}</p>
-              {employeeDeleted ? (
-                <div className="p-3 bg-neutral-50 rounded-lg">
-                  <p className="font-semibold text-neutral-500">{t('detail.deletedEmployee')}</p>
-                </div>
-              ) : employee ? (
-                <div
-                  onClick={() => router.push(`/admin/employees/${loan.employeeId}`)}
-                  className="p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors"
-                >
-                  <p className="font-semibold text-neutral-900">{employee.name}</p>
-                  <p className="text-sm text-neutral-600">{employee.email}</p>
-                </div>
-              ) : (
-                <div className="p-3 bg-neutral-50 rounded-lg">
-                  <p className="font-semibold text-neutral-500">{t('detail.unknown')}</p>
-                </div>
-              )}
-            </div>
             {(loan.employeeIds && loan.employeeIds.length > 0) || loan.employeeId ? (
-              <div className="mt-4 pt-4 border-t border-neutral-100 text-left rtl:text-right">
+              <div className="pt-4 border-t border-neutral-100 text-left rtl:text-right">
                 <p className="text-sm text-neutral-600 mb-2">{t('detail.assignedEmployeesOnLoan')}</p>
                 <ul className="space-y-2">
                   {(loan.employeeIds && loan.employeeIds.length > 0 ? loan.employeeIds : [loan.employeeId]).map((empId: string) => {
