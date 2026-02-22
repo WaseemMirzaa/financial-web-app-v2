@@ -25,7 +25,7 @@ if [ ! -d "$APP_DIR/.next" ]; then
   echo "Building app..."
   # Stop MySQL to free memory
   systemctl stop mysql 2>/dev/null || true
-  cd "$APP_DIR" && npm install --no-audit --no-fund || npm ci --no-audit --no-fund
+  cd "$APP_DIR" && npm install --no-audit --no-fund
   npm run build
   cd - >/dev/null
   systemctl start mysql 2>/dev/null || true

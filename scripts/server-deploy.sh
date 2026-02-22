@@ -2,7 +2,7 @@
 # Run on server to deploy backend branch: stash, pull, install, build, migrate, ensure admin, pm2 start/save/startup
 set -e
 APP_DIR="${APP_DIR:-/var/www/financial-web-app}"
-BRANCH="${BRANCH:-backend}"
+BRANCH="${BRANCH:-backend-no-firebase}"
 cd "$APP_DIR"
 
 echo "=== Stashing local changes ==="
@@ -14,7 +14,7 @@ git checkout "$BRANCH"
 git pull origin "$BRANCH"
 
 echo "=== Installing dependencies ==="
-npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+npm install --no-audit --no-fund
 
 echo "=== Building ==="
 npm run build

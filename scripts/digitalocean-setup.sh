@@ -142,7 +142,7 @@ fi
 echo "=== Install app deps, migrate, build ==="
 # Stop MySQL temporarily to free memory during npm install
 systemctl stop mysql 2>/dev/null || true
-sudo -u "$APP_USER" bash -c "cd $APP_DIR && npm install --no-audit --no-fund --prefer-offline || npm ci --no-audit --no-fund"
+sudo -u "$APP_USER" bash -c "cd $APP_DIR && npm install --no-audit --no-fund"
 systemctl start mysql 2>/dev/null || true
 sudo -u "$APP_USER" bash -c "cd $APP_DIR && npm run migrate"
 
