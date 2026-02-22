@@ -3,15 +3,15 @@
 import React, { useState } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft, Edit, Mail, UserCheck, Users, Trash2, UserX } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Loader } from '@/components/ui/Loader';
-import { useLocale } from '@/contexts/LocaleContext';
-import { Customer, Employee } from '@/types';
-import { formatDateOnly, formatNumber } from '@/lib/utils';
+import { Card } from '../../../../../components/ui/Card';
+import { Button } from '../../../../../components/ui/Button';
+import { Badge } from '../../../../../components/ui/Badge';
+import { Modal } from '../../../../../components/ui/Modal';
+import { Input } from '../../../../../components/ui/Input';
+import { Loader } from '../../../../../components/ui/Loader';
+import { useLocale } from '../../../../../contexts/LocaleContext';
+import { Customer, Employee } from '../../../../../types';
+import { formatDateOnly, formatNumber } from '../../../../../lib/utils';
 
 export function EmployeeDetailClient() {
   const params = useParams();
