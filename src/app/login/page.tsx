@@ -105,9 +105,7 @@ export default function LoginPage() {
         <div className="mx-auto w-full max-w-[440px] bg-white rounded-2xl shadow-soft-lg border border-neutral-100 p-6 sm:p-8 md:p-10">
           {/* Logo + headline for mobile/tablet */}
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 mb-4 shadow-soft">
-              <span className="text-xl font-bold text-white">LM</span>
-            </div>
+            <img src="/logo.png" alt="" className="mx-auto h-14 w-auto object-contain mb-4" />
             <h1 className="text-3xl sm:text-4xl font-bold text-primary-600 leading-[1.25] tracking-tight mb-2">{t('app.loanManager')}</h1>
             <p className="text-neutral-500 text-sm">{t('auth.professionalPlatform')}</p>
           </div>

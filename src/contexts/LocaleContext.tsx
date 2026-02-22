@@ -64,7 +64,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.openMenu': 'Open menu',
     'common.changeLanguage': 'Change language',
     'common.notificationsAria': 'Notifications',
-    'app.loanManager': 'LoanManager',
+    'app.loanManager': 'Alkhaij Tamweel',
     
     // Login & Signup
     'auth.signIn': 'Sign in to access your dashboard',
@@ -501,7 +501,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.openMenu': 'فتح القائمة',
     'common.changeLanguage': 'تغيير اللغة',
     'common.notificationsAria': 'الإشعارات',
-    'app.loanManager': 'LoanManager',
+    'app.loanManager': 'خليج تمويل',
     
     // Login & Signup
     'auth.signIn': 'قم بتسجيل الدخول للوصول إلى لوحة التحكم',

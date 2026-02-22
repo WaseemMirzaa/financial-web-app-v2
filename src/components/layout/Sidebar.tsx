@@ -123,6 +123,9 @@ export function Sidebar({ inDrawer = false, onItemClick }: SidebarProps) {
         inDrawer ? 'h-full flex-1 w-[min(280px,85vw)]' : 'hidden lg:flex lg:w-64 xl:w-72 h-[calc(100vh-4rem)] sticky top-16'
       }`}
     >
+      <div className="p-3 sm:p-4 border-b border-neutral-100 shrink-0">
+        <img src="/logo.png" alt="" className="h-10 w-full object-contain object-left" />
+      </div>
       <nav className="flex-1 p-3 sm:p-4 space-y-1 sm:space-y-2 overflow-y-auto">
         {filteredItems.map((item) => {
           const Icon = item.icon;

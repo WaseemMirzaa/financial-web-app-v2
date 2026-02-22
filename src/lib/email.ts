@@ -1,6 +1,6 @@
 import sgMail from '@sendgrid/mail';
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Loan Manager';
+const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Alkhaij Tamweel';
 
 export async function sendPasswordResetEmail(to: string, resetLink: string): Promise<boolean> {
   const subject = `Reset your password - ${appName}`;

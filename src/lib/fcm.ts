@@ -103,7 +103,7 @@ export async function sendPushNotification(
         notification: {
           title: titleEn,
           body: messageEn,
-          icon: '/icon',
+          icon: '/icon.png',
         },
         data: {
           title_en: titleEn,

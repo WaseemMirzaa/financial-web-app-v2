@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip, Image as ImageIcon, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ChatMessage } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,7 +30,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   const [deleteConfirmMessageId, setDeleteConfirmMessageId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messageInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const pasteCursorRef = useRef<number | null>(null);
   const prevLastMessageIdRef = useRef<string | null>(null);
   const isUserScrollingRef = useRef<boolean>(false);
@@ -43,6 +42,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
     if (pasteCursorRef.current !== null && messageInputRef.current) {
       const pos = pasteCursorRef.current;
       messageInputRef.current.setSelectionRange(pos, pos);
+      messageInputRef.current.focus();
       pasteCursorRef.current = null;
     }
   }, [inputValue]);
@@ -259,11 +259,12 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                 }`}>
                   {isEditing ? (
                     <div className="space-y-2">
-                      <Input
+                      <textarea
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
-                        className="bg-white text-neutral-900"
+                        className="w-full min-h-[80px] rounded-xl border border-neutral-200 px-4 py-3 text-sm bg-white text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 whitespace-pre-wrap resize-y"
                         autoFocus
+                        rows={3}
                       />
                       <div className="flex gap-2">
                         <Button
@@ -351,7 +352,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                           </div>
                         );
                       })()}
-                      {message.content ? <p className="text-sm">{message.content}</p> : null}
+                      {message.content ? <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p> : null}
                       <p className={`text-xs mt-1 flex items-center gap-1 ${
                         isOwn ? 'text-white/70' : 'text-neutral-500'
                       }`}>
@@ -402,7 +403,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
           >
             <Paperclip className="w-5 h-5 text-neutral-600" />
           </label>
-          <Input
+          <textarea
             ref={messageInputRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -417,14 +418,15 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
               pasteCursorRef.current = start + plain.length;
               setInputValue(newVal);
             }}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
             }}
             placeholder={t('chat.typeMessage')}
-            className="flex-1 min-w-0 min-h-[44px]"
+            className="flex-1 min-w-0 min-h-[44px] max-h-[160px] py-3 px-4 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-y whitespace-pre-wrap"
+            rows={2}
           />
           <Button onClick={handleSend} variant="primary" size="medium" className="shrink-0 min-w-[44px]">
             <Send className="w-4 h-4 sm:w-5 sm:h-5" />

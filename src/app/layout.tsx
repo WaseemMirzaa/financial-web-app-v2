@@ -1,18 +1,11 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { ClientRoot } from '@/components/ClientRoot';
 
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
-  title: 'Loan Management System',
+  title: 'Alkhaij Tamweel',
   description: 'Professional loan management platform',
-  icons: { icon: '/icon' },
+  icons: { icon: '/icon.png', apple: '/icon.png' },
 };
 
 export const viewport = {
@@ -28,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
-      <body className={plusJakarta.className}>
+      <body className="font-sans antialiased">
         <ClientRoot>{children}</ClientRoot>
       </body>
     </html>

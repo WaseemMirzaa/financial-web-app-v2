@@ -1,4 +1,4 @@
-# Loan Management System
+# Alkhaij Tamweel
 
 A professional, premium-quality loan management web application built with Next.js, TypeScript, and Tailwind CSS.
 

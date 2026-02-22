@@ -195,8 +195,8 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
         playNotificationSound();
         new Notification(title, {
           body,
-          icon: '/icon',
-          badge: '/icon',
+          icon: '/icon.png',
+          badge: '/icon.png',
           silent: false,
           vibrate: [200, 100, 200],
         });

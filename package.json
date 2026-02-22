@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "dev:watch": "while true; do npm run dev; echo 'Server exited. Restarting in 2s...'; sleep 2; done",
-    "build": "NODE_OPTIONS='--max-old-space-size=512' npx next build",
+    "build": "NODE_OPTIONS='--max-old-space-size=1024' npx next build",
+    "build:pack": "bash scripts/build-and-pack-next.sh",
     "start": "npx next start -p ${PORT:-3000}",
     "lint": "next lint",
     "export": "next build",

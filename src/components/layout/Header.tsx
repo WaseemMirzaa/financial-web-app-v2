@@ -84,9 +84,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               </button>
             )}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="hidden sm:flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-soft">
-                <span className="text-sm sm:text-base md:text-lg font-bold text-white">LM</span>
-              </div>
+              <img src="/logo.png" alt="" className="h-7 sm:h-8 md:h-9 w-auto object-contain" />
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-primary-600 truncate tracking-tight">{t('app.loanManager')}</h1>
             </div>
           </div>
