@@ -14,6 +14,7 @@
     "seed-admin": "tsx scripts/seed-admin.ts",
     "change-admin-password": "tsx scripts/change-admin-password.ts",
     "seed": "tsx scripts/seed.ts",
+    "delete-loan-chats": "tsx scripts/delete-loan-chats.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:setup": "node scripts/setup.js",

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 import { successResponse, errorResponse, notFoundError, serverError } from '@/lib/api';
 import { createNotificationAndPush } from '@/lib/notify';
+import { syncCustomerUnifiedChat, removeEmployeeFromCustomerChat } from '@/lib/customer-chat';
 
 export async function POST(
   request: NextRequest,
@@ -57,23 +58,6 @@ export async function POST(
           [eid, customerId]
         );
       }
-      for (const eid of employeeIds) {
-        const [existingChats] = await connection.query(
-          `SELECT c.id FROM chats c
-           INNER JOIN chat_participants cp1 ON c.id = cp1.chat_id AND cp1.user_id = ?
-           INNER JOIN chat_participants cp2 ON c.id = cp2.chat_id AND cp2.user_id = ?
-           WHERE c.type = 'customer_employee' AND c.loan_id IS NULL`,
-          [customerId, eid]
-        ) as any[];
-        if (existingChats.length === 0) {
-          const chatId = `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          await connection.query(`INSERT INTO chats (id, type) VALUES (?, 'customer_employee')`, [chatId]);
-          await connection.query(
-            `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, ?)`,
-            [chatId, customerId, chatId, eid]
-          );
-        }
-      }
       await connection.commit();
     } catch (error) {
       await connection.rollback();
@@ -81,6 +65,8 @@ export async function POST(
     } finally {
       connection.release();
     }
+
+    await syncCustomerUnifiedChat(customerId);
 
     // Send notifications asynchronously so the API responds quickly
     const [custNames] = await pool.query(
@@ -151,7 +137,7 @@ export async function DELETE(
 ) {
   const customerId = params.id;
   const employeeId = request.nextUrl.searchParams.get('employeeId');
-  if (!customerId) return errorResponse('Customer ID is required', 400);
+  if (!customerId) return errorResponse('Customer ID is required', 400, 'error.missingRequiredFields');
   try {
     const [customers] = await pool.query('SELECT id, assigned_employee_id FROM customers WHERE id = ?', [customerId]) as any[];
     if (customers.length === 0) return notFoundError('Customer');
@@ -181,13 +167,16 @@ export async function DELETE(
         await connection.query('DELETE FROM employee_customer_assignments WHERE customer_id = ?', [customerId]);
       }
       await connection.commit();
-      return successResponse({}, employeeId ? 'Employee unassigned successfully' : 'Employee assignment removed successfully');
     } catch (error) {
       await connection.rollback();
       throw error;
     } finally {
       connection.release();
     }
+    if (employeeId) {
+      await removeEmployeeFromCustomerChat(customerId, employeeId);
+    }
+    return successResponse({}, employeeId ? 'Employee unassigned successfully' : 'Employee assignment removed successfully');
   } catch (error: any) {
     console.error('Remove assignment error:', error);
     return serverError(error?.message ?? 'Failed to remove assignment');

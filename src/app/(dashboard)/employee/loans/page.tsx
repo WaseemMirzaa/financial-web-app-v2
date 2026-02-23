@@ -240,6 +240,7 @@ export default function EmployeeLoansPage() {
             startDate: formData.startDate,
             status: formData.status,
             notes: formData.notes?.trim() || null,
+            requestedByUserId: user?.id,
           }),
         });
         const data = await response.json();

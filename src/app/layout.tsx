@@ -10,7 +10,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Alkhaij Tamweel',
+  title: 'Alkhalij for Finance',
   description: 'Professional loan management platform',
   icons: { icon: '/icon.png', apple: '/icon.png' },
 };

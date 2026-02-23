@@ -7,6 +7,7 @@ import { Card } from '../../../../components/ui/Card';
 import { Button } from '../../../../components/ui/Button';
 import { Modal } from '../../../../components/ui/Modal';
 import { Input } from '../../../../components/ui/Input';
+import { PasswordInput } from '../../../../components/ui/PasswordInput';
 import { Loader } from '../../../../components/ui/Loader';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { Customer } from '../../../../types';
@@ -441,9 +442,8 @@ export default function CustomersPage() {
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           />
           {!editingCustomer ? (
-            <Input
+            <PasswordInput
               label={t('common.password')}
-              type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder={t('form.placeholder.password')}
@@ -451,9 +451,8 @@ export default function CustomersPage() {
               minLength={6}
             />
           ) : (
-            <Input
+            <PasswordInput
               label={t('common.password')}
-              type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder={t('form.placeholder.passwordOptional')}
@@ -556,6 +555,7 @@ export default function CustomersPage() {
         <div className="space-y-3">
           {submitError && <p className="text-error text-sm">{submitError}</p>}
           <p className="text-neutral-700">{t('page.deleteCustomerConfirm')}</p>
+          <p className="text-neutral-600 text-sm">{t('page.deleteCustomerChatAlsoDeleted')}</p>
         </div>
       </Modal>
 

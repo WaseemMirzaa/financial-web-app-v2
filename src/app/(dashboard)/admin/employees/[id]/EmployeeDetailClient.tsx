@@ -8,6 +8,7 @@ import { Button } from '../../../../../components/ui/Button';
 import { Badge } from '../../../../../components/ui/Badge';
 import { Modal } from '../../../../../components/ui/Modal';
 import { Input } from '../../../../../components/ui/Input';
+import { PasswordInput } from '../../../../../components/ui/PasswordInput';
 import { Loader } from '../../../../../components/ui/Loader';
 import { useLocale } from '../../../../../contexts/LocaleContext';
 import { Customer, Employee } from '../../../../../types';
@@ -323,9 +324,8 @@ export function EmployeeDetailClient() {
             error={formErrors.email}
             required
           />
-          <Input
+          <PasswordInput
             label={t('auth.newPassword')}
-            type="password"
             value={formData.password}
             onChange={(e) => {
               setFormData({ ...formData, password: e.target.value });
@@ -334,9 +334,8 @@ export function EmployeeDetailClient() {
             error={formErrors.password}
             placeholder={t('form.placeholder.password')}
           />
-          <Input
+          <PasswordInput
             label={t('auth.confirmPassword')}
-            type="password"
             value={formData.confirmPassword}
             onChange={(e) => {
               setFormData({ ...formData, confirmPassword: e.target.value });

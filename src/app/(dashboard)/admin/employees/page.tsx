@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Employee } from '@/types';
@@ -345,9 +346,8 @@ export default function EmployeesPage() {
             required
           />
           {!editingEmployee ? (
-            <Input
+            <PasswordInput
               label={t('common.password')}
-              type="password"
               value={formData.password}
               onChange={(e) => {
                 setFormData({ ...formData, password: e.target.value });
@@ -359,9 +359,8 @@ export default function EmployeesPage() {
               minLength={6}
             />
           ) : (
-            <Input
+            <PasswordInput
               label={t('common.password')}
-              type="password"
               value={formData.password}
               onChange={(e) => {
                 setFormData({ ...formData, password: e.target.value });

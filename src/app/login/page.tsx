@@ -8,12 +8,13 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Loader } from '@/components/ui/Loader';
-import { Shield, BarChart3, Users } from 'lucide-react';
+import { Shield, BarChart3, Users, Eye, EyeOff } from 'lucide-react';
 // import { ChevronDown } from 'lucide-react'; // Demo credentials hidden
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   // Demo credentials hidden
@@ -137,15 +138,26 @@ export default function LoginPage() {
                   {t('auth.forgotPassword')}
                 </Link> */}
               </div>
-              <Input
-                id="login-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder={t('form.placeholder.password')}
-                size="medium"
-              />
+              <div className="relative">
+                <Input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder={t('form.placeholder.password')}
+                  size="medium"
+                  className="pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
 
             {error && (

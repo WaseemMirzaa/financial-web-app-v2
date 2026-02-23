@@ -260,12 +260,11 @@ export async function DELETE(
         [params.id]
       ) as any[];
       const chatIds = customerChats.map((r: any) => r.chat_id);
-      if (chatIds.length > 0) {
-        const placeholders = chatIds.map(() => '?').join(',');
-        await connection.query(
-          `DELETE FROM chats WHERE id IN (${placeholders})`,
-          chatIds
-        );
+      for (const chatId of chatIds) {
+        await connection.query('DELETE FROM chat_read_status WHERE chat_id = ?', [chatId]);
+        await connection.query('DELETE FROM chat_messages WHERE chat_id = ?', [chatId]);
+        await connection.query('DELETE FROM chat_participants WHERE chat_id = ?', [chatId]);
+        await connection.query('DELETE FROM chats WHERE id = ?', [chatId]);
       }
       try {
         await connection.query(

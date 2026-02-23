@@ -28,14 +28,17 @@ export async function POST(
     ) as any[];
     if (loan.length === 0) return notFoundError('Loan');
 
-    const [onLoan] = await pool.query(
-      'SELECT 1 FROM loan_employees WHERE loan_id = ? AND employee_id = ?',
-      [params.id, employeeId]
+    const [loanWithCust] = await pool.query(
+      'SELECT customer_id FROM loans WHERE id = ?',
+      [params.id]
     ) as any[];
-    const currentPrimary = loan[0].employee_id;
-    const isCurrentPrimary = currentPrimary === employeeId;
-    if (onLoan.length === 0 && !isCurrentPrimary) {
-      return errorResponse('Employee must be on this loan to be set as primary', 400, 'error.employeeNotOnLoan');
+    const customerId = loanWithCust[0]?.customer_id;
+    const [assigned] = await pool.query(
+      'SELECT 1 FROM employee_customer_assignments WHERE employee_id = ? AND customer_id = ?',
+      [employeeId, customerId]
+    ) as any[];
+    if (assigned.length === 0) {
+      return errorResponse('Employee must be assigned to this customer to be set as primary', 400, 'error.employeeNotAssigned');
     }
 
     await pool.query(

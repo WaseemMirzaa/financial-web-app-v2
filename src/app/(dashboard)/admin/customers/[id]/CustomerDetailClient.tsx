@@ -8,6 +8,7 @@ import { Button } from '../../../../../components/ui/Button';
 import { Badge } from '../../../../../components/ui/Badge';
 import { Modal } from '../../../../../components/ui/Modal';
 import { Input } from '../../../../../components/ui/Input';
+import { PasswordInput } from '../../../../../components/ui/PasswordInput';
 import { Loader } from '../../../../../components/ui/Loader';
 import { useLocale } from '../../../../../contexts/LocaleContext';
 import { Customer } from '../../../../../types';
@@ -423,9 +424,8 @@ export function CustomerDetailClient() {
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
             error={formErrors.address}
           />
-          <Input
+          <PasswordInput
             label={t('auth.newPassword')}
-            type="password"
             value={formData.password}
             onChange={(e) => {
               setFormData({ ...formData, password: e.target.value });
@@ -434,9 +434,8 @@ export function CustomerDetailClient() {
             error={formErrors.password}
             placeholder={t('form.placeholder.password')}
           />
-          <Input
+          <PasswordInput
             label={t('auth.confirmPassword')}
-            type="password"
             value={formData.confirmPassword}
             onChange={(e) => {
               setFormData({ ...formData, confirmPassword: e.target.value });
@@ -626,6 +625,7 @@ export function CustomerDetailClient() {
             <p className="text-error text-sm">{deleteError}</p>
           )}
           <p className="text-neutral-700">{t('page.deleteCustomerConfirm')}</p>
+          <p className="text-neutral-600 text-sm">{t('page.deleteCustomerChatAlsoDeleted')}</p>
         </div>
       </Modal>
 

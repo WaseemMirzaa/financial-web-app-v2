@@ -56,7 +56,7 @@ export function EmployeeLoanDetailClient() {
     try {
       const response = await fetch(`/api/loans/${loanId}?locale=${locale}${user?.id ? `&userId=${encodeURIComponent(user.id)}` : ''}`);
       const data = await response.json();
-      if (data.success && data.data.employeeId === user?.id) {
+      if (data.success) {
         setLoan(data.data);
         setFormData({
           amount: data.data.amount.toString(),
@@ -146,6 +146,7 @@ export function EmployeeLoanDetailClient() {
           startDate: formData.startDate,
           status: formData.status,
           notes: formData.notes?.trim() || null,
+          requestedByUserId: user?.id,
         }),
       });
       const data = await response.json();

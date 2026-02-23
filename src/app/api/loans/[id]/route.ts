@@ -34,16 +34,19 @@ export async function GET(
       return notFoundError('Loan');
     }
 
-    // Employees must not see loans for deleted/blocked customers
-    if (isEmployee) {
+    const customerId = rows[0].customer_id;
+    if (isEmployee && userId) {
       const [cust] = await pool.query(
         `SELECT id FROM users WHERE id = ? AND role = 'customer'
          AND (is_deleted = FALSE OR is_deleted IS NULL) AND is_active = TRUE`,
-        [rows[0].customer_id]
+        [customerId]
       ) as any[];
-      if (cust.length === 0) {
-        return notFoundError('Loan');
-      }
+      if (cust.length === 0) return notFoundError('Loan');
+      const [assigned] = await pool.query(
+        'SELECT 1 FROM employee_customer_assignments WHERE employee_id = ? AND customer_id = ?',
+        [userId, customerId]
+      ) as any[];
+      if (assigned.length === 0) return notFoundError('Loan');
     }
 
     const loan = rows[0];
@@ -51,8 +54,8 @@ export async function GET(
     const startDateVal = loan.start_date ? String(loan.start_date).slice(0, 10) : loan.start_date;
 
     const [empRows] = await pool.query(
-      'SELECT employee_id FROM loan_employees WHERE loan_id = ? ORDER BY employee_id',
-      [params.id]
+      'SELECT employee_id FROM employee_customer_assignments WHERE customer_id = ? ORDER BY employee_id',
+      [customerId]
     ) as any[];
     const employeeIds = empRows.length > 0
       ? empRows.map((r: any) => r.employee_id)
@@ -97,16 +100,31 @@ export async function PUT(
       startDate,
       status,
       notes,
+      requestedByUserId,
     } = body;
+    const userId = requestedByUserId || request.nextUrl.searchParams.get('userId');
 
-    // Check if loan exists
     const [existing] = await pool.query(
-      'SELECT id FROM loans WHERE id = ?',
+      'SELECT id, customer_id FROM loans WHERE id = ?',
       [params.id]
     ) as any[];
 
     if (existing.length === 0) {
       return notFoundError('Loan');
+    }
+    const customerId = existing[0].customer_id;
+
+    if (userId) {
+      const [ur] = await pool.query('SELECT role FROM users WHERE id = ?', [userId]) as any[];
+      if (ur.length > 0 && ur[0].role === 'employee') {
+        const [assigned] = await pool.query(
+          'SELECT 1 FROM employee_customer_assignments WHERE employee_id = ? AND customer_id = ?',
+          [userId, customerId]
+        ) as any[];
+        if (assigned.length === 0) {
+          return unauthorizedError();
+        }
+      }
     }
 
     const connection = await pool.getConnection();
@@ -260,9 +278,6 @@ export async function DELETE(
       return notFoundError('Loan');
     }
 
-    // Delete loan chat and related data first (chats CASCADE to messages/participants)
-    await pool.query('DELETE FROM chats WHERE loan_id = ?', [params.id]);
-    await pool.query('DELETE FROM loan_employees WHERE loan_id = ?', [params.id]);
     await pool.query('DELETE FROM loans WHERE id = ?', [params.id]);
 
     return successResponse({}, 'Loan deleted successfully', 'error.loanDeletedSuccessfully');

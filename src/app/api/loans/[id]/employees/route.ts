@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 import { successResponse, errorResponse, notFoundError, serverError, validationError } from '@/lib/api';
+import { syncCustomerUnifiedChat } from '@/lib/customer-chat';
 
 export const dynamic = 'force-dynamic';
 
-/** GET: list employees on this loan (= loan chat team; single source of truth: loan_employees) */
+/** GET: list employees assigned to this loan's customer (customer assignment = loan access) */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -12,18 +13,17 @@ export async function GET(
   try {
     const loanId = params.id;
     const [loanRows] = await pool.query(
-      'SELECT employee_id FROM loans WHERE id = ?',
+      'SELECT customer_id FROM loans WHERE id = ?',
       [loanId]
     ) as any[];
     if (loanRows.length === 0) return notFoundError('Loan');
+    const customerId = loanRows[0].customer_id;
 
     const [rows] = await pool.query(
-      'SELECT employee_id FROM loan_employees WHERE loan_id = ? ORDER BY employee_id',
-      [loanId]
+      'SELECT employee_id FROM employee_customer_assignments WHERE customer_id = ? ORDER BY employee_id',
+      [customerId]
     ) as any[];
-    const employeeIds = rows.length > 0
-      ? rows.map((r: any) => r.employee_id)
-      : [loanRows[0].employee_id];
+    const employeeIds = rows.map((r: any) => r.employee_id);
 
     return successResponse(employeeIds);
   } catch (error: any) {
@@ -32,7 +32,7 @@ export async function GET(
   }
 }
 
-/** POST: add an employee to the loan (and to the loan chat — same list) */
+/** POST: add an employee to this loan's customer (customer assignment; they get access to all customer loans) */
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -67,41 +67,26 @@ export async function POST(
       }
 
       await connection.query(
-        'INSERT IGNORE INTO loan_employees (loan_id, employee_id) VALUES (?, ?)',
-        [loanId, employeeId]
-      );
-      await connection.query(
         'INSERT IGNORE INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)',
         [employeeId, customerId]
       );
 
-      const [chatRows] = await connection.query(
-        'SELECT id FROM chats WHERE loan_id = ? LIMIT 1',
-        [loanId]
-      ) as any[];
-      if (chatRows.length > 0) {
-        const chatId = chatRows[0].id;
-        await connection.query(
-          'INSERT IGNORE INTO chat_participants (chat_id, user_id) VALUES (?, ?)',
-          [chatId, employeeId]
-        );
-      }
-
       await connection.commit();
-      return successResponse({ added: true });
     } catch (e) {
       await connection.rollback();
       throw e;
     } finally {
       connection.release();
     }
+    await syncCustomerUnifiedChat(customerId);
+    return successResponse({ added: true });
   } catch (error: any) {
     console.error('Add loan employee error:', error);
     return serverError();
   }
 }
 
-/** PUT: set full list (assigned employees = chat team); syncs loan_employees and chat participants */
+/** PUT: set full list of employees assigned to this customer (customer assignment; syncs unified chat) */
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -140,52 +125,30 @@ export async function PUT(
 
       const primaryId = employeeIds[0];
       await connection.query('UPDATE loans SET employee_id = ? WHERE id = ?', [primaryId, loanId]);
-      await connection.query('DELETE FROM loan_employees WHERE loan_id = ?', [loanId]);
+      await connection.query('DELETE FROM employee_customer_assignments WHERE customer_id = ?', [customerId]);
       for (const eid of employeeIds) {
         await connection.query(
-          'INSERT INTO loan_employees (loan_id, employee_id) VALUES (?, ?)',
-          [loanId, eid]
-        );
-        await connection.query(
-          'INSERT IGNORE INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)',
+          'INSERT INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)',
           [eid, customerId]
         );
       }
 
-      const [chatRows] = await connection.query(
-        'SELECT id FROM chats WHERE loan_id = ? LIMIT 1',
-        [loanId]
-      ) as any[];
-      if (chatRows.length > 0) {
-        const chatId = chatRows[0].id;
-        await connection.query('DELETE FROM chat_participants WHERE chat_id = ?', [chatId]);
-        await connection.query(
-          'INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)',
-          [chatId, customerId]
-        );
-        for (const eid of employeeIds) {
-          await connection.query(
-            'INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)',
-            [chatId, eid]
-          );
-        }
-      }
-
       await connection.commit();
-      return successResponse({ updated: true });
     } catch (e) {
       await connection.rollback();
       throw e;
     } finally {
       connection.release();
     }
+    await syncCustomerUnifiedChat(customerId);
+    return successResponse({ updated: true });
   } catch (error: any) {
     console.error('Set loan employees error:', error);
     return serverError();
   }
 }
 
-/** DELETE: remove an employee from the loan (and from the loan chat — same list) */
+/** DELETE: remove an employee from this customer (loses access to all customer loans and chat) */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -195,19 +158,21 @@ export async function DELETE(
     const employeeId = request.nextUrl.searchParams.get('employeeId');
     if (!employeeId) return validationError('employeeId query is required', 'error.missingRequiredFields');
 
+    let customerId: string = '';
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
-      const [loan] = await connection.query('SELECT id FROM loans WHERE id = ?', [loanId]) as any[];
+      const [loan] = await connection.query('SELECT id, customer_id FROM loans WHERE id = ?', [loanId]) as any[];
       if (loan.length === 0) {
         await connection.rollback();
         return notFoundError('Loan');
       }
+      customerId = loan[0].customer_id;
 
       await connection.query(
-        'DELETE FROM loan_employees WHERE loan_id = ? AND employee_id = ?',
-        [loanId, employeeId]
+        'DELETE FROM employee_customer_assignments WHERE customer_id = ? AND employee_id = ?',
+        [customerId, employeeId]
       );
 
       const [loanRow] = await connection.query(
@@ -217,8 +182,8 @@ export async function DELETE(
       const currentPrimary = loanRow?.[0]?.employee_id;
       if (currentPrimary === employeeId) {
         const [remaining] = await connection.query(
-          'SELECT employee_id FROM loan_employees WHERE loan_id = ? ORDER BY employee_id LIMIT 1',
-          [loanId]
+          'SELECT employee_id FROM employee_customer_assignments WHERE customer_id = ? ORDER BY employee_id LIMIT 1',
+          [customerId]
         ) as any[];
         const newPrimary = remaining?.[0]?.employee_id ?? null;
         await connection.query(
@@ -227,25 +192,15 @@ export async function DELETE(
         );
       }
 
-      const [chatRows] = await connection.query(
-        'SELECT id FROM chats WHERE loan_id = ? LIMIT 1',
-        [loanId]
-      ) as any[];
-      if (chatRows.length > 0) {
-        await connection.query(
-          'DELETE FROM chat_participants WHERE chat_id = ? AND user_id = ?',
-          [chatRows[0].id, employeeId]
-        );
-      }
-
       await connection.commit();
-      return successResponse({ removed: true });
     } catch (e) {
       await connection.rollback();
       throw e;
     } finally {
       connection.release();
     }
+    await syncCustomerUnifiedChat(customerId);
+    return successResponse({ removed: true });
   } catch (error: any) {
     console.error('Remove loan employee error:', error);
     return serverError();

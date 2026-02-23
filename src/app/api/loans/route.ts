@@ -4,6 +4,7 @@ import { saveLoanNotesTranslations } from '@/lib/translations';
 import { translateToBothLanguages } from '@/lib/translate';
 import { successResponse, errorResponse, validationError, notFoundError, serverError } from '@/lib/api';
 import { createNotificationAndPush } from '@/lib/notify';
+import { syncCustomerUnifiedChat } from '@/lib/customer-chat';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,9 +44,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (employeeId) {
-      query += ' AND l.employee_id = ?';
+      // Employees see all loans for customers they are assigned to (customer assignment, not loan)
+      query += ` AND l.customer_id IN (SELECT customer_id FROM employee_customer_assignments WHERE employee_id = ?)`;
       params.push(employeeId);
-      // Employees only see loans for non-deleted, active customers
       query += ` AND l.customer_id IN (SELECT id FROM users WHERE role = 'customer' AND (is_deleted = FALSE OR is_deleted IS NULL) AND is_active = TRUE)`;
     }
 
@@ -222,49 +223,12 @@ export async function POST(request: NextRequest) {
         [employeeId, customerId]
       );
 
-      const loanChatId = `chat-loan-${loanId}`;
-      await connection.query(
-        `INSERT INTO chats (id, type, loan_id) VALUES (?, 'customer_employee', ?)`,
-        [loanChatId, loanId]
-      );
-
       const idsToAdd = employeeIdsArray ?? [employeeId];
       for (const eid of idsToAdd) {
         await connection.query(
           `INSERT IGNORE INTO employee_customer_assignments (employee_id, customer_id) VALUES (?, ?)`,
           [eid, customerId]
         );
-        await connection.query(
-          `INSERT INTO loan_employees (loan_id, employee_id) VALUES (?, ?)`,
-          [loanId, eid]
-        );
-        await connection.query(
-          `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)`,
-          [loanChatId, eid]
-        );
-      }
-      await connection.query(
-        `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?)`,
-        [loanChatId, customerId]
-      );
-
-      if (!employeeIdsArray && !isEmployeeRequest) {
-        const [assignRows] = await connection.query(
-          'SELECT employee_id FROM employee_customer_assignments WHERE customer_id = ?',
-          [customerId]
-        ) as any[];
-        const allEmployeeIds = [...new Set(assignRows?.map((r: any) => r.employee_id) || [])];
-        for (const eid of allEmployeeIds) {
-          if (eid === employeeId) continue;
-          await connection.query(
-            'INSERT IGNORE INTO loan_employees (loan_id, employee_id) VALUES (?, ?)',
-            [loanId, eid]
-          );
-          await connection.query(
-            'INSERT IGNORE INTO chat_participants (chat_id, user_id) VALUES (?, ?)',
-            [loanChatId, eid]
-          );
-        }
       }
 
       await connection.commit();
@@ -275,6 +239,8 @@ export async function POST(request: NextRequest) {
     } finally {
       connection.release();
     }
+
+    await syncCustomerUnifiedChat(customerId);
 
     // Notes use pool (separate connection) - run after commit so loan row is visible
     if (notes != null && String(notes).trim() !== '') {
