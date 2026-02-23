@@ -101,7 +101,7 @@ async function seed() {
     }
     console.log('Unified customer chats synced');
 
-    // --- Loans ---
+    // --- Loans (access is by employee_customer_assignments only; no loan_employees seeded) ---
     const loans = [
       { id: 'loan-1', customerId: 'customer-1', employeeId: 'employee-1', amount: 50000, rate: 5, installments: 12, startDate: '2024-01-15', status: 'active', notesEn: 'Monthly payment plan', notesAr: 'خطة الدفع الشهرية' },
       { id: 'loan-2', customerId: 'customer-2', employeeId: 'employee-1', amount: 25000, rate: 4, installments: 6, startDate: '2024-03-01', status: 'under_review', notesEn: 'Pending activation', notesAr: 'في انتظار التفعيل' },
