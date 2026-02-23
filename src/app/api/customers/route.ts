@@ -110,11 +110,22 @@ export async function POST(request: NextRequest) {
     await connection.beginTransaction();
 
     try {
-      // Create user
-      await connection.query(
-        `INSERT INTO users (id, email, password_hash, role, is_active) VALUES (?, ?, ?, 'customer', TRUE)`,
-        [userId, email, passwordHash]
-      );
+      // Create user (try with is_deleted for compatibility; fallback if column missing)
+      try {
+        await connection.query(
+          `INSERT INTO users (id, email, password_hash, role, is_active, is_deleted) VALUES (?, ?, ?, 'customer', TRUE, FALSE)`,
+          [userId, email, passwordHash]
+        );
+      } catch (colErr: any) {
+        if (colErr?.code === 'ER_BAD_FIELD_ERROR' && colErr?.message?.includes('is_deleted')) {
+          await connection.query(
+            `INSERT INTO users (id, email, password_hash, role, is_active) VALUES (?, ?, ?, 'customer', TRUE)`,
+            [userId, email, passwordHash]
+          );
+        } else {
+          throw colErr;
+        }
+      }
 
       // Save name translations in same transaction (must use connection, not pool)
       await connection.query(
@@ -168,7 +179,7 @@ export async function POST(request: NextRequest) {
       connection.release();
     }
   } catch (error: any) {
-    console.error('Create customer error:', error);
-    return serverError();
+    console.error('Create customer error:', error?.message || error);
+    return serverError(error?.message || 'Failed to create customer');
   }
 }
