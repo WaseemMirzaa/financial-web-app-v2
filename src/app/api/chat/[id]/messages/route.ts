@@ -29,20 +29,25 @@ async function checkCanReadChat(chatId: string, userId: string): Promise<ReturnT
   if (role === 'admin') return null; // Admin can read any chat (monitor)
   if (role === 'customer') {
     if (!isParticipant || chatType !== 'customer_employee') return errorResponse('Access denied', 403, 'error.accessDenied');
-    const [cust] = await pool.query(`SELECT assigned_employee_id FROM customers WHERE id = ?`, [userId]) as any[];
-    const assigned = cust.length > 0 ? cust[0].assigned_employee_id : null;
-    const other = participantIds.find((id: string) => id !== userId);
-    if (other !== assigned) return errorResponse('Access denied', 403, 'error.accessDenied');
     return null;
   }
   if (role === 'employee') {
     if (!isParticipant) return errorResponse('Access denied', 403, 'error.accessDenied');
     if (chatType === 'customer_employee') {
-      const [assign] = await pool.query(
-        `SELECT 1 FROM employee_customer_assignments WHERE employee_id = ? AND customer_id = ?`,
-        [userId, participantIds.find((id: string) => id !== userId)]
+      const [customerInChat] = await pool.query(
+        `SELECT cp.user_id FROM chat_participants cp
+         INNER JOIN users u ON u.id = cp.user_id AND u.role = 'customer'
+         WHERE cp.chat_id = ? LIMIT 1`,
+        [chatId]
       ) as any[];
-      if (assign.length === 0) return errorResponse('Access denied', 403, 'error.accessDenied');
+      const customerId = customerInChat?.[0]?.user_id;
+      if (customerId) {
+        const [assign] = await pool.query(
+          `SELECT 1 FROM employee_customer_assignments WHERE employee_id = ? AND customer_id = ?`,
+          [userId, customerId]
+        ) as any[];
+        if (assign.length === 0) return errorResponse('Access denied', 403, 'error.accessDenied');
+      }
     }
     return null;
   }
@@ -78,12 +83,20 @@ async function checkCanSendInChat(chatId: string, senderId: string): Promise<Ret
 
   if (!isParticipant) return errorResponse('Access denied', 403, 'error.accessDenied');
   if (role === 'employee' && chatType === 'customer_employee') {
-    const other = participantIds.find((id: string) => id !== senderId);
-    const [assign] = await pool.query(
-      `SELECT 1 FROM employee_customer_assignments WHERE employee_id = ? AND customer_id = ?`,
-      [senderId, other]
+    const [customerInChat] = await pool.query(
+      `SELECT cp.user_id FROM chat_participants cp
+       INNER JOIN users u ON u.id = cp.user_id AND u.role = 'customer'
+       WHERE cp.chat_id = ? LIMIT 1`,
+      [chatId]
     ) as any[];
-    if (assign.length === 0) return errorResponse('Access denied', 403, 'error.accessDenied');
+    const customerId = customerInChat?.[0]?.user_id;
+    if (customerId) {
+      const [assign] = await pool.query(
+        `SELECT 1 FROM employee_customer_assignments WHERE employee_id = ? AND customer_id = ?`,
+        [senderId, customerId]
+      ) as any[];
+      if (assign.length === 0) return errorResponse('Access denied', 403, 'error.accessDenied');
+    }
   }
   return null;
 }
