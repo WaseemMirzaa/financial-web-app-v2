@@ -274,7 +274,10 @@ export async function DELETE(
         await connection.query('DELETE FROM chats WHERE id = ?', [chatId]);
       }
 
-      // 4. Hard delete customer and user (no archive)
+      // 4. Delete all notifications for this customer (translations CASCADE from notifications)
+      await connection.query('DELETE FROM notifications WHERE user_id = ?', [params.id]);
+
+      // 5. Hard delete customer and user (no archive)
       await connection.query('DELETE FROM customers WHERE id = ?', [params.id]);
       await connection.query('DELETE FROM users WHERE id = ?', [params.id]);
 
