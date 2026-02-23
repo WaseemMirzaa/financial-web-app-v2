@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -390,30 +389,6 @@ export function LoanDetailClient() {
                     );
                   })}
                 </ul>
-                <div className="mt-3">
-                  <SearchableSelect
-                    options={allEmployees
-                      .filter((e: any) => !(loan.employeeIds || [loan.employeeId]).includes(e.id))
-                      .map((e: any) => ({ id: e.id, label: e.name, sublabel: e.email }))}
-                    value=""
-                    onChange={async (id) => {
-                      setAddRemoveLoading(true);
-                      try {
-                        const r = await fetch(`/api/loans/${loanId}/employees`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ employeeId: id }),
-                        });
-                        const d = await r.json();
-                        if (d.success) await fetchLoan();
-                      } finally {
-                        setAddRemoveLoading(false);
-                      }
-                    }}
-                    placeholder={t('detail.addEmployeeToLoan')}
-                    aria-label={t('detail.addEmployeeToLoan')}
-                  />
-                </div>
               </div>
             ) : null}
           </div>
