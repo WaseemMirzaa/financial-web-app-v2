@@ -121,20 +121,20 @@ export default function EmployeeChatPage() {
 
   const selectedChatData = chats.find(c => c.id === selectedChat);
 
-  // Employees only have unified customer chats (customer_employee, no loan_id)
-  const unifiedChats = chats.filter((c) => c.type === 'customer_employee');
+  // All chats: customer_employee (unified customer) + internal_room (admin/employee rooms)
   const chatSearchLower = chatSearchQuery.trim().toLowerCase();
   const filteredChats =
     chatSearchLower === ''
-      ? unifiedChats
-      : unifiedChats.filter((chat) => {
+      ? chats
+      : chats.filter((chat) => {
+          const roomNameMatch = chat.type === 'internal_room' && chat.roomName && chat.roomName.toLowerCase().includes(chatSearchLower);
           const namesMatch = (chat.participantNames ?? []).some((n) =>
             n.toLowerCase().includes(chatSearchLower)
           );
           const idsMatch = (chat.participantIds ?? []).some((id) =>
             id.toLowerCase().includes(chatSearchLower)
           );
-          return namesMatch || idsMatch;
+          return roomNameMatch || namesMatch || idsMatch;
         });
 
   const handleStartChatWithCustomer = async (customerId: string) => {
