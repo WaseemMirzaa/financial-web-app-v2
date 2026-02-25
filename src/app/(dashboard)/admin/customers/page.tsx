@@ -110,7 +110,7 @@ export default function CustomersPage() {
     
     if (!formData.email.trim()) {
       errors.email = t('validation.emailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       errors.email = t('validation.emailInvalid');
     }
     
@@ -418,17 +418,30 @@ export default function CustomersPage() {
         }
       >
         <div className="space-y-4">
+          {submitError && (
+            <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+              {submitError}
+            </div>
+          )}
           <Input
             label={t('common.name')}
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+            }}
+            error={formErrors.name}
             required
           />
           <Input
             label={t('common.email')}
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
+            }}
+            error={formErrors.email}
             required
           />
           <Input
@@ -445,7 +458,11 @@ export default function CustomersPage() {
             <PasswordInput
               label={t('common.password')}
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, password: e.target.value });
+                if (formErrors.password) setFormErrors({ ...formErrors, password: '' });
+              }}
+              error={formErrors.password}
               placeholder={t('form.placeholder.password')}
               required
               minLength={6}
@@ -454,7 +471,11 @@ export default function CustomersPage() {
             <PasswordInput
               label={t('common.password')}
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, password: e.target.value });
+                if (formErrors.password) setFormErrors({ ...formErrors, password: '' });
+              }}
+              error={formErrors.password}
               placeholder={t('form.placeholder.passwordOptional')}
               minLength={6}
             />

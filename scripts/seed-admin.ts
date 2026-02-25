@@ -29,11 +29,20 @@ async function seedAdmin() {
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Create admin user
-    await pool.query(
-      `INSERT INTO users (id, email, password_hash, role, is_active) VALUES (?, ?, ?, 'admin', TRUE)`,
-      [adminId, email, passwordHash]
-    );
+    // Create admin user (is_deleted for schema compatibility; fallback if column missing)
+    try {
+      await pool.query(
+        `INSERT INTO users (id, email, password_hash, role, is_active, is_deleted) VALUES (?, ?, ?, 'admin', TRUE, FALSE)`,
+        [adminId, email, passwordHash]
+      );
+    } catch (e: any) {
+      if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+        await pool.query(
+          `INSERT INTO users (id, email, password_hash, role, is_active) VALUES (?, ?, ?, 'admin', TRUE)`,
+          [adminId, email, passwordHash]
+        );
+      } else throw e;
+    }
 
     // Save translations
     await saveUserNameTranslations(adminId, nameEn, nameAr);

@@ -80,7 +80,7 @@ export default function EmployeesPage() {
     
     if (!formData.email.trim()) {
       errors.email = t('validation.emailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       errors.email = t('validation.emailInvalid');
     }
     

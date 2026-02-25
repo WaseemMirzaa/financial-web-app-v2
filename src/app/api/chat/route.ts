@@ -145,10 +145,10 @@ export async function GET(request: NextRequest) {
             WHERE cp.chat_id = ? AND cp.user_id != ?`,
             [chat.id, userId]
           ) as any[];
-          participantNames = participants.map((p: any) => {
-            if (p.role === 'admin') return 'Admin';
-            return p.name_en || p.name_ar || p.user_id;
-          });
+          // Only include customer names (exclude admin and employee roles from display)
+          participantNames = participants
+            .filter((p: any) => p.role === 'customer')
+            .map((p: any) => p.name_en || p.name_ar || p.user_id);
           participantIds = participants.map((p: any) => p.user_id);
         } else if (chat.type === 'internal_room') {
           const [participants] = await pool.query(

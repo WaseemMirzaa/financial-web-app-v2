@@ -238,11 +238,11 @@ export default function CustomerChatPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card variant="elevated" padding="none" className="lg:col-span-1">
-          <div className="p-3 sm:p-4 border-b border-neutral-100">
+        <Card variant="elevated" padding="none" className="lg:col-span-1 flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
+          <div className="p-3 sm:p-4 border-b border-neutral-100 shrink-0">
             <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
           </div>
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-neutral-100 overflow-y-auto flex-1">
             {chats.map((chat) => (
               <button
                 key={chat.id}
@@ -257,11 +257,7 @@ export default function CustomerChatPage() {
               >
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-neutral-900">
-                    {chat.participantNames && chat.participantNames.length > 0
-                      ? chat.participantNames[0]
-                      : assignedEmployee
-                      ? assignedEmployee.name
-                      : t('chat.employee')}
+                    {t('chat.companyName')}
                   </p>
                   {chat.unreadCount > 0 && (
                     <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-500 text-white text-xs font-semibold">
@@ -323,13 +319,7 @@ export default function CustomerChatPage() {
                   );
                 }
               }}
-              title={
-                selectedChatData.participantNames && selectedChatData.participantNames.length > 0
-                  ? selectedChatData.participantNames[0]
-                  : assignedEmployee
-                  ? assignedEmployee.name
-                  : t('chat.employee')
-              }
+              title={t('chat.companyName')}
             />
           ) : (
             <Card variant="elevated" padding="large">

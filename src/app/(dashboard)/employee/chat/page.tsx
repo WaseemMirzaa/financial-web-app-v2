@@ -221,8 +221,8 @@ export default function EmployeeChatPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card variant="elevated" padding="none" className="lg:col-span-1">
-          <div className="p-3 sm:p-4 border-b border-neutral-100 space-y-3">
+        <Card variant="elevated" padding="none" className="lg:col-span-1 flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
+          <div className="p-3 sm:p-4 border-b border-neutral-100 space-y-3 shrink-0">
             <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
             <input
               type="search"
@@ -260,7 +260,7 @@ export default function EmployeeChatPage() {
               </div>
             )}
           </div>
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-neutral-100 overflow-y-auto flex-1">
             {filteredChats.length === 0 ? (
               <div className="p-4 text-center text-neutral-500">
                 <p>{chats.length === 0 ? t('chat.noChats') : t('chat.noMatches')}</p>

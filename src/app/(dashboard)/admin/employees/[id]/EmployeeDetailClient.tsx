@@ -114,7 +114,7 @@ export function EmployeeDetailClient() {
     
     if (!formData.email.trim()) {
       errors.email = t('validation.emailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       errors.email = t('validation.emailInvalid');
     }
 

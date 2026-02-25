@@ -9,6 +9,23 @@ import * as path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
+async function insertUser(connection: any, params: [string, string, string, string]) {
+  const [id, email, passwordHash, role] = params;
+  try {
+    await connection.query(
+      `INSERT INTO users (id, email, password_hash, role, is_active, is_deleted) VALUES (?, ?, ?, ?, TRUE, FALSE)`,
+      [id, email, passwordHash, role]
+    );
+  } catch (e: any) {
+    if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+      await connection.query(
+        `INSERT INTO users (id, email, password_hash, role, is_active) VALUES (?, ?, ?, ?, TRUE)`,
+        [id, email, passwordHash, role]
+      );
+    } else throw e;
+  }
+}
+
 async function seed() {
   const { default: pool } = await import('../src/lib/db');
   const { hashPassword } = await import('../src/lib/auth');
@@ -25,10 +42,7 @@ async function seed() {
     const [existingAdmin] = await connection.query('SELECT id FROM users WHERE email = ?', [adminEmail]) as any[];
     if (existingAdmin.length === 0) {
       const passwordHash = await hashPassword(adminPassword);
-      await connection.query(
-        `INSERT INTO users (id, email, password_hash, role, is_active) VALUES (?, ?, ?, 'admin', TRUE)`,
-        [adminId, adminEmail, passwordHash]
-      );
+      await insertUser(connection, [adminId, adminEmail, passwordHash, 'admin']);
       await saveUserNameTranslations(adminId, 'Alkhalij for Finance', 'الخليج للتمويل');
       console.log('Admin created:', adminEmail);
     } else {
@@ -44,10 +58,7 @@ async function seed() {
       const [ex] = await connection.query('SELECT id FROM users WHERE id = ?', [e.id]) as any[];
       if (ex.length === 0) {
         const hash = await hashPassword('employee123');
-        await connection.query(
-          `INSERT INTO users (id, email, password_hash, role, is_active) VALUES (?, ?, ?, 'employee', TRUE)`,
-          [e.id, e.email, hash]
-        );
+        await insertUser(connection, [e.id, e.email, hash, 'employee']);
         await connection.query(`INSERT INTO employees (id) VALUES (?)`, [e.id]);
         await saveUserNameTranslations(e.id, e.nameEn, e.nameAr);
         console.log('Employee created:', e.email);
@@ -64,10 +75,7 @@ async function seed() {
       const [ex] = await connection.query('SELECT id FROM users WHERE id = ?', [c.id]) as any[];
       if (ex.length === 0) {
         const hash = await hashPassword('customer123');
-        await connection.query(
-          `INSERT INTO users (id, email, password_hash, role, is_active) VALUES (?, ?, ?, 'customer', TRUE)`,
-          [c.id, c.email, hash]
-        );
+        await insertUser(connection, [c.id, c.email, hash, 'customer']);
         await connection.query(
           `INSERT INTO customers (id, phone, address, assigned_employee_id) VALUES (?, ?, NULL, NULL)`,
           [c.id, c.phone || '']
@@ -121,6 +129,16 @@ async function seed() {
       }
     }
 
+    // --- loan_employees (one row per loan's primary employee; matches migrate backfill) ---
+    try {
+      await connection.query(
+        `INSERT IGNORE INTO loan_employees (loan_id, employee_id) VALUES
+         ('loan-1', 'employee-1'), ('loan-2', 'employee-1'), ('loan-3', 'employee-2')`
+      );
+    } catch (_) {
+      // loan_employees table may not exist in older schemas
+    }
+
     // --- Internal chat rooms (Contracts, Follow Up, Receipts) with employees ---
     const rooms = [
       { id: 'room-contracts', name: 'Contracts' },
@@ -131,12 +149,12 @@ async function seed() {
       const [exChat] = await connection.query('SELECT id FROM chats WHERE id = ?', [r.id]) as any[];
       if (exChat.length === 0) {
         await connection.query(
-          `INSERT INTO chats (id, type, room_name) VALUES (?, 'internal_room', ?)`,
-          [r.id, r.name]
+          `INSERT INTO chats (id, type, room_name, created_by) VALUES (?, 'internal_room', ?, ?)`,
+          [r.id, r.name, adminId]
         );
         await connection.query(
-          `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, 'employee-1'), (?, 'employee-2')`,
-          [r.id, r.id]
+          `INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?), (?, 'employee-1'), (?, 'employee-2')`,
+          [r.id, adminId, r.id, r.id]
         );
         console.log('Internal room created:', r.name);
       }

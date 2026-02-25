@@ -58,21 +58,14 @@ export async function saveUserNameTranslations(
   nameEn: string,
   nameAr: string
 ): Promise<void> {
-  // Delete existing translations
   await pool.query(
-    `DELETE FROM user_translations WHERE user_id = ?`,
-    [userId]
-  );
-
-  // Insert English translation
-  await pool.query(
-    `INSERT INTO user_translations (user_id, locale, name) VALUES (?, 'en', ?)`,
+    `INSERT INTO user_translations (user_id, locale, name) VALUES (?, 'en', ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name)`,
     [userId, nameEn]
   );
-
-  // Insert Arabic translation
   await pool.query(
-    `INSERT INTO user_translations (user_id, locale, name) VALUES (?, 'ar', ?)`,
+    `INSERT INTO user_translations (user_id, locale, name) VALUES (?, 'ar', ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name)`,
     [userId, nameAr]
   );
 }
