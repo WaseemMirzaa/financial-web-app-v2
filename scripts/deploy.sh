@@ -39,4 +39,4 @@ echo "[deploy] Restarting PM2..."
 pm2 restart financial-web-app
 pm2 save
 
-echo "[deploy] Done."
+echo "[deploy] Done. If users see 'Failed to find Server Action', ask them to hard-refresh (Ctrl+Shift+R / Cmd+Shift+R)."
