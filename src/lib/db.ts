@@ -1,5 +1,7 @@
 import mysql from 'mysql2/promise';
 
+// For ~2000 concurrent users: one Node instance uses one pool; MySQL max_connections often 150–500.
+// 80 connections + queue handles bursts; scale horizontally (more app instances) if needed.
 const poolConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -7,8 +9,8 @@ const poolConfig = {
   database: process.env.DB_NAME || 'financial_app',
   port: parseInt(process.env.DB_PORT || '3306'),
   waitForConnections: true,
-  connectionLimit: 10000000,
-  queueLimit: 50000,
+  connectionLimit: parseInt(process.env.DB_POOL_SIZE || '80'),
+  queueLimit: parseInt(process.env.DB_QUEUE_LIMIT || '5000'),
 };
 
 const globalForDb = globalThis as unknown as { dbPool: mysql.Pool };
