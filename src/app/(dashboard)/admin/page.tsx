@@ -8,6 +8,7 @@ import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatCurrency, formatNumber } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -53,6 +54,7 @@ export default function AdminDashboard() {
       if (loansData.success) setLoans(loansData.data);
       if (chatsData.success) setChats(chatsData.data);
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);

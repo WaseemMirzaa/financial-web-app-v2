@@ -14,6 +14,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function EmployeeLoansPage() {
   const router = useRouter();
@@ -65,6 +66,7 @@ export default function EmployeeLoansPage() {
         setLoans(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch loans:', error);
     } finally {
       setLoading(false);
@@ -79,6 +81,7 @@ export default function EmployeeLoansPage() {
         setCustomers(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch customers:', error);
     }
   };
@@ -306,6 +309,7 @@ export default function EmployeeLoansPage() {
         }
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to save loan:', error);
       setSubmitError(t('error.internalServerError'));
     }

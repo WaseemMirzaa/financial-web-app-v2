@@ -7,6 +7,7 @@ import { Button } from '../../../../components/ui/Button';
 import { Input } from '../../../../components/ui/Input';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { useAuth } from '../../../../contexts/AuthContext';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 type TargetType = 'all' | 'all_employees' | 'all_customers';
 
@@ -69,6 +70,7 @@ export default function AdminBroadcastPage() {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Broadcast error:', error);
       setSubmitError(t('error.internalServerError'));
     } finally {

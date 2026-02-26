@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Chat, ChatMessage } from '@/types';
 import type { Customer } from '@/types';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function EmployeeChatPage() {
   const pathname = usePathname();
@@ -48,6 +49,7 @@ export default function EmployeeChatPage() {
       const data = await response.json();
       if (data.success) setAssignedCustomers(data.data || []);
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch assigned customers:', error);
     }
   };
@@ -65,6 +67,7 @@ export default function EmployeeChatPage() {
         });
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch chats:', error);
     } finally {
       setLoading(false);
@@ -84,6 +87,7 @@ export default function EmployeeChatPage() {
         markChatAsRead(chatId);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch messages:', error);
     }
   };
@@ -99,6 +103,7 @@ export default function EmployeeChatPage() {
       // Refresh chat list to update unread counts
       fetchChats();
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to mark chat as read:', error);
     }
   };
@@ -155,6 +160,7 @@ export default function EmployeeChatPage() {
         fetchMessages(newChat.id);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to start chat:', error);
     } finally {
       setStartingChat(false);
@@ -201,6 +207,7 @@ export default function EmployeeChatPage() {
         console.error('Failed to send message:', data.error);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to send message:', error);
     }
   };

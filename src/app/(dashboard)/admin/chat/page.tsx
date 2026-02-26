@@ -14,6 +14,7 @@ import { useNotifications } from '../../../../contexts/NotificationContext';
 import { Chat, ChatMessage } from '../../../../types';
 import type { Employee } from '../../../../types';
 import { Pin, PinOff, Trash2, Bookmark } from 'lucide-react';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function AdminChatPage() {
   const pathname = usePathname();
@@ -59,6 +60,7 @@ export default function AdminChatPage() {
       const data = await response.json();
       if (data.success) setEmployees(data.data || []);
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch employees:', error);
     }
   };
@@ -77,6 +79,7 @@ export default function AdminChatPage() {
         });
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch chats:', error);
     } finally {
       setLoading(false);
@@ -95,6 +98,7 @@ export default function AdminChatPage() {
         });
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch participants:', error);
     }
   };
@@ -112,6 +116,7 @@ export default function AdminChatPage() {
         markChatAsRead(chatId);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch messages:', error);
     }
   };
@@ -127,6 +132,7 @@ export default function AdminChatPage() {
       // Refresh chat list to update unread counts
       fetchChats();
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to mark chat as read:', error);
     }
   };
@@ -215,6 +221,7 @@ export default function AdminChatPage() {
         setCreateRoomError(data.errorKey ? t(data.errorKey) : (data.error || 'Failed to create room'));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to create room:', error);
       setCreateRoomError('Failed to create room. Please try again.');
     } finally {
@@ -243,6 +250,7 @@ export default function AdminChatPage() {
         console.error('Pin toggle failed:', data.error);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to toggle pin:', error);
     }
   };
@@ -264,6 +272,7 @@ export default function AdminChatPage() {
         setDeleteRoomError(t(data.errorKey));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to delete room:', error);
     }
   };
@@ -308,6 +317,7 @@ export default function AdminChatPage() {
         console.error('Failed to send message:', data.error);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to send message:', error);
     }
   };

@@ -7,8 +7,8 @@ const poolConfig = {
   database: process.env.DB_NAME || 'financial_app',
   port: parseInt(process.env.DB_PORT || '3306'),
   waitForConnections: true,
-  connectionLimit: 1000000,
-  queueLimit: 2000000,
+  connectionLimit: 10000000,
+  queueLimit: 50000,
 };
 
 const globalForDb = globalThis as unknown as { dbPool: mysql.Pool };

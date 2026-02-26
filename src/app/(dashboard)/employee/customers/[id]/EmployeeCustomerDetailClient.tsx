@@ -11,6 +11,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Customer } from '@/types';
 import { getLoanStatusColor, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export function EmployeeCustomerDetailClient() {
   const params = useParams();
@@ -57,6 +58,7 @@ export function EmployeeCustomerDetailClient() {
         setCustomer(d);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch customer:', error);
     } finally {
       setLoading(false);
@@ -71,6 +73,7 @@ export function EmployeeCustomerDetailClient() {
         setCustomerLoans(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch loans:', error);
     }
   };

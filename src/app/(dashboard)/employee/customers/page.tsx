@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { Customer } from '@/types';
 import { Search } from 'lucide-react';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function EmployeeCustomersPage() {
   const pathname = usePathname();
@@ -50,6 +51,7 @@ export default function EmployeeCustomersPage() {
         setAssignedCustomers(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch customers:', error);
     } finally {
       setLoading(false);
@@ -106,6 +108,7 @@ export default function EmployeeCustomersPage() {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to save customer:', error);
       setSubmitError(t('error.internalServerError'));
     } finally {

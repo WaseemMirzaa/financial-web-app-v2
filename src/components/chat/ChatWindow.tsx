@@ -9,6 +9,7 @@ import { ChatMessage } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { formatDate } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 interface ChatWindowProps {
   messages: ChatMessage[];
@@ -191,6 +192,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
         console.error('Failed to edit message:', data.error);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to edit message:', error);
     } finally {
       setSavingEdit(false);
@@ -214,6 +216,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
         console.error('Failed to delete message:', data.error);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to delete message:', error);
     }
   };

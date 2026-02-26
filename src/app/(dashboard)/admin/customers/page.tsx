@@ -11,6 +11,7 @@ import { PasswordInput } from '../../../../components/ui/PasswordInput';
 import { Loader } from '../../../../components/ui/Loader';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { Customer } from '../../../../types';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -56,6 +57,7 @@ export default function CustomersPage() {
         setCustomers(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch customers:', error);
     } finally {
       setLoading(false);
@@ -70,6 +72,7 @@ export default function CustomersPage() {
         setEmployees(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch employees:', error);
     }
   };
@@ -190,6 +193,7 @@ export default function CustomersPage() {
         }
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to save customer:', error);
       setSubmitError(t('error.internalServerError'));
     } finally {
@@ -220,6 +224,7 @@ export default function CustomersPage() {
         }
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to assign employee:', error);
     }
   };
@@ -238,6 +243,7 @@ export default function CustomersPage() {
         }
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to remove employee:', error);
     }
   };
@@ -257,6 +263,7 @@ export default function CustomersPage() {
         setBlockConfirmCustomer(null);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to toggle block:', error);
     } finally {
       setActionLoading(false);
@@ -277,6 +284,7 @@ export default function CustomersPage() {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to delete customer:', error);
       setSubmitError(t('error.internalServerError'));
     } finally {

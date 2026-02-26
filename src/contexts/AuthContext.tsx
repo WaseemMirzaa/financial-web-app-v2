@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '@/types';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 interface AuthContextType {
   user: User | null;
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem('user');
           }
         } catch (error) {
+          reloadIfStaleDeploy(error);
           console.warn('Failed to verify session, using cached user:', error);
           setUser(parsedUser);
         }
@@ -75,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: false, errorKey: data.errorKey, error: data.error };
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Login error:', error);
       return { success: false, errorKey: 'error.internalServerError', error: 'Internal server error' };
     }
@@ -111,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, errorKey: data.errorKey, error: data.error };
     } catch (error: any) {
       clearTimeout(timeoutId);
+      reloadIfStaleDeploy(error);
       console.error('Signup error:', error);
       if (error && error.name === 'AbortError') {
         return { success: false, errorKey: 'error.requestTimeout', error: 'Request timed out' };
@@ -125,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
       });
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Logout error:', error);
     } finally {
       setUser(null);

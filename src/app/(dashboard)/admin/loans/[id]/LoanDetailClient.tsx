@@ -13,6 +13,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus, Customer } from '@/types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export function LoanDetailClient() {
   const params = useParams();
@@ -63,6 +64,7 @@ export function LoanDetailClient() {
         fetchEmployee(data.data.employeeId);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch loan:', error);
     } finally {
       setLoading(false);
@@ -81,6 +83,7 @@ export function LoanDetailClient() {
         setCustomerDeleted(true);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch customer:', error);
     }
   };
@@ -97,6 +100,7 @@ export function LoanDetailClient() {
         setEmployeeDeleted(true);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch employee:', error);
     }
   };
@@ -112,6 +116,7 @@ export function LoanDetailClient() {
         const data = await res.json();
         if (data.success) setAllEmployees(data.data || []);
       } catch (e) {
+        reloadIfStaleDeploy(e);
         console.error('Failed to fetch employees:', e);
       }
     };
@@ -214,6 +219,7 @@ export function LoanDetailClient() {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to update loan:', error);
       setSubmitError(t('error.internalServerError'));
     }
@@ -231,6 +237,7 @@ export function LoanDetailClient() {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to delete loan:', error);
       setSubmitError(t('error.internalServerError'));
     } finally {

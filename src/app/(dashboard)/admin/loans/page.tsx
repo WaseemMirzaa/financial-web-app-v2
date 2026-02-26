@@ -14,6 +14,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function LoansPage() {
   const router = useRouter();
@@ -71,6 +72,7 @@ export default function LoansPage() {
         setLoans(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch loans:', error);
     } finally {
       setLoading(false);
@@ -85,6 +87,7 @@ export default function LoansPage() {
         setCustomers(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch customers:', error);
     }
   };
@@ -150,6 +153,7 @@ export default function LoansPage() {
         setDeleteError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to delete loan:', error);
       setDeleteError(t('error.internalServerError'));
     } finally {
@@ -350,6 +354,7 @@ export default function LoansPage() {
         }
       }
     } catch (error: any) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to save loan:', error);
       setSubmitError(error?.message || t('error.internalServerError'));
     }

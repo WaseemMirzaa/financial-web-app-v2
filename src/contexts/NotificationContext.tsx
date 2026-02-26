@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import type { Notification as AppNotification } from '@/types';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 interface NotificationContextType {
   notifications: AppNotification[];
@@ -166,6 +167,7 @@ export function NotificationProvider({ children, userId, locale }: { children: R
         setNotifications(newNotifications);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       if (mountedRef.current) console.error('Failed to fetch notifications:', error);
     } finally {
       if (mountedRef.current) setLoading(false);
@@ -207,6 +209,7 @@ export function NotificationProvider({ children, userId, locale }: { children: R
         await fetchNotifications();
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to add notification:', error);
     }
   };
@@ -223,6 +226,7 @@ export function NotificationProvider({ children, userId, locale }: { children: R
         );
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to mark notification as read:', error);
     }
   };
@@ -233,6 +237,7 @@ export function NotificationProvider({ children, userId, locale }: { children: R
         notifications.filter(n => !n.isRead).map(n => markAsRead(n.id))
       );
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to mark all as read:', error);
     }
   };

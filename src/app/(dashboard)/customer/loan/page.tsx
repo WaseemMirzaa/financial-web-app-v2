@@ -8,6 +8,7 @@ import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function CustomerLoanPage() {
   const pathname = usePathname();
@@ -38,6 +39,7 @@ export default function CustomerLoanPage() {
         setCustomerLoans(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch loans:', error);
     } finally {
       setLoading(false);

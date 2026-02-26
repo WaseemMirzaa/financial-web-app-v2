@@ -13,6 +13,7 @@ import { Loader } from '../../../../../components/ui/Loader';
 import { useLocale } from '../../../../../contexts/LocaleContext';
 import { Customer } from '../../../../../types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '../../../../../lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export function CustomerDetailClient() {
   const params = useParams();
@@ -76,6 +77,7 @@ export function CustomerDetailClient() {
         }
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch customer:', error);
     } finally {
       setLoading(false);
@@ -94,6 +96,7 @@ export function CustomerDetailClient() {
       const list = results.filter((r) => r.success && r.data).map((r) => r.data);
       setAssignedEmployees(list);
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch assigned employees:', error);
       setAssignedEmployees([]);
     }
@@ -107,6 +110,7 @@ export function CustomerDetailClient() {
         setEmployees(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch employees:', error);
     }
   };
@@ -119,6 +123,7 @@ export function CustomerDetailClient() {
         setCustomerLoans(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch loans:', error);
     }
   };
@@ -210,6 +215,7 @@ export function CustomerDetailClient() {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to update customer:', error);
       setSubmitError(t('error.internalServerError'));
     }
@@ -234,6 +240,7 @@ export function CustomerDetailClient() {
         setIsAssignModalOpen(false);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to assign employee:', error);
     }
   };
@@ -252,6 +259,7 @@ export function CustomerDetailClient() {
         setRemoveError(data.error || t('error.internalServerError'));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to remove employee:', error);
       setRemoveError(t('error.internalServerError'));
     }
@@ -272,6 +280,7 @@ export function CustomerDetailClient() {
         setBlockConfirmOpen(false);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to toggle block:', error);
     } finally {
       setActionLoading(false);
@@ -291,6 +300,7 @@ export function CustomerDetailClient() {
         setDeleteError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to delete customer:', error);
       setDeleteError(t('error.internalServerError'));
     } finally {

@@ -12,6 +12,7 @@ import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Employee } from '@/types';
 import { formatNumber } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -51,6 +52,7 @@ export default function EmployeesPage() {
         setEmployees(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch employees:', error);
     } finally {
       setLoading(false);
@@ -144,6 +146,7 @@ export default function EmployeesPage() {
         }
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to save employee:', error);
       setSubmitError(t('error.internalServerError'));
     } finally {
@@ -166,6 +169,7 @@ export default function EmployeesPage() {
         setBlockConfirmEmployee(null);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to toggle block:', error);
     } finally {
       setActionLoading(false);
@@ -191,6 +195,7 @@ export default function EmployeesPage() {
         setDeleteError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to delete employee:', error);
       setDeleteError(t('error.internalServerError'));
     } finally {

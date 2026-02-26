@@ -10,6 +10,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatCurrency, formatDateOnly, formatNumber, formatPercent } from '@/lib/utils';
 import Link from 'next/link';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export default function CustomerDashboard() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function CustomerDashboard() {
         setCustomerLoans(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch loans:', error);
     } finally {
       setLoading(false);

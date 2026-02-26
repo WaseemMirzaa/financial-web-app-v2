@@ -13,6 +13,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export function EmployeeLoanDetailClient() {
   const params = useParams();
@@ -70,6 +71,7 @@ export function EmployeeLoanDetailClient() {
         fetchCustomer(data.data.customerId);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch loan:', error);
     } finally {
       setLoading(false);
@@ -88,6 +90,7 @@ export function EmployeeLoanDetailClient() {
         setCustomerDeleted(true);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch customer:', error);
     }
   };
@@ -159,6 +162,7 @@ export function EmployeeLoanDetailClient() {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to update loan:', error);
       setSubmitError(t('error.internalServerError'));
     }

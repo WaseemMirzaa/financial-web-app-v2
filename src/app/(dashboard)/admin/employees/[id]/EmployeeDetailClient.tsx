@@ -13,6 +13,7 @@ import { Loader } from '../../../../../components/ui/Loader';
 import { useLocale } from '../../../../../contexts/LocaleContext';
 import { Customer, Employee } from '../../../../../types';
 import { formatDateOnly, formatNumber } from '../../../../../lib/utils';
+import { reloadIfStaleDeploy } from '@/lib/client-utils';
 
 export function EmployeeDetailClient() {
   const params = useParams();
@@ -62,6 +63,7 @@ export function EmployeeDetailClient() {
         });
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch employee:', error);
     } finally {
       setLoading(false);
@@ -76,6 +78,7 @@ export function EmployeeDetailClient() {
         setAssignedCustomers(data.data);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to fetch assigned customers:', error);
     }
   };
@@ -163,6 +166,7 @@ export function EmployeeDetailClient() {
         setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to update employee:', error);
       setSubmitError(t('error.internalServerError'));
     }
@@ -183,6 +187,7 @@ export function EmployeeDetailClient() {
         setBlockConfirmOpen(false);
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to toggle block:', error);
     } finally {
       setActionLoading(false);
@@ -206,6 +211,7 @@ export function EmployeeDetailClient() {
         setDeleteError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
       }
     } catch (error) {
+      reloadIfStaleDeploy(error);
       console.error('Failed to delete employee:', error);
       setDeleteError(t('error.internalServerError'));
     } finally {
