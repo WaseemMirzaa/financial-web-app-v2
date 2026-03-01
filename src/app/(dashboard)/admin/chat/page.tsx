@@ -201,9 +201,7 @@ export default function AdminChatPage() {
       const data = await response.json();
       if (data.success && data.data) {
         const newChat = data.data as Chat;
-        // Refresh the full chat list to get proper ordering (pinned first)
-        await fetchChats();
-        // Select the newly created chat
+        setChats((prev) => [newChat, ...prev]);
         setSelectedChat(newChat.id);
         fetchMessages(newChat.id);
         fetchParticipants(newChat.id);
@@ -211,6 +209,7 @@ export default function AdminChatPage() {
         setRoomName('');
         setSelectedEmployeeIds([]);
         setCreateRoomError('');
+        fetchChats();
       } else {
         setCreateRoomError(data.errorKey ? t(data.errorKey) : (data.error || 'Failed to create room'));
       }
@@ -257,11 +256,14 @@ export default function AdminChatPage() {
       });
       const data = await response.json();
       if (data.success || response.status === 404) {
-        if (selectedChat === deleteConfirmChat.id) {
+        const deletedId = deleteConfirmChat.id;
+        if (selectedChat === deletedId) {
           setSelectedChat(null);
+          setMessages([]);
         }
-        await fetchChats();
+        setChats((prev) => prev.filter((c) => c.id !== deletedId));
         setDeleteConfirmChat(null);
+        fetchChats();
       } else if (data.errorKey) {
         setDeleteRoomError(t(data.errorKey));
       }
