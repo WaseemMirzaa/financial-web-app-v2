@@ -256,7 +256,7 @@ export default function AdminChatPage() {
         method: 'DELETE',
       });
       const data = await response.json();
-      if (data.success) {
+      if (data.success || response.status === 404) {
         if (selectedChat === deleteConfirmChat.id) {
           setSelectedChat(null);
         }
