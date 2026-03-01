@@ -121,6 +121,13 @@ export default function EmployeeChatPage() {
     return () => clearInterval(interval);
   }, [selectedChat, locale]);
 
+  // Real-time: poll chat list for new/deleted rooms
+  useEffect(() => {
+    if (!user?.id) return;
+    const interval = setInterval(() => fetchChats(), 1000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   const selectedChatData = chats.find(c => c.id === selectedChat);
 
   // All chats: customer_employee (unified customer) + internal_room (admin/employee rooms)

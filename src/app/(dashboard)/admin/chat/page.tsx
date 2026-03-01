@@ -154,7 +154,7 @@ export default function AdminChatPage() {
   // Real-time: poll chat list for pinning updates (keeps polling when tab minimized)
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => fetchChats(), 10000);
+    const interval = setInterval(() => fetchChats(), 1000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
