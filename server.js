@@ -28,6 +28,10 @@ app.prepare().then(() => {
     }
   });
 
+  server.on('upgrade', (req, socket, head) => {
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  });
+
   server.listen(port, (err) => {
     if (err) throw err;
     console.log(`> Ready on http://${hostname}:${port}`);
