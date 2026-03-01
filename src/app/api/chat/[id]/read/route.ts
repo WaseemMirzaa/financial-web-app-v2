@@ -39,7 +39,12 @@ export async function POST(
       }
     }
 
-    // Update or insert read status
+    // Verify chat still exists before updating read status
+    const [chatRows] = await pool.query(`SELECT id FROM chats WHERE id = ?`, [chatId]) as any[];
+    if (chatRows.length === 0) {
+      return errorResponse('Chat not found', 404, 'error.chatNotFound');
+    }
+
     await pool.query(
       `INSERT INTO chat_read_status (chat_id, user_id, last_read_at)
        VALUES (?, ?, NOW())
