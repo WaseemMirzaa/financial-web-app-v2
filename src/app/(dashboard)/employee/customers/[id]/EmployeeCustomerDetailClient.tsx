@@ -2,10 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
-import { ArrowLeft, Mail, Phone, MapPin, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, Mail, Phone, MapPin, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +26,11 @@ export function EmployeeCustomerDetailClient() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [customerLoans, setCustomerLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '', confirmPassword: '' });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (user?.id && customerId) {
@@ -78,6 +86,75 @@ export function EmployeeCustomerDetailClient() {
     }
   };
 
+  const handleEdit = () => {
+    if (customer) {
+      setFormData({
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone || '',
+        address: customer.address || '',
+        password: '',
+        confirmPassword: '',
+      });
+      setFormErrors({});
+      setSubmitError('');
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = t('validation.nameRequired');
+    if (!formData.email.trim()) errors.email = t('validation.emailRequired');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errors.email = t('validation.emailInvalid');
+    if (formData.password) {
+      if (formData.password.length < 6) errors.password = t('validation.passwordMinLength');
+      else if (formData.password !== formData.confirmPassword) errors.confirmPassword = t('validation.passwordMismatch');
+    } else if (formData.confirmPassword) {
+      errors.confirmPassword = t('validation.passwordMismatch');
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!customer) return;
+    setSubmitError('');
+    setFormErrors({});
+    if (!validateForm()) return;
+    setSubmitting(true);
+    try {
+      const payload: { name: string; email: string; phone?: string; address?: string; password?: string } = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+      };
+      if (formData.password) payload.password = formData.password;
+      const response = await fetch(`/api/customers/${customer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchCustomer();
+        setIsEditModalOpen(false);
+        setFormData((prev) => ({ ...prev, password: '', confirmPassword: '' }));
+        setFormErrors({});
+        setSubmitError('');
+      } else {
+        setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+      }
+    } catch (error) {
+      reloadIfStaleDeploy(error);
+      console.error('Failed to update customer:', error);
+      setSubmitError(t('error.internalServerError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -128,6 +205,10 @@ export function EmployeeCustomerDetailClient() {
             <Badge variant="success">{t('status.active')}</Badge>
           </div>
         </div>
+        <Button variant="primary" size="small" onClick={handleEdit}>
+          <Edit className="w-4 h-4 me-2" />
+          {t('common.edit')}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -203,6 +284,80 @@ export function EmployeeCustomerDetailClient() {
           </div>
         )}
       </Card>
+
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={t('page.editCustomer')}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" onClick={handleSave} disabled={submitting}>
+              {submitting ? t('common.loading') + '...' : t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {submitError && (
+            <div className="p-3 rounded-lg bg-error-light border border-error text-error text-sm">
+              {submitError}
+            </div>
+          )}
+          <Input
+            label={t('common.name')}
+            value={formData.name}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+            }}
+            error={formErrors.name}
+            required
+          />
+          <Input
+            label={t('common.email')}
+            type="email"
+            value={formData.email}
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
+            }}
+            error={formErrors.email}
+            required
+          />
+          <Input
+            label={t('common.phone')}
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          />
+          <Input
+            label={t('common.address')}
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          />
+          <PasswordInput
+            label={t('auth.newPassword')}
+            value={formData.password}
+            onChange={(e) => {
+              setFormData({ ...formData, password: e.target.value });
+              if (formErrors.password) setFormErrors({ ...formErrors, password: '' });
+            }}
+            error={formErrors.password}
+            placeholder={t('form.placeholder.password')}
+          />
+          <PasswordInput
+            label={t('auth.confirmPassword')}
+            value={formData.confirmPassword}
+            onChange={(e) => {
+              setFormData({ ...formData, confirmPassword: e.target.value });
+              if (formErrors.confirmPassword) setFormErrors({ ...formErrors, confirmPassword: '' });
+            }}
+            error={formErrors.confirmPassword}
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

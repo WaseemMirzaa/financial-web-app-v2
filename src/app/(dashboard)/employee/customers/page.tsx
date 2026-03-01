@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Edit } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -24,6 +24,7 @@ export default function EmployeeCustomersPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
@@ -62,15 +63,44 @@ export default function EmployeeCustomersPage() {
     const errors: Record<string, string> = {};
     if (!formData.name.trim()) errors.name = t('validation.nameRequired');
     if (!formData.email.trim()) errors.email = t('validation.emailRequired');
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = t('validation.emailInvalid');
-    if (!formData.password) errors.password = t('validation.passwordRequired');
-    else if (formData.password.length < 6) errors.password = t('validation.passwordMinLength');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errors.email = t('validation.emailInvalid');
+    if (!editingCustomer) {
+      if (!formData.password) errors.password = t('validation.passwordRequired');
+      else if (formData.password.length < 6) errors.password = t('validation.passwordMinLength');
+    } else if (formData.password && formData.password.length < 6) {
+      errors.password = t('validation.passwordMinLength');
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleCreate = () => {
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingCustomer(null);
     setFormData({ name: '', email: '', phone: '', address: '', password: '' });
+    setFormErrors({});
+    setSubmitError('');
+  };
+
+  const handleCreate = () => {
+    setEditingCustomer(null);
+    setFormData({ name: '', email: '', phone: '', address: '', password: '' });
+    setFormErrors({});
+    setSubmitError('');
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (customer: Customer, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingCustomer(customer);
+    setFormData({
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone || '',
+      address: customer.address || '',
+      password: '',
+    });
     setFormErrors({});
     setSubmitError('');
     setIsModalOpen(true);
@@ -82,30 +112,49 @@ export default function EmployeeCustomersPage() {
     if (!validateForm()) return;
     setSubmitting(true);
     try {
-      const response = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      const data = await response.json();
-      if (data.success) {
-        const newId = data.data?.id;
-        if (newId && user?.id) {
-          try {
-            const assignRes = await fetch(`/api/customers/${newId}/assign`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ employeeIds: [user.id], requestedByUserId: user.id }),
-            });
-            await assignRes.json();
-          } catch (_) {}
+      if (editingCustomer) {
+        const response = await fetch(`/api/customers/${editingCustomer.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            ...(formData.password && { password: formData.password }),
+          }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          await fetchCustomers();
+          handleCloseModal();
+        } else {
+          setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
         }
-        await fetchCustomers();
-        setIsModalOpen(false);
-        setFormErrors({});
-        setSubmitError('');
       } else {
-        setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+        const response = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        const data = await response.json();
+        if (data.success) {
+          const newId = data.data?.id;
+          if (newId && user?.id) {
+            try {
+              const assignRes = await fetch(`/api/customers/${newId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employeeIds: [user.id], requestedByUserId: user.id }),
+              });
+              await assignRes.json();
+            } catch (_) {}
+          }
+          await fetchCustomers();
+          handleCloseModal();
+        } else {
+          setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
+        }
       }
     } catch (error) {
       reloadIfStaleDeploy(error);
@@ -173,8 +222,8 @@ export default function EmployeeCustomersPage() {
                    (customer.phone && customer.phone.toLowerCase().includes(query)) ||
                    customer.id.toLowerCase().includes(query);
           }).map((customer) => (
-            <Link key={customer.id} href={`/employee/customers/${customer.id}`}>
-              <Card variant="elevated" padding="medium" className="hover:shadow-xl transition-shadow cursor-pointer text-left rtl:text-right">
+            <Card key={customer.id} variant="elevated" padding="medium" className="hover:shadow-xl transition-shadow text-left rtl:text-right">
+              <Link href={`/employee/customers/${customer.id}`} className="block">
                 <div>
                   <h3 className="text-lg font-semibold text-neutral-900 mb-2">{customer.name}</h3>
                   <p className="text-sm text-neutral-600 mb-1">{customer.email}</p>
@@ -182,19 +231,25 @@ export default function EmployeeCustomersPage() {
                     <p className="text-sm text-neutral-600">{customer.phone}</p>
                   )}
                 </div>
-              </Card>
-            </Link>
+              </Link>
+              <div className="mt-3 pt-3 border-t border-neutral-100 flex justify-end">
+                <Button variant="outline" size="small" onClick={(e) => handleEdit(customer, e)}>
+                  <Edit className="w-4 h-4 me-2" />
+                  {t('common.edit')}
+                </Button>
+              </div>
+            </Card>
           ))
         )}
       </div>
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={t('page.createCustomer')}
+        onClose={handleCloseModal}
+        title={editingCustomer ? t('page.editCustomer') : t('page.createCustomer')}
         footer={
           <>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+            <Button variant="outline" onClick={handleCloseModal}>
               {t('common.cancel')}
             </Button>
             <Button variant="primary" onClick={handleSave} disabled={submitting}>
@@ -210,14 +265,22 @@ export default function EmployeeCustomersPage() {
           <Input
             label={t('common.name')}
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+            }}
+            error={formErrors.name}
             required
           />
           <Input
             label={t('common.email')}
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
+            }}
+            error={formErrors.email}
             required
           />
           <Input
@@ -233,9 +296,13 @@ export default function EmployeeCustomersPage() {
           <PasswordInput
             label={t('common.password')}
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            placeholder={t('form.placeholder.password')}
-            required
+            onChange={(e) => {
+              setFormData({ ...formData, password: e.target.value });
+              if (formErrors.password) setFormErrors({ ...formErrors, password: '' });
+            }}
+            placeholder={editingCustomer ? t('form.placeholder.password') : undefined}
+            error={formErrors.password}
+            required={!editingCustomer}
             minLength={6}
           />
         </div>

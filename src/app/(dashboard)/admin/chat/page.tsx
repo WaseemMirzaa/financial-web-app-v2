@@ -144,23 +144,17 @@ export default function AdminChatPage() {
     }
   }, [selectedChat, locale]);
 
-  // Real-time: poll messages while a chat is open (pause when tab hidden)
+  // Real-time: poll messages while a chat is open (keeps polling when tab minimized)
   useEffect(() => {
     if (!selectedChat) return;
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      fetchMessages(selectedChat);
-    }, 4000);
+    const interval = setInterval(() => fetchMessages(selectedChat), 500);
     return () => clearInterval(interval);
   }, [selectedChat, locale]);
 
-  // Real-time: poll chat list for pinning updates (less frequent than messages)
+  // Real-time: poll chat list for pinning updates (keeps polling when tab minimized)
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      fetchChats();
-    }, 10000); // Refresh chat list every 10 seconds
+    const interval = setInterval(() => fetchChats(), 10000);
     return () => clearInterval(interval);
   }, [user?.id]);
 

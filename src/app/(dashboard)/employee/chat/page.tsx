@@ -114,13 +114,10 @@ export default function EmployeeChatPage() {
     }
   }, [selectedChat, locale]);
 
-  // Real-time: poll messages while a chat is open (pause when tab hidden)
+  // Real-time: poll messages while a chat is open (keeps polling when tab minimized)
   useEffect(() => {
     if (!selectedChat) return;
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      fetchMessages(selectedChat);
-    }, 4000);
+    const interval = setInterval(() => fetchMessages(selectedChat), 500);
     return () => clearInterval(interval);
   }, [selectedChat, locale]);
 
