@@ -117,14 +117,14 @@ export default function EmployeeChatPage() {
   // Real-time: poll messages while a chat is open (keeps polling when tab minimized)
   useEffect(() => {
     if (!selectedChat) return;
-    const interval = setInterval(() => fetchMessages(selectedChat), 500);
+    const interval = setInterval(() => fetchMessages(selectedChat), 60000);
     return () => clearInterval(interval);
   }, [selectedChat, locale]);
 
   // Real-time: poll chat list for new/deleted rooms
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => fetchChats(), 1000);
+    const interval = setInterval(() => fetchChats(), 60000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
