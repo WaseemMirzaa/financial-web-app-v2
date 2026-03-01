@@ -4,7 +4,6 @@ import { successResponse, errorResponse, serverError, validationError } from '@/
 import { saveChatMessageTranslations } from '@/lib/translations';
 import { translateToBothLanguages } from '@/lib/translate';
 import { createNotificationAndPush } from '@/lib/notify';
-import { wsSendToUsers } from '@/lib/ws-broadcast';
 
 export const dynamic = 'force-dynamic';
 
@@ -315,10 +314,6 @@ export async function POST(
       fileType: fileType || undefined,
       timestamp: new Date().toISOString(),
     };
-
-    // Push real-time update to all participants (including sender for multi-tab)
-    const allParticipantIds = (participants || []).map((p: { user_id: string }) => p.user_id);
-    wsSendToUsers(allParticipantIds, { type: 'chat:message', data: { chatId } });
 
     return successResponse(message, 'Message sent successfully', 'error.messageSentSuccessfully');
   } catch (error: any) {

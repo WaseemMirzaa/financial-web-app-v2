@@ -8,6 +8,7 @@ import { Input } from '../../../../components/ui/Input';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 type TargetType = 'all' | 'all_employees' | 'all_customers';
 
@@ -46,7 +47,7 @@ export default function AdminBroadcastPage() {
 
     setSending(true);
     try {
-      const response = await fetch('/api/broadcasts', {
+      const response = await fetchApi('/api/broadcasts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

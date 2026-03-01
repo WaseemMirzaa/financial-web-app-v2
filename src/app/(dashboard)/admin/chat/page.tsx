@@ -15,14 +15,13 @@ import { Chat, ChatMessage } from '../../../../types';
 import type { Employee } from '../../../../types';
 import { Pin, PinOff, Trash2, Bookmark } from 'lucide-react';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
-import { useWebSocket } from '@/contexts/WebSocketContext';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function AdminChatPage() {
   const pathname = usePathname();
   const { t, locale } = useLocale();
   const { user } = useAuth();
   const { refreshNotifications } = useNotifications();
-  const { subscribe } = useWebSocket();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -58,7 +57,7 @@ export default function AdminChatPage() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/employees');
+      const response = await fetchApi('/api/employees');
       const data = await response.json();
       if (data.success) setEmployees(data.data || []);
     } catch (error) {
@@ -69,7 +68,7 @@ export default function AdminChatPage() {
 
   const fetchChats = async () => {
     try {
-      const response = await fetch(`/api/chat?userId=${user?.id}`);
+      const response = await fetchApi(`/api/chat?userId=${user?.id}`);
       const data = await response.json();
       if (data.success) {
         setChats(data.data);
@@ -90,7 +89,7 @@ export default function AdminChatPage() {
 
   const fetchParticipants = async (chatId: string) => {
     try {
-      const response = await fetch(`/api/chat/${chatId}/participants`);
+      const response = await fetchApi(`/api/chat/${chatId}/participants`);
       const data = await response.json();
       if (data.success) {
         setChatParticipants((prev) => {
@@ -108,7 +107,7 @@ export default function AdminChatPage() {
   const fetchMessages = async (chatId: string) => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`/api/chat/${chatId}/messages?locale=${locale}&userId=${user.id}`);
+      const response = await fetchApi(`/api/chat/${chatId}/messages?locale=${locale}&userId=${user.id}`);
       const data = await response.json();
       if (data.success) {
         const newList = data.data as ChatMessage[];
@@ -126,7 +125,7 @@ export default function AdminChatPage() {
   const markChatAsRead = async (chatId: string) => {
     if (!user?.id) return;
     try {
-      await fetch(`/api/chat/${chatId}/read`, {
+      await fetchApi(`/api/chat/${chatId}/read`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
@@ -146,22 +145,19 @@ export default function AdminChatPage() {
     }
   }, [selectedChat, locale]);
 
-  // Real-time via WebSocket
+  // Real-time: poll messages while a chat is open (keeps polling when tab minimized)
   useEffect(() => {
-    const unsub = subscribe('chat:message', (data: any) => {
-      if (data?.chatId && data.chatId === selectedChat) {
-        fetchMessages(data.chatId);
-      }
-    });
-    return unsub;
-  }, [subscribe, selectedChat]);
+    if (!selectedChat) return;
+    const interval = setInterval(() => fetchMessages(selectedChat), 60000);
+    return () => clearInterval(interval);
+  }, [selectedChat, locale]);
 
+  // Real-time: poll chat list for pinning updates (keeps polling when tab minimized)
   useEffect(() => {
-    const unsub = subscribe('chat:list-update', () => {
-      fetchChats();
-    });
-    return unsub;
-  }, [subscribe]);
+    if (!user?.id) return;
+    const interval = setInterval(() => fetchChats(), 60000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   const selectedChatData = chats.find(c => c.id === selectedChat);
   
@@ -198,7 +194,7 @@ export default function AdminChatPage() {
     setCreateRoomError('');
     setCreatingRoom(true);
     try {
-      const response = await fetch('/api/chat/create-room', {
+      const response = await fetchApi('/api/chat/create-room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roomName: roomName.trim(), employeeIds: selectedEmployeeIds, adminId: user.id }),
@@ -237,7 +233,7 @@ export default function AdminChatPage() {
     e.stopPropagation();
     if (!user?.id) return;
     try {
-      const response = await fetch(`/api/chat/${chatId}/pin?userId=${user.id}`, {
+      const response = await fetchApi(`/api/chat/${chatId}/pin?userId=${user.id}`, {
         method: 'PUT',
       });
       const data = await response.json();
@@ -256,7 +252,7 @@ export default function AdminChatPage() {
   const handleDeleteRoom = async () => {
     if (!deleteConfirmChat || !user?.id) return;
     try {
-      const response = await fetch(`/api/chat/${deleteConfirmChat.id}?userId=${user.id}`, {
+      const response = await fetchApi(`/api/chat/${deleteConfirmChat.id}?userId=${user.id}`, {
         method: 'DELETE',
       });
       const data = await response.json();
@@ -288,7 +284,7 @@ export default function AdminChatPage() {
       if (file) {
         const form = new FormData();
         form.append('file', file);
-        const uploadRes = await fetch('/api/chat/upload', { method: 'POST', body: form });
+        const uploadRes = await fetchApi('/api/chat/upload', { method: 'POST', body: form });
         const uploadData = await uploadRes.json();
         if (!uploadData.success || !uploadData.data) {
           console.error('Upload failed:', uploadData.error);
@@ -299,7 +295,7 @@ export default function AdminChatPage() {
         fileType = uploadData.data.fileType;
       }
 
-      const response = await fetch(`/api/chat/${selectedChat}/messages`, {
+      const response = await fetchApi(`/api/chat/${selectedChat}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

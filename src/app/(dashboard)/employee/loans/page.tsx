@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function EmployeeLoansPage() {
   const router = useRouter();
@@ -60,7 +61,7 @@ export default function EmployeeLoansPage() {
 
   const fetchLoans = async () => {
     try {
-      const response = await fetch(`/api/loans?employeeId=${user?.id}&locale=${locale}`);
+      const response = await fetchApi(`/api/loans?employeeId=${user?.id}&locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setLoans(data.data);
@@ -75,7 +76,7 @@ export default function EmployeeLoansPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch(`/api/employees/${user?.id}/customers`);
+      const response = await fetchApi(`/api/employees/${user?.id}/customers`);
       const data = await response.json();
       if (data.success) {
         setCustomers(data.data);
@@ -232,7 +233,7 @@ export default function EmployeeLoansPage() {
           return;
         }
         
-        const response = await fetch(`/api/loans/${editingLoan.id}`, {
+        const response = await fetchApi(`/api/loans/${editingLoan.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -282,7 +283,7 @@ export default function EmployeeLoansPage() {
           return;
         }
         
-        const response = await fetch('/api/loans', {
+        const response = await fetchApi('/api/loans', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

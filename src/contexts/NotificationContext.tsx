@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import type { Notification as AppNotification } from '@/types';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
-import { useWebSocket } from './WebSocketContext';
+import { fetchApi } from '@/lib/fetchApi';
 
 interface NotificationContextType {
   notifications: AppNotification[];
@@ -130,7 +130,7 @@ export function NotificationProvider({ children, userId, locale }: { children: R
       if (mountedRef.current) setLoading(true);
       const params = new URLSearchParams({ userId });
       if (locale) params.set('locale', locale);
-      const response = await fetch(`/api/notifications?${params.toString()}`);
+      const response = await fetchApi(`/api/notifications?${params.toString()}`);
       const data = await response.json();
       if (!mountedRef.current) return;
       if (data.success && Array.isArray(data.data)) {
@@ -188,19 +188,16 @@ export function NotificationProvider({ children, userId, locale }: { children: R
     return () => window.removeEventListener('focus', onFocus);
   }, [userId, fetchNotifications]);
 
-  // Real-time via WebSocket
-  const { subscribe } = useWebSocket();
+  // Realtime: poll every 10s (reduced from 5s to lower load; beep still plays on new unread)
   useEffect(() => {
     if (!userId) return;
-    const unsub = subscribe('notification:new', () => {
-      fetchNotifications();
-    });
-    return unsub;
-  }, [userId, subscribe, fetchNotifications]);
+    const interval = setInterval(() => fetchNotifications(), 20000);
+    return () => clearInterval(interval);
+  }, [userId, fetchNotifications]);
 
   const addNotification = async (notification: Omit<AppNotification, 'id' | 'createdAt'>) => {
     try {
-      const response = await fetch('/api/notifications', {
+      const response = await fetchApi('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -220,7 +217,7 @@ export function NotificationProvider({ children, userId, locale }: { children: R
 
   const markAsRead = async (id: string) => {
     try {
-      const response = await fetch(`/api/notifications/${id}/read`, {
+      const response = await fetchApi(`/api/notifications/${id}/read`, {
         method: 'POST',
       });
       const data = await response.json();

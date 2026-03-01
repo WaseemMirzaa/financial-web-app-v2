@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatCurrency, formatDateOnly, formatNumber, formatPercent } from '@/lib/utils';
 import Link from 'next/link';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function CustomerDashboard() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function CustomerDashboard() {
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/loans?customerId=${user?.id}&locale=${locale}`);
+      const response = await fetchApi(`/api/loans?customerId=${user?.id}&locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setCustomerLoans(data.data);

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '@/types';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 interface AuthContextType {
   user: User | null;
@@ -29,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const parsedUser = JSON.parse(storedUser);
         try {
-          const response = await fetch(`/api/auth/me?userId=${parsedUser.id}`, {
+          const response = await fetchApi(`/api/auth/me?userId=${parsedUser.id}`, {
             method: 'GET',
             credentials: 'include',
           });
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<{ success: boolean; errorKey?: string; error?: string }> => {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetchApi('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetchApi('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
+      await fetchApi('/api/auth/logout', {
         method: 'POST',
       });
     } catch (error) {

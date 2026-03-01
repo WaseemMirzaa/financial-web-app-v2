@@ -9,6 +9,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function CustomerLoanPage() {
   const pathname = usePathname();
@@ -33,7 +34,7 @@ export default function CustomerLoanPage() {
 
   const fetchLoans = async () => {
     try {
-      const response = await fetch(`/api/loans?customerId=${user?.id}&locale=${locale}`);
+      const response = await fetchApi(`/api/loans?customerId=${user?.id}&locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setCustomerLoans(data.data);

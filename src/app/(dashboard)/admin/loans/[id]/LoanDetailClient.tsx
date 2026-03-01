@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus, Customer } from '@/types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export function LoanDetailClient() {
   const params = useParams();
@@ -47,7 +48,7 @@ export function LoanDetailClient() {
 
   const fetchLoan = async () => {
     try {
-      const response = await fetch(`/api/loans/${loanId}?locale=${locale}`);
+      const response = await fetchApi(`/api/loans/${loanId}?locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setLoan(data.data);
@@ -73,7 +74,7 @@ export function LoanDetailClient() {
 
   const fetchCustomer = async (customerId: string) => {
     try {
-      const response = await fetch(`/api/customers/${customerId}`);
+      const response = await fetchApi(`/api/customers/${customerId}`);
       const data = await response.json();
       if (data.success) {
         setCustomer(data.data);
@@ -90,7 +91,7 @@ export function LoanDetailClient() {
 
   const fetchEmployee = async (employeeId: string) => {
     try {
-      const response = await fetch(`/api/employees/${employeeId}`);
+      const response = await fetchApi(`/api/employees/${employeeId}`);
       const data = await response.json();
       if (data.success) {
         setEmployee(data.data);
@@ -112,7 +113,7 @@ export function LoanDetailClient() {
   React.useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await fetch('/api/employees');
+        const res = await fetchApi('/api/employees');
         const data = await res.json();
         if (data.success) setAllEmployees(data.data || []);
       } catch (e) {
@@ -196,7 +197,7 @@ export function LoanDetailClient() {
         return;
       }
       
-      const response = await fetch(`/api/loans/${loan.id}?locale=${locale}`, {
+      const response = await fetchApi(`/api/loans/${loan.id}?locale=${locale}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -229,7 +230,7 @@ export function LoanDetailClient() {
     if (!loan || !user?.id) return;
     setDeleting(true);
     try {
-      const response = await fetch(`/api/loans/${loan.id}?userId=${user.id}`, { method: 'DELETE' });
+      const response = await fetchApi(`/api/loans/${loan.id}?userId=${user.id}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
         router.push('/admin/loans');
@@ -359,7 +360,7 @@ export function LoanDetailClient() {
                               onClick={async () => {
                                 setAddRemoveLoading(true);
                                 try {
-                                  const r = await fetch(`/api/loans/${loanId}/primary?userId=${encodeURIComponent(user?.id ?? '')}`, {
+                                  const r = await fetchApi(`/api/loans/${loanId}/primary?userId=${encodeURIComponent(user?.id ?? '')}`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ employeeId: empId }),
@@ -381,7 +382,7 @@ export function LoanDetailClient() {
                             onClick={async () => {
                               setAddRemoveLoading(true);
                               try {
-                                const r = await fetch(`/api/loans/${loanId}/employees?employeeId=${encodeURIComponent(empId)}`, { method: 'DELETE' });
+                                const r = await fetchApi(`/api/loans/${loanId}/employees?employeeId=${encodeURIComponent(empId)}`, { method: 'DELETE' });
                                 const d = await r.json();
                                 if (d.success) await fetchLoan();
                               } finally {

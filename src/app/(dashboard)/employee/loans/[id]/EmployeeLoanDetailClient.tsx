@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export function EmployeeLoanDetailClient() {
   const params = useParams();
@@ -55,7 +56,7 @@ export function EmployeeLoanDetailClient() {
 
   const fetchLoan = async () => {
     try {
-      const response = await fetch(`/api/loans/${loanId}?locale=${locale}${user?.id ? `&userId=${encodeURIComponent(user.id)}` : ''}`);
+      const response = await fetchApi(`/api/loans/${loanId}?locale=${locale}${user?.id ? `&userId=${encodeURIComponent(user.id)}` : ''}`);
       const data = await response.json();
       if (data.success) {
         setLoan(data.data);
@@ -80,7 +81,7 @@ export function EmployeeLoanDetailClient() {
 
   const fetchCustomer = async (customerId: string) => {
     try {
-      const response = await fetch(`/api/customers/${customerId}${user?.id ? `?userId=${encodeURIComponent(user.id)}` : ''}`);
+      const response = await fetchApi(`/api/customers/${customerId}${user?.id ? `?userId=${encodeURIComponent(user.id)}` : ''}`);
       const data = await response.json();
       if (data.success) {
         setCustomer(data.data);
@@ -138,7 +139,7 @@ export function EmployeeLoanDetailClient() {
         return;
       }
       
-      const response = await fetch(`/api/loans/${loan.id}?locale=${locale}`, {
+      const response = await fetchApi(`/api/loans/${loan.id}?locale=${locale}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

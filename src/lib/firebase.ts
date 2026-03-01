@@ -5,6 +5,7 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAnalytics, type Analytics } from 'firebase/analytics';
+import { fetchApi } from '@/lib/fetchApi';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -204,7 +205,7 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
     });
     
     console.log('[FCM Client] Registering token with backend...');
-    const res = await fetch('/api/fcm/register', {
+    const res = await fetchApi('/api/fcm/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, token }),

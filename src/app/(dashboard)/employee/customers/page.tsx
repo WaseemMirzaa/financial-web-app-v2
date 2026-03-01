@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { Customer } from '@/types';
 import { Search } from 'lucide-react';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function EmployeeCustomersPage() {
   const pathname = usePathname();
@@ -46,7 +47,7 @@ export default function EmployeeCustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch(`/api/employees/${user?.id}/customers`);
+      const response = await fetchApi(`/api/employees/${user?.id}/customers`);
       const data = await response.json();
       if (data.success) {
         setAssignedCustomers(data.data);
@@ -113,7 +114,7 @@ export default function EmployeeCustomersPage() {
     setSubmitting(true);
     try {
       if (editingCustomer) {
-        const response = await fetch(`/api/customers/${editingCustomer.id}`, {
+        const response = await fetchApi(`/api/customers/${editingCustomer.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -132,7 +133,7 @@ export default function EmployeeCustomersPage() {
           setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
         }
       } else {
-        const response = await fetch('/api/customers', {
+        const response = await fetchApi('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
@@ -142,7 +143,7 @@ export default function EmployeeCustomersPage() {
           const newId = data.data?.id;
           if (newId && user?.id) {
             try {
-              const assignRes = await fetch(`/api/customers/${newId}/assign`, {
+              const assignRes = await fetchApi(`/api/customers/${newId}/assign`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employeeIds: [user.id], requestedByUserId: user.id }),

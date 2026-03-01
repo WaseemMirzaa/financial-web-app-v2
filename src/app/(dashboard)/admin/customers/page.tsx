@@ -12,6 +12,7 @@ import { Loader } from '../../../../components/ui/Loader';
 import { useLocale } from '../../../../contexts/LocaleContext';
 import { Customer } from '../../../../types';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -51,7 +52,7 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch('/api/customers');
+      const response = await fetchApi('/api/customers');
       const data = await response.json();
       if (data.success) {
         setCustomers(data.data);
@@ -66,7 +67,7 @@ export default function CustomersPage() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/employees');
+      const response = await fetchApi('/api/employees');
       const data = await response.json();
       if (data.success) {
         setEmployees(data.data);
@@ -142,7 +143,7 @@ export default function CustomersPage() {
     setSubmitting(true);
     try {
       if (editingCustomer) {
-        const response = await fetch(`/api/customers/${editingCustomer.id}`, {
+        const response = await fetchApi(`/api/customers/${editingCustomer.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -164,7 +165,7 @@ export default function CustomersPage() {
         }
       } else {
         const { assignedEmployeeIds, ...createPayload } = formData;
-        const response = await fetch('/api/customers', {
+        const response = await fetchApi('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(createPayload),
@@ -174,7 +175,7 @@ export default function CustomersPage() {
           const newId = data.data?.id;
           if (newId && Array.isArray(assignedEmployeeIds) && assignedEmployeeIds.length > 0) {
             try {
-              const assignRes = await fetch(`/api/customers/${newId}/assign`, {
+              const assignRes = await fetchApi(`/api/customers/${newId}/assign`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employeeIds: assignedEmployeeIds }),
@@ -209,14 +210,14 @@ export default function CustomersPage() {
     if (!selectedCustomer) return;
     const nextIds = [...currentAssignedIds, employeeId];
     try {
-      const response = await fetch(`/api/customers/${selectedCustomer.id}/assign`, {
+      const response = await fetchApi(`/api/customers/${selectedCustomer.id}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeIds: nextIds }),
       });
       const data = await response.json();
       if (data.success) {
-        const list = await fetch('/api/customers').then(r => r.json());
+        const list = await fetchApi('/api/customers').then(r => r.json());
         if (list.success && list.data) {
           setCustomers(list.data);
           const updated = list.data.find((c: Customer) => c.id === selectedCustomer.id);
@@ -232,10 +233,10 @@ export default function CustomersPage() {
   const handleRemoveAssignedEmployee = async (employeeId: string) => {
     if (!selectedCustomer) return;
     try {
-      const response = await fetch(`/api/customers/${selectedCustomer.id}/assign?employeeId=${encodeURIComponent(employeeId)}`, { method: 'DELETE' });
+      const response = await fetchApi(`/api/customers/${selectedCustomer.id}/assign?employeeId=${encodeURIComponent(employeeId)}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
-        const list = await fetch('/api/customers').then(r => r.json());
+        const list = await fetchApi('/api/customers').then(r => r.json());
         if (list.success && list.data) {
           setCustomers(list.data);
           const updated = list.data.find((c: Customer) => c.id === selectedCustomer.id);
@@ -252,7 +253,7 @@ export default function CustomersPage() {
     if (!blockConfirmCustomer) return;
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/customers/${blockConfirmCustomer.customer.id}`, {
+      const response = await fetchApi(`/api/customers/${blockConfirmCustomer.customer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !blockConfirmCustomer.block }),
@@ -274,7 +275,7 @@ export default function CustomersPage() {
     if (!deleteConfirmCustomer) return;
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/customers/${deleteConfirmCustomer.id}`, { method: 'DELETE' });
+      const response = await fetchApi(`/api/customers/${deleteConfirmCustomer.id}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
         await fetchCustomers();

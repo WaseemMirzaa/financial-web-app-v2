@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { formatDate } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 interface ChatWindowProps {
   messages: ChatMessage[];
@@ -170,7 +171,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
     if (!editingMessageId || !chatId || !user?.id || !editContent.trim()) return;
     setSavingEdit(true);
     try {
-      const response = await fetch(`/api/chat/${chatId}/messages/${editingMessageId}`, {
+      const response = await fetchApi(`/api/chat/${chatId}/messages/${editingMessageId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editContent.trim(), userId: user.id }),
@@ -202,7 +203,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   const handleDelete = async () => {
     if (!deleteConfirmMessageId || !chatId || !user?.id) return;
     try {
-      const response = await fetch(`/api/chat/${chatId}/messages/${deleteConfirmMessageId}?userId=${user.id}`, {
+      const response = await fetchApi(`/api/chat/${chatId}/messages/${deleteConfirmMessageId}?userId=${user.id}`, {
         method: 'DELETE',
       });
       const data = await response.json();

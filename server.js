@@ -1,7 +1,6 @@
 const http = require('http');
 const { parse } = require('url');
 const next = require('next');
-const WSManager = require('./ws-manager');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
@@ -29,9 +28,9 @@ app.prepare().then(() => {
     }
   });
 
-  const wsManager = new WSManager();
-  wsManager.init(server);
-  globalThis.__wsManager = wsManager;
+  server.on('upgrade', (req, socket, head) => {
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  });
 
   server.listen(port, (err) => {
     if (err) throw err;

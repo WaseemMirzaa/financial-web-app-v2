@@ -14,6 +14,7 @@ import { useLocale } from '../../../../../contexts/LocaleContext';
 import { Customer, Employee } from '../../../../../types';
 import { formatDateOnly, formatNumber } from '../../../../../lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export function EmployeeDetailClient() {
   const params = useParams();
@@ -51,7 +52,7 @@ export function EmployeeDetailClient() {
 
   const fetchEmployee = async () => {
     try {
-      const response = await fetch(`/api/employees/${employeeId}`);
+      const response = await fetchApi(`/api/employees/${employeeId}`);
       const data = await response.json();
       if (data.success) {
         setEmployee(data.data);
@@ -72,7 +73,7 @@ export function EmployeeDetailClient() {
 
   const fetchAssignedCustomers = async () => {
     try {
-      const response = await fetch(`/api/employees/${employeeId}/customers`);
+      const response = await fetchApi(`/api/employees/${employeeId}/customers`);
       const data = await response.json();
       if (data.success) {
         setAssignedCustomers(data.data);
@@ -150,7 +151,7 @@ export function EmployeeDetailClient() {
         email: formData.email,
       };
       if (formData.password) payload.password = formData.password;
-      const response = await fetch(`/api/employees/${employee.id}`, {
+      const response = await fetchApi(`/api/employees/${employee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -176,7 +177,7 @@ export function EmployeeDetailClient() {
     if (!employee) return;
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/employees/${employee.id}`, {
+      const response = await fetchApi(`/api/employees/${employee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !employee.isActive }),
@@ -203,7 +204,7 @@ export function EmployeeDetailClient() {
     setDeleteError('');
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/employees/${employee.id}`, { method: 'DELETE' });
+      const response = await fetchApi(`/api/employees/${employee.id}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
         router.push('/admin/employees');

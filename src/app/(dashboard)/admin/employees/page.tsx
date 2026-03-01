@@ -13,6 +13,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { Employee } from '@/types';
 import { formatNumber } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function EmployeesPage() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/employees');
+      const response = await fetchApi('/api/employees');
       const data = await response.json();
       if (data.success) {
         setEmployees(data.data);
@@ -111,7 +112,7 @@ export default function EmployeesPage() {
     setSubmitting(true);
     try {
       if (editingEmployee) {
-        const response = await fetch(`/api/employees/${editingEmployee.id}`, {
+        const response = await fetchApi(`/api/employees/${editingEmployee.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -130,7 +131,7 @@ export default function EmployeesPage() {
           setSubmitError(data.errorKey ? t(data.errorKey) : (data.error || t('error.internalServerError')));
         }
       } else {
-        const response = await fetch('/api/employees', {
+        const response = await fetchApi('/api/employees', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
@@ -158,7 +159,7 @@ export default function EmployeesPage() {
     if (!blockConfirmEmployee) return;
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/employees/${blockConfirmEmployee.employee.id}`, {
+      const response = await fetchApi(`/api/employees/${blockConfirmEmployee.employee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !blockConfirmEmployee.block }),
@@ -186,7 +187,7 @@ export default function EmployeesPage() {
     setDeleteError('');
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/employees/${deleteConfirmEmployee.id}`, { method: 'DELETE' });
+      const response = await fetchApi(`/api/employees/${deleteConfirmEmployee.id}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
         await fetchEmployees();

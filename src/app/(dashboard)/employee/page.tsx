@@ -9,6 +9,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLoanStatusColor, formatCurrency, formatNumber } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function EmployeeDashboard() {
   const router = useRouter();
@@ -37,8 +38,8 @@ export default function EmployeeDashboard() {
     try {
       setLoading(true);
       const [customersRes, loansRes] = await Promise.all([
-        fetch(`/api/employees/${user?.id}/customers`),
-        fetch(`/api/loans?employeeId=${user?.id}&locale=${locale}`),
+        fetchApi(`/api/employees/${user?.id}/customers`),
+        fetchApi(`/api/loans?employeeId=${user?.id}&locale=${locale}`),
       ]);
 
       const customersData = await customersRes.json();

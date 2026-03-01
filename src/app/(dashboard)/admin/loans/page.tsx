@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loan, LoanStatus } from '@/types';
 import { getLoanStatusColor, formatCurrency, formatNumber, formatPercent, toDateInputValue } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function LoansPage() {
   const router = useRouter();
@@ -66,7 +67,7 @@ export default function LoansPage() {
   const fetchLoans = async () => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`/api/loans?locale=${locale}&userId=${user.id}`);
+      const response = await fetchApi(`/api/loans?locale=${locale}&userId=${user.id}`);
       const data = await response.json();
       if (data.success) {
         setLoans(data.data);
@@ -81,7 +82,7 @@ export default function LoansPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch('/api/customers');
+      const response = await fetchApi('/api/customers');
       const data = await response.json();
       if (data.success) {
         setCustomers(data.data);
@@ -94,7 +95,7 @@ export default function LoansPage() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/employees');
+      const response = await fetchApi('/api/employees');
       const data = await response.json();
       if (data.success) {
         setEmployees(data.data);
@@ -144,7 +145,7 @@ export default function LoansPage() {
     setDeleteError('');
     setDeleteLoading(true);
     try {
-      const response = await fetch(`/api/loans/${deleteConfirmLoan.id}?userId=${user.id}`, { method: 'DELETE' });
+      const response = await fetchApi(`/api/loans/${deleteConfirmLoan.id}?userId=${user.id}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
         await fetchLoans();
@@ -275,7 +276,7 @@ export default function LoansPage() {
           return;
         }
         
-        const response = await fetch(`/api/loans/${editingLoan.id}`, {
+        const response = await fetchApi(`/api/loans/${editingLoan.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -335,7 +336,7 @@ export default function LoansPage() {
           notes: formData.notes?.trim() || null,
         };
         console.log('[Loan Form] Sending loan data:', loanData);
-        const response = await fetch('/api/loans', {
+        const response = await fetchApi('/api/loans', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(loanData),

@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Customer } from '@/types';
 import { getLoanStatusColor, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export function EmployeeCustomerDetailClient() {
   const params = useParams();
@@ -52,7 +53,7 @@ export function EmployeeCustomerDetailClient() {
 
   const fetchCustomer = async () => {
     try {
-      const response = await fetch(`/api/customers/${customerId}${user?.id ? `?userId=${encodeURIComponent(user.id)}` : ''}`);
+      const response = await fetchApi(`/api/customers/${customerId}${user?.id ? `?userId=${encodeURIComponent(user.id)}` : ''}`);
       const data = await response.json();
       if (!data.success || !data.data) {
         setLoading(false);
@@ -75,7 +76,7 @@ export function EmployeeCustomerDetailClient() {
 
   const fetchLoans = async () => {
     try {
-      const response = await fetch(`/api/loans?customerId=${customerId}&locale=${locale}`);
+      const response = await fetchApi(`/api/loans?customerId=${customerId}&locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setCustomerLoans(data.data);
@@ -131,7 +132,7 @@ export function EmployeeCustomerDetailClient() {
         address: formData.address,
       };
       if (formData.password) payload.password = formData.password;
-      const response = await fetch(`/api/customers/${customer.id}`, {
+      const response = await fetchApi(`/api/customers/${customer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

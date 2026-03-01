@@ -11,14 +11,13 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { Chat, ChatMessage } from '@/types';
 import type { Customer } from '@/types';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
-import { useWebSocket } from '@/contexts/WebSocketContext';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function EmployeeChatPage() {
   const pathname = usePathname();
   const { t, locale } = useLocale();
   const { user } = useAuth();
   const { refreshNotifications } = useNotifications();
-  const { subscribe } = useWebSocket();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -47,7 +46,7 @@ export default function EmployeeChatPage() {
 
   const fetchAssignedCustomers = async () => {
     try {
-      const response = await fetch(`/api/employees/${user?.id}/customers`);
+      const response = await fetchApi(`/api/employees/${user?.id}/customers`);
       const data = await response.json();
       if (data.success) setAssignedCustomers(data.data || []);
     } catch (error) {
@@ -58,7 +57,7 @@ export default function EmployeeChatPage() {
 
   const fetchChats = async () => {
     try {
-      const response = await fetch(`/api/chat?userId=${user?.id}`);
+      const response = await fetchApi(`/api/chat?userId=${user?.id}`);
       const data = await response.json();
       if (data.success) {
         setChats(data.data);
@@ -79,7 +78,7 @@ export default function EmployeeChatPage() {
   const fetchMessages = async (chatId: string) => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`/api/chat/${chatId}/messages?locale=${locale}&userId=${user.id}`);
+      const response = await fetchApi(`/api/chat/${chatId}/messages?locale=${locale}&userId=${user.id}`);
       const data = await response.json();
       if (data.success) {
         const newList = data.data as ChatMessage[];
@@ -97,7 +96,7 @@ export default function EmployeeChatPage() {
   const markChatAsRead = async (chatId: string) => {
     if (!user?.id) return;
     try {
-      await fetch(`/api/chat/${chatId}/read`, {
+      await fetchApi(`/api/chat/${chatId}/read`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
@@ -116,22 +115,19 @@ export default function EmployeeChatPage() {
     }
   }, [selectedChat, locale]);
 
-  // Real-time via WebSocket
+  // Real-time: poll messages while a chat is open (keeps polling when tab minimized)
   useEffect(() => {
-    const unsub = subscribe('chat:message', (data: any) => {
-      if (data?.chatId && data.chatId === selectedChat) {
-        fetchMessages(data.chatId);
-      }
-    });
-    return unsub;
-  }, [subscribe, selectedChat]);
+    if (!selectedChat) return;
+    const interval = setInterval(() => fetchMessages(selectedChat), 60000);
+    return () => clearInterval(interval);
+  }, [selectedChat, locale]);
 
+  // Real-time: poll chat list for new/deleted rooms
   useEffect(() => {
-    const unsub = subscribe('chat:list-update', () => {
-      fetchChats();
-    });
-    return unsub;
-  }, [subscribe]);
+    if (!user?.id) return;
+    const interval = setInterval(() => fetchChats(), 60000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   const selectedChatData = chats.find(c => c.id === selectedChat);
 
@@ -155,7 +151,7 @@ export default function EmployeeChatPage() {
     if (!user?.id) return;
     setStartingChat(true);
     try {
-      const response = await fetch('/api/chat/with-customer', {
+      const response = await fetchApi('/api/chat/with-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId: user.id, customerId }),
@@ -186,7 +182,7 @@ export default function EmployeeChatPage() {
       if (file) {
         const form = new FormData();
         form.append('file', file);
-        const uploadRes = await fetch('/api/chat/upload', { method: 'POST', body: form });
+        const uploadRes = await fetchApi('/api/chat/upload', { method: 'POST', body: form });
         const uploadData = await uploadRes.json();
         if (!uploadData.success || !uploadData.data) {
           console.error('Upload failed:', uploadData.error);
@@ -197,7 +193,7 @@ export default function EmployeeChatPage() {
         fileType = uploadData.data.fileType;
       }
 
-      const response = await fetch(`/api/chat/${selectedChat}/messages`, {
+      const response = await fetchApi(`/api/chat/${selectedChat}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

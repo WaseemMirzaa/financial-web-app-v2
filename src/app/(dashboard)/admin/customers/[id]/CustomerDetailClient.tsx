@@ -14,6 +14,7 @@ import { useLocale } from '../../../../../contexts/LocaleContext';
 import { Customer } from '../../../../../types';
 import { getLoanStatusColor, formatDate, formatDateOnly, formatCurrency, formatNumber, formatPercent } from '../../../../../lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
+import { fetchApi } from '@/lib/fetchApi';
 
 export function CustomerDetailClient() {
   const params = useParams();
@@ -57,7 +58,7 @@ export function CustomerDetailClient() {
 
   const fetchCustomer = async () => {
     try {
-      const response = await fetch(`/api/customers/${customerId}`);
+      const response = await fetchApi(`/api/customers/${customerId}`);
       const data = await response.json();
       if (data.success) {
         setCustomer(data.data);
@@ -91,7 +92,7 @@ export function CustomerDetailClient() {
     }
     try {
       const results = await Promise.all(
-        employeeIds.map((id) => fetch(`/api/employees/${id}`).then((r) => r.json()))
+        employeeIds.map((id) => fetchApi(`/api/employees/${id}`).then((r) => r.json()))
       );
       const list = results.filter((r) => r.success && r.data).map((r) => r.data);
       setAssignedEmployees(list);
@@ -104,7 +105,7 @@ export function CustomerDetailClient() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/employees');
+      const response = await fetchApi('/api/employees');
       const data = await response.json();
       if (data.success) {
         setEmployees(data.data);
@@ -117,7 +118,7 @@ export function CustomerDetailClient() {
 
   const fetchLoans = async () => {
     try {
-      const response = await fetch(`/api/loans?customerId=${customerId}&locale=${locale}`);
+      const response = await fetchApi(`/api/loans?customerId=${customerId}&locale=${locale}`);
       const data = await response.json();
       if (data.success) {
         setCustomerLoans(data.data);
@@ -199,7 +200,7 @@ export function CustomerDetailClient() {
         address: formData.address,
       };
       if (formData.password) payload.password = formData.password;
-      const response = await fetch(`/api/customers/${customer.id}`, {
+      const response = await fetchApi(`/api/customers/${customer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -229,7 +230,7 @@ export function CustomerDetailClient() {
       return;
     }
     try {
-      const response = await fetch(`/api/customers/${customer.id}/assign`, {
+      const response = await fetchApi(`/api/customers/${customer.id}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeIds: [...currentIds, employeeId] }),
@@ -249,7 +250,7 @@ export function CustomerDetailClient() {
     if (!customer) return;
     setRemoveError('');
     try {
-      const response = await fetch(`/api/customers/${customer.id}/assign?employeeId=${encodeURIComponent(employeeId)}`, {
+      const response = await fetchApi(`/api/customers/${customer.id}/assign?employeeId=${encodeURIComponent(employeeId)}`, {
         method: 'DELETE',
       });
       const data = await response.json();
@@ -269,7 +270,7 @@ export function CustomerDetailClient() {
     if (!customer) return;
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/customers/${customer.id}`, {
+      const response = await fetchApi(`/api/customers/${customer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !customer.isActive }),
@@ -292,7 +293,7 @@ export function CustomerDetailClient() {
     setDeleteError('');
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/customers/${customer.id}`, { method: 'DELETE' });
+      const response = await fetchApi(`/api/customers/${customer.id}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
         router.push('/admin/customers');
