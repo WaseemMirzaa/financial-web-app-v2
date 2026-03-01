@@ -10,10 +10,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ filename: string }> }
+  { params }: { params: { filename: string } }
 ) {
   try {
-    const { filename } = await context.params;
+    const { filename } = params;
     if (!filename) {
       return NextResponse.json({ success: false, error: 'Filename is required' }, { status: 400 });
     }
