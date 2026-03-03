@@ -157,3 +157,36 @@ In your domain DNS (where you manage alkhalijtamweel.com):
 | Restart app       | `pm2 restart financial-web-app` |
 | Logs              | `pm2 logs financial-web-app`   |
 | Rebuild after code| `npm run build && pm2 restart financial-web-app` |
+
+---
+
+## Deploy after push (on droplet)
+
+From your machine, sync code then on the droplet pull and rebuild:
+
+```bash
+# From your Mac (project root)
+rsync -avz --exclude node_modules --exclude .next --exclude .git . your_user@YOUR_DROPLET_IP:/var/www/financial-web-app/
+```
+
+Then on the droplet:
+
+```bash
+cd /var/www/financial-web-app
+git pull origin backend-no-firebase
+npm install --production
+npm run build
+pm2 restart financial-web-app
+```
+
+Or if you deploy by clone (first time) or pull (updates):
+
+```bash
+cd /var/www/financial-web-app
+git fetch origin
+git checkout backend-no-firebase
+git pull origin backend-no-firebase
+npm install --production
+npm run build
+pm2 restart financial-web-app
+```
