@@ -51,46 +51,51 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/logo.png',
-                height: 72,
-                width: 90,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'الخليج للتمويل',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.primary500,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 24,
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(
+                      'assets/images/logo.png',
+                      height: 72,
+                      width: 90,
+                      fit: BoxFit.contain,
                     ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'منصة إدارة التمويل',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.neutral500,
-                      fontSize: 14,
+                    const SizedBox(height: 20),
+                    Text(
+                      'الخليج للتمويل',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: AppTheme.primary500,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 24,
+                          ),
+                      textAlign: TextAlign.center,
                     ),
-              ),
-              const Spacer(),
-              const SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary500),
+                    const SizedBox(height: 6),
+                    Text(
+                      'منصة إدارة التمويل',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.neutral500,
+                            fontSize: 14,
+                          ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 48),
-            ],
-          ),
+            ),
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary500),
+              ),
+            ),
+            const SizedBox(height: 48),
+          ],
         ),
       ),
     );

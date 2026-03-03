@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/notifications_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/web_view_tab.dart';
+import 'login_screen.dart';
 import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -32,12 +34,22 @@ class _MainScreenState extends State<MainScreen> {
     final locale = context.watch<LocaleProvider>();
     final user = auth.user;
     if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+      });
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
     final items = _navItemsFor(user, locale.locale);
+    final notificationsProvider = context.read<NotificationsProvider>();
+    notificationsProvider.setUserId(user.id);
+    notificationsProvider.listenToPushRefresh();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -55,7 +67,13 @@ class _MainScreenState extends State<MainScreen> {
                         path: items[i].path,
                         userId: user.id,
                         userJson: user.toJson(),
-                        onWebLogout: () => auth.logout(),
+                        onWebLogout: () {
+                          auth.logout();
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            (_) => false,
+                          );
+                        },
                         onLocaleFromWeb: (l) => locale.setLocale(l),
                       ),
             ],

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config.dart';
 import '../models/app_settings.dart';
+import '../models/notification_model.dart';
 import '../models/user_model.dart';
 
 class ApiService {
@@ -170,6 +171,36 @@ class ApiService {
       return {'success': false, 'error': 'Invalid response'};
     } catch (e) {
       return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  static Future<List<NotificationModel>> getNotifications(String userId, {String? locale}) async {
+    try {
+      final q = <String, String>{'userId': userId};
+      if (locale != null && locale.isNotEmpty) q['locale'] = locale;
+      final uri = Uri.parse('$_base/api/notifications').replace(queryParameters: q);
+      final res = await http.get(uri, headers: {'Accept': 'application/json'});
+      if (res.statusCode != 200) return [];
+      final data = _parseJson(res.body);
+      if (data == null || data['success'] != true || data['data'] is! List) return [];
+      return (data['data'] as List)
+          .map((e) => NotificationModel.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<bool> markNotificationRead(String id) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_base/api/notifications/$id/read'),
+        headers: {'Accept': 'application/json'},
+      );
+      final data = _parseJson(res.body);
+      return data != null && data['success'] == true;
+    } catch (_) {
+      return false;
     }
   }
 }

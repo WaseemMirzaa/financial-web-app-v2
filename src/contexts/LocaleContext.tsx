@@ -66,7 +66,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.openMenu': 'Open menu',
     'common.changeLanguage': 'Change language',
     'common.notificationsAria': 'Notifications',
-    'app.loanManager': 'Alkhalij for Finance',
+    'app.loanManager': 'الخليج للتمويل',
     
     // Login & Signup
     'auth.signIn': 'Sign in to access your dashboard',

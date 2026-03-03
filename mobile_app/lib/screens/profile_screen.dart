@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import 'login_screen.dart';
+import 'notifications_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -129,7 +130,7 @@ class ProfileScreen extends StatelessWidget {
             context,
             icon: Icons.notifications_outlined,
             title: 'الإشعارات',
-            onTap: () => _openUrl(context, '${user.homePath}/notifications'),
+            onTap: () => _openNotifications(context),
           ),
           _menuTile(
             context,
@@ -207,6 +208,12 @@ class ProfileScreen extends StatelessWidget {
       case UserRole.customer:
         return 'عميل';
     }
+  }
+
+  void _openNotifications(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
   }
 
   void _openUrl(BuildContext context, String path) {
