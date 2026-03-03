@@ -149,7 +149,9 @@ export function Header({ onMenuClick }: HeaderProps) {
                 )}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 rtl:right-auto rtl:left-0 top-full mt-2 w-[calc(100vw-3rem)] sm:w-[360px] md:w-[400px] bg-white rounded-2xl shadow-soft-lg border border-neutral-100 z-[1000] animate-fade-in max-h-[80vh] flex flex-col">
+                <div
+                  className="fixed inset-x-3 top-[72px] sm:absolute sm:inset-x-auto sm:right-0 sm:rtl:right-auto sm:rtl:left-0 sm:top-full sm:mt-2 w-[calc(100vw-1.5rem)] sm:w-[360px] md:w-[400px] bg-white rounded-2xl shadow-soft-lg border border-neutral-100 z-[1000] animate-fade-in max-h-[80vh] flex flex-col"
+                >
                   <div className="p-4 sm:p-5 border-b border-neutral-100 flex items-center justify-between shrink-0">
                     <h3 className="font-semibold text-neutral-900 text-sm sm:text-base">{t('common.notifications')}</h3>
                     {unreadCount > 0 && (
