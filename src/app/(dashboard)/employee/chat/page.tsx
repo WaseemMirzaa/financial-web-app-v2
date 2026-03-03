@@ -125,7 +125,7 @@ export default function EmployeeChatPage() {
   // Real-time: poll chat list for new/deleted rooms
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => fetchChats(), 45000);
+    const interval = setInterval(() => fetchChats(), 30000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
@@ -252,14 +252,25 @@ export default function EmployeeChatPage() {
         <Card variant="elevated" padding="none" className="lg:col-span-1 flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
           <div className="p-3 sm:p-4 border-b border-neutral-100 space-y-3 shrink-0">
             <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
-            <input
-              type="search"
-              value={chatSearchQuery}
-              onChange={(e) => setChatSearchQuery(e.target.value)}
-              placeholder={t('chat.searchCustomerConversation')}
-              className="w-full min-h-[44px] rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              aria-label={t('chat.searchCustomerConversation')}
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="search"
+                value={chatSearchQuery}
+                onChange={(e) => setChatSearchQuery(e.target.value)}
+                placeholder={t('chat.searchCustomerConversation')}
+                className="w-full min-h-[44px] rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                aria-label={t('chat.searchCustomerConversation')}
+              />
+              {chatSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setChatSearchQuery('')}
+                  className="text-xs text-neutral-500 hover:text-neutral-700 px-2 py-1 rounded-lg hover:bg-neutral-100"
+                >
+                  ×
+                </button>
+              )}
+            </div>
             {assignedCustomers.length > 0 && (
               <div className="mt-3">
                 <label htmlFor="customer-select" className="sr-only">

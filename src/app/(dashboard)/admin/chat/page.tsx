@@ -155,7 +155,7 @@ export default function AdminChatPage() {
   // Real-time: poll chat list for pinning updates (keeps polling when tab minimized)
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => fetchChats(), 45000);
+    const interval = setInterval(() => fetchChats(), 30000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
@@ -365,12 +365,23 @@ export default function AdminChatPage() {
               </Button>
             </div>
             <p className="text-xs text-neutral-500 mb-2">{t('chat.adminMonitorOnly')}</p>
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('common.search') + '...'}
-              className="text-sm"
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('common.search') + '...'}
+                className="text-sm flex-1"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-xs text-neutral-500 hover:text-neutral-700 px-2 py-1 rounded-lg hover:bg-neutral-100"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
           <div className="divide-y divide-neutral-100 overflow-y-auto overflow-x-hidden flex-1 min-w-0">
             {filteredChats.length === 0 ? (

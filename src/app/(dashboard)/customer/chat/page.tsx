@@ -131,7 +131,7 @@ export default function CustomerChatPage() {
   // Real-time: poll chat list for new/deleted chats
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => fetchChats(), 45000);
+    const interval = setInterval(() => fetchChats(), 30000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
