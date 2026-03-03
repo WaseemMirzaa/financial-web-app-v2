@@ -330,6 +330,13 @@ async function migrate() {
       if (e.code !== 'ER_DUP_KEYNAME') throw e;
     }
     try {
+      await connection.query(
+        `ALTER TABLE chat_messages ADD INDEX idx_chat_id_is_deleted_timestamp (chat_id, is_deleted, timestamp)`
+      );
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
+    try {
       await connection.query(`ALTER TABLE chat_messages ADD COLUMN reply_to_message_id VARCHAR(255) NULL`);
     } catch (e: any) {
       if (e.code !== 'ER_DUP_FIELDNAME') throw e;

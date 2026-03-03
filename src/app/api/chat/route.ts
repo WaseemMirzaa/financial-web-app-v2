@@ -15,6 +15,7 @@ async function getUserRole(userId: string): Promise<'admin' | 'employee' | 'cust
 
 export async function GET(request: NextRequest) {
   try {
+    const startedAt = Date.now();
     const userId = request.nextUrl.searchParams.get('userId');
 
     if (!userId) {
@@ -101,131 +102,182 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get last message, unread count, and participant names for each chat
-    const chats = await Promise.all(
-      rows.map(async (chat: any) => {
-        // Get last non-deleted message, or last message if all are deleted
-        const [messages] = await pool.query(
-          `SELECT cm.*,
-            cmt_en.content as content_en,
-            cmt_ar.content as content_ar,
-            cmt_en.sender_name as sender_name_en,
-            cmt_ar.sender_name as sender_name_ar
-          FROM chat_messages cm
-          LEFT JOIN chat_message_translations cmt_en ON cm.id = cmt_en.message_id AND cmt_en.locale = 'en'
-          LEFT JOIN chat_message_translations cmt_ar ON cm.id = cmt_ar.message_id AND cmt_ar.locale = 'ar'
-          WHERE cm.chat_id = ?
-          ORDER BY cm.timestamp DESC
-          LIMIT 1`,
-          [chat.id]
-        ) as any[];
+    if (rows.length === 0) {
+      return successResponse([]);
+    }
 
-        const lastMessage = messages.length > 0 ? {
-          id: messages[0].id,
-          content: messages[0].is_deleted 
-            ? 'Message deleted' 
-            : (messages[0].content_en || messages[0].content_ar || ''),
-          senderName: messages[0].sender_name_en || messages[0].sender_name_ar || '',
-          timestamp: messages[0].timestamp,
-          isDeleted: messages[0].is_deleted || false,
-        } : undefined;
+    const chatIds = rows.map((chat) => chat.id);
 
-        // Get participant names and ids (for search)
-        let participantNames: string[] = [];
-        let participantIds: string[] = [];
-        let assignedEmployeeName: string | null = null;
-        let assignedEmployeeId: string | null = null;
-        if (chat.type === 'customer_employee') {
-          const [participants] = await pool.query(
-            `SELECT cp.user_id, u.role, u.email,
-              ut_en.name as name_en,
-              ut_ar.name as name_ar
-            FROM chat_participants cp
-            INNER JOIN users u ON cp.user_id = u.id
-            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-            WHERE cp.chat_id = ?`,
-            [chat.id]
-          ) as any[];
-          const customers = (participants || []).filter((p: any) => p.role === 'customer');
-          const employees = (participants || []).filter((p: any) => p.role === 'employee');
-          participantNames = customers.map((p: any) => p.name_en || p.name_ar || p.user_id);
-          participantIds = participants.map((p: any) => p.user_id);
-          if (employees.length > 0) {
-            const emp = employees[0];
-            assignedEmployeeName = emp.name_en || emp.name_ar || emp.user_id;
-            assignedEmployeeId = emp.user_id;
-          }
-        } else if (chat.type === 'internal_room') {
-          const [participants] = await pool.query(
-            `SELECT cp.user_id, u.role, u.email,
-              ut_en.name as name_en,
-              ut_ar.name as name_ar
-            FROM chat_participants cp
-            INNER JOIN users u ON cp.user_id = u.id
-            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-            WHERE cp.chat_id = ?`,
-            [chat.id]
-          ) as any[];
-          participantNames = participants.map((p: any) => {
-            if (p.role === 'admin') return 'Admin';
-            return p.name_en || p.name_ar || p.user_id;
-          });
-          participantIds = participants.map((p: any) => p.user_id);
+    // Get last message for all chats in a single query
+    const [lastMessageRows] = await pool.query(
+      `SELECT * FROM (
+        SELECT
+          cm.*,
+          cmt_en.content AS content_en,
+          cmt_ar.content AS content_ar,
+          cmt_en.sender_name AS sender_name_en,
+          cmt_ar.sender_name AS sender_name_ar,
+          ROW_NUMBER() OVER (PARTITION BY cm.chat_id ORDER BY cm.timestamp DESC) AS rn
+        FROM chat_messages cm
+        LEFT JOIN chat_message_translations cmt_en ON cm.id = cmt_en.message_id AND cmt_en.locale = 'en'
+        LEFT JOIN chat_message_translations cmt_ar ON cm.id = cmt_ar.message_id AND cmt_ar.locale = 'ar'
+        WHERE cm.chat_id IN (?)
+      ) t
+      WHERE t.rn = 1`,
+      [chatIds]
+    ) as any[];
+
+    const lastMessageByChatId = new Map<string, any>();
+    (lastMessageRows || []).forEach((m: any) => {
+      lastMessageByChatId.set(m.chat_id, {
+        id: m.id,
+        content: m.is_deleted
+          ? 'Message deleted'
+          : (m.content_en || m.content_ar || ''),
+        senderName: m.sender_name_en || m.sender_name_ar || '',
+        timestamp: m.timestamp,
+        isDeleted: m.is_deleted || false,
+      });
+    });
+
+    // Get participants for all chats in a single query
+    const [participantRows] = await pool.query(
+      `SELECT cp.chat_id, cp.user_id, u.role, u.email,
+        ut_en.name AS name_en,
+        ut_ar.name AS name_ar
+      FROM chat_participants cp
+      INNER JOIN users u ON cp.user_id = u.id
+      LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+      LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+      WHERE cp.chat_id IN (?)`,
+      [chatIds]
+    ) as any[];
+
+    const participantsByChatId = new Map<string, any[]>();
+    (participantRows || []).forEach((p: any) => {
+      const existing = participantsByChatId.get(p.chat_id) || [];
+      existing.push(p);
+      participantsByChatId.set(p.chat_id, existing);
+    });
+
+    // Get unread counts for all chats in batched queries
+    const [readStatusRows] = await pool.query(
+      `SELECT chat_id, last_read_at
+      FROM chat_read_status
+      WHERE user_id = ? AND chat_id IN (?)`,
+      [userId, chatIds]
+    ) as any[];
+
+    const lastReadByChatId = new Map<string, any>();
+    (readStatusRows || []).forEach((r: any) => {
+      lastReadByChatId.set(r.chat_id, r.last_read_at);
+    });
+
+    const chatsWithLastRead: string[] = [];
+    const chatsWithoutLastRead: string[] = [];
+    chatIds.forEach((id) => {
+      const lastReadAt = lastReadByChatId.get(id);
+      if (lastReadAt) {
+        chatsWithLastRead.push(id);
+      } else {
+        chatsWithoutLastRead.push(id);
+      }
+    });
+
+    const unreadCountByChatId = new Map<string, number>();
+
+    if (chatsWithLastRead.length > 0) {
+      const [unreadRowsWithLastRead] = await pool.query(
+        `SELECT cm.chat_id, COUNT(*) AS count
+        FROM chat_messages cm
+        INNER JOIN chat_read_status crs
+          ON cm.chat_id = crs.chat_id
+          AND crs.user_id = ?
+        WHERE cm.chat_id IN (?)
+          AND cm.sender_id != ?
+          AND cm.is_deleted = FALSE
+          AND cm.timestamp > crs.last_read_at
+        GROUP BY cm.chat_id`,
+        [userId, chatsWithLastRead, userId]
+      ) as any[];
+
+      (unreadRowsWithLastRead || []).forEach((r: any) => {
+        unreadCountByChatId.set(r.chat_id, r.count || 0);
+      });
+    }
+
+    if (chatsWithoutLastRead.length > 0) {
+      const [unreadRowsWithoutLastRead] = await pool.query(
+        `SELECT chat_id, COUNT(*) AS count
+        FROM chat_messages
+        WHERE chat_id IN (?)
+          AND sender_id != ?
+          AND is_deleted = FALSE
+        GROUP BY chat_id`,
+        [chatsWithoutLastRead, userId]
+      ) as any[];
+
+      (unreadRowsWithoutLastRead || []).forEach((r: any) => {
+        unreadCountByChatId.set(r.chat_id, r.count || 0);
+      });
+    }
+
+    const chats = rows.map((chat: any) => {
+      const lastMessage = lastMessageByChatId.get(chat.id);
+      const participants = participantsByChatId.get(chat.id) || [];
+
+      let participantNames: string[] = [];
+      let participantIds: string[] = [];
+      let assignedEmployeeName: string | null = null;
+      let assignedEmployeeId: string | null = null;
+
+      if (chat.type === 'customer_employee') {
+        const customers = (participants || []).filter((p: any) => p.role === 'customer');
+        const employees = (participants || []).filter((p: any) => p.role === 'employee');
+        participantNames = customers.map((p: any) => p.name_en || p.name_ar || p.user_id);
+        participantIds = participants.map((p: any) => p.user_id);
+        if (employees.length > 0) {
+          const emp = employees[0];
+          assignedEmployeeName = emp.name_en || emp.name_ar || emp.user_id;
+          assignedEmployeeId = emp.user_id;
         }
+      } else if (chat.type === 'internal_room') {
+        participantNames = participants.map((p: any) => {
+          if (p.role === 'admin') return 'Admin';
+          return p.name_en || p.name_ar || p.user_id;
+        });
+        participantIds = participants.map((p: any) => p.user_id);
+      }
 
-        // Get unread count: messages after last_read_at timestamp
-        let unreadCount = 0;
-        try {
-          const [readStatus] = await pool.query(
-            `SELECT last_read_at FROM chat_read_status WHERE chat_id = ? AND user_id = ?`,
-            [chat.id, userId]
-          ) as any[];
-          
-          const lastReadAt = readStatus.length > 0 ? readStatus[0].last_read_at : null;
-          
-          if (lastReadAt) {
-            const [unreadMessages] = await pool.query(
-              `SELECT COUNT(*) as count FROM chat_messages 
-               WHERE chat_id = ? AND sender_id != ? AND timestamp > ? AND is_deleted = FALSE`,
-              [chat.id, userId, lastReadAt]
-            ) as any[];
-            unreadCount = unreadMessages[0]?.count || 0;
-          } else if (lastMessage) {
-            // If never read and there are messages, count messages not sent by user
-            const [allUnread] = await pool.query(
-              `SELECT COUNT(*) as count FROM chat_messages 
-               WHERE chat_id = ? AND sender_id != ? AND is_deleted = FALSE`,
-              [chat.id, userId]
-            ) as any[];
-            unreadCount = allUnread[0]?.count || 0;
-          }
-        } catch (unreadError) {
-          console.warn('Failed to get unread count for chat', chat.id, unreadError);
-          // Continue with unreadCount = 0 if query fails
-        }
+      const unreadCount = unreadCountByChatId.get(chat.id) || 0;
 
-        return {
-          id: chat.id,
-          type: chat.type,
-          roomName: chat.room_name,
-          participantNames,
-          participantIds,
-          assignedEmployeeName,
-          assignedEmployeeId,
-          isPinned: Boolean(chat.is_pinned),
-          pinnedAt: chat.pinned_at || null,
-          pinnedMessageId: chat.pinned_message_id || null,
-          pinnedMessageAt: chat.pinned_message_at || null,
-          createdBy: chat.created_by || null,
-          lastMessage,
-          unreadCount,
-          createdAt: chat.created_at,
-          updatedAt: chat.updated_at,
-        };
-      })
-    );
+      return {
+        id: chat.id,
+        type: chat.type,
+        roomName: chat.room_name,
+        participantNames,
+        participantIds,
+        assignedEmployeeName,
+        assignedEmployeeId,
+        isPinned: Boolean(chat.is_pinned),
+        pinnedAt: chat.pinned_at || null,
+        pinnedMessageId: chat.pinned_message_id || null,
+        pinnedMessageAt: chat.pinned_message_at || null,
+        createdBy: chat.created_by || null,
+        lastMessage,
+        unreadCount,
+        createdAt: chat.created_at,
+        updatedAt: chat.updated_at,
+      };
+    });
+
+    const durationMs = Date.now() - startedAt;
+    console.log('Chat list stats', {
+      userId,
+      role,
+      chatCount: chats.length,
+      durationMs,
+    });
 
     return successResponse(chats);
   } catch (error: any) {
