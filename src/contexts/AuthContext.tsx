@@ -22,37 +22,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const verifySession = async () => {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
-        setIsVerifying(false);
-        return;
-      }
       try {
-        const parsedUser = JSON.parse(storedUser);
-        try {
-          const response = await fetchApi(`/api/auth/me?userId=${parsedUser.id}`, {
-            method: 'GET',
-            credentials: 'include',
-          });
-          const data = await response.json();
-          if (data.success && data.data) {
-            setUser(data.data);
-            localStorage.setItem('user', JSON.stringify(data.data));
-          } else {
-            setUser(null);
-            localStorage.removeItem('user');
+        const storedUser = typeof window !== 'undefined'
+          ? window.localStorage.getItem('user')
+          : null;
+
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          try {
+            const response = await fetchApi(`/api/auth/me?userId=${parsedUser.id}`, {
+              method: 'GET',
+              credentials: 'include',
+            });
+            const data = await response.json();
+            if (data.success && data.data) {
+              setUser(data.data);
+              window.localStorage.setItem('user', JSON.stringify(data.data));
+              setIsVerifying(false);
+              return;
+            } else {
+              setUser(null);
+              window.localStorage.removeItem('user');
+            }
+          } catch (error) {
+            reloadIfStaleDeploy(error);
+            console.warn('Failed to verify session, using cached user:', error);
+            setUser(parsedUser);
+            setIsVerifying(false);
+            return;
           }
-        } catch (error) {
-          reloadIfStaleDeploy(error);
-          console.warn('Failed to verify session, using cached user:', error);
-          setUser(parsedUser);
         }
-      } catch (e) {
-        localStorage.removeItem('user');
+
+        // Fallback: SSO from mobile app via query params (?flutter_app=1&userId=...)
+        if (typeof window !== 'undefined') {
+          try {
+            const url = new URL(window.location.href);
+            const isFlutterApp = url.searchParams.get('flutter_app') === '1';
+            const userId = url.searchParams.get('userId');
+            if (isFlutterApp && userId) {
+              const response = await fetchApi(`/api/auth/me?userId=${encodeURIComponent(userId)}`, {
+                method: 'GET',
+              });
+              const data = await response.json();
+              if (data.success && data.data) {
+                setUser(data.data);
+                window.localStorage.setItem('user', JSON.stringify(data.data));
+                setIsVerifying(false);
+                return;
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to bootstrap session from flutter_app query params:', err);
+          }
+        }
+
         setUser(null);
-      } finally {
-        setIsVerifying(false);
+      } catch {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('user');
+        }
+        setUser(null);
       }
+      setIsVerifying(false);
     };
 
     verifySession();

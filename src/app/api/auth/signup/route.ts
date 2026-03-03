@@ -8,12 +8,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, email, password, phone, address } = body;
 
-    // Block customer self-registration - customers must be created by admin/employee
-    return errorResponse(
-      'Customer accounts must be created by administrators. Please contact your administrator.',
-      403,
-      'error.customerSignupDisabled'
-    );
+    // Check mobile app settings: allow signup only when enabled
+    try {
+      const [settings] = await pool.query(
+        'SELECT signup_enabled FROM mobile_app_settings LIMIT 1'
+      ) as any[];
+      const signupEnabled = settings?.[0]?.signup_enabled === 1 || settings?.[0]?.signup_enabled === true;
+      if (!signupEnabled) {
+        return errorResponse(
+          'Customer accounts must be created by administrators. Please contact your administrator.',
+          403,
+          'error.customerSignupDisabled'
+        );
+      }
+    } catch (e) {
+      // If settings table is missing or query fails, keep previous safe default: signup disabled
+      return errorResponse(
+        'Customer accounts must be created by administrators. Please contact your administrator.',
+        403,
+        'error.customerSignupDisabled'
+      );
+    }
 
     // Validation
     const validation = validateRequired({ name, email, password }, ['name', 'email', 'password']);
