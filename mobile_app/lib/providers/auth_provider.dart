@@ -50,7 +50,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
-      _error = data['error']?.toString() ?? data['errorKey']?.toString() ?? 'Login failed';
+      _error = _mapAuthError(data, isSignup: false);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -89,7 +89,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
-      _error = data['error']?.toString() ?? data['errorKey']?.toString() ?? 'Signup failed';
+      _error = _mapAuthError(data, isSignup: true);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -106,5 +106,40 @@ class AuthProvider with ChangeNotifier {
     _user = null;
     _error = null;
     notifyListeners();
+  }
+
+  String _mapAuthError(Map<String, dynamic> data, {required bool isSignup}) {
+    final key = data['errorKey']?.toString() ?? '';
+    final raw = data['error']?.toString() ?? '';
+
+    // Backend standard auth keys
+    if (key == 'error.invalidEmailOrPassword') {
+      return 'Email or password is incorrect';
+    }
+    if (key == 'error.userNotFound') {
+      return 'No account found with these details';
+    }
+    if (key == 'error.userInactive') {
+      return 'Your account is inactive. Please contact support.';
+    }
+    if (key == 'error.emailAlreadyExists' || key == 'error.userAlreadyExists') {
+      return 'This email is already registered';
+    }
+
+    // Generic network / URL issues
+    if (raw.contains('Service not found')) {
+      return 'Service not found. Please check the server URL and try again.';
+    }
+    if (raw.contains('Server returned page')) {
+      return 'Server returned an HTML page instead of JSON. Please check the API URL.';
+    }
+    if (raw.toLowerCase().contains('network error')) {
+      return 'Network error. Please check your internet connection and try again.';
+    }
+
+    // Fallback based on context
+    return isSignup
+        ? 'Something went wrong while creating the account. Please try again.'
+        : 'Something went wrong while signing in. Please try again.';
   }
 }

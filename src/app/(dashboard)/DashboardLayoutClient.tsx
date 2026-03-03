@@ -14,20 +14,21 @@ export default function DashboardLayoutClient({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isVerifying } = useAuth();
   const { locale } = useLocale();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
+    if (isVerifying) return;
     if (!isAuthenticated) {
       const schedule = (fn: () => void) =>
         typeof queueMicrotask !== 'undefined' ? queueMicrotask(fn) : setTimeout(fn, 0);
       schedule(() => router.push('/login'));
     }
-  }, [isAuthenticated, router]);
+  }, [isVerifying, isAuthenticated, router]);
 
-  if (!isAuthenticated || !user) {
+  if (isVerifying || !isAuthenticated || !user) {
     return (
       <div className="min-h-screen min-h-[100dvh] bg-page flex items-center justify-center">
         <Loader size="large" />

@@ -75,6 +75,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     }
 
     if (
+      !isVerifying &&
       !isAuthenticated &&
       pathname &&
       (pathname.startsWith('/admin') ||
@@ -108,6 +109,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     }
 
     if (
+      !isVerifying &&
       !isAuthenticated &&
       pathname !== '/login'
     ) {
@@ -117,10 +119,20 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     }
 
     done();
-  }, [isInitialized, isAuthenticated, user, router, pathname]);
+  }, [isInitialized, isVerifying, isAuthenticated, user, router, pathname]);
 
   if (isVerifying || !isInitialized || isChecking) {
     return <Loader fullScreen text={t('common.loading')} />;
+  }
+
+  // Authenticated but on login/root: show loader until redirect to dashboard completes (no login flash)
+  if (isAuthenticated && user) {
+    const p = pathname || '';
+    const isOnDashboard =
+      p.startsWith('/admin') || p.startsWith('/employee') || p.startsWith('/customer');
+    if (!isOnDashboard) {
+      return <Loader fullScreen text={t('common.loading')} />;
+    }
   }
 
   return <>{children}</>;

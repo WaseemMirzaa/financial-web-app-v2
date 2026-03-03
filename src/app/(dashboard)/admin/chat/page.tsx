@@ -565,6 +565,8 @@ export default function AdminChatPage() {
               onSendMessage={handleSendMessage}
               chatId={selectedChat ?? undefined}
               availableChats={chats.filter((c) => c.id !== selectedChat)}
+              availableEmployees={employees.map((e) => ({ id: e.id, name: e.name || e.email }))}
+              onForwardComplete={fetchChats}
               onMessageUpdate={(update) => {
                 if (!update || !selectedChat) return;
                 if (update.type === 'messageEdited') {

@@ -106,14 +106,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'تسجيل الدخول',
+                          'Sign in',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 color: AppTheme.neutral900,
                               ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'أدخل بياناتك للدخول',
+                          'Enter your credentials to continue',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: AppTheme.neutral500,
                               ),
@@ -123,20 +123,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
-                            labelText: 'البريد الإلكتروني',
+                            labelText: 'Email',
                           ),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'أدخل البريد' : null,
+                              v == null || v.isEmpty ? 'Please enter email' : null,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _password,
                           obscureText: true,
                           decoration: const InputDecoration(
-                            labelText: 'كلمة المرور',
+                            labelText: 'Password',
                           ),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'أدخل كلمة المرور' : null,
+                              v == null || v.isEmpty ? 'Please enter password' : null,
                         ),
                         if (auth.error != null) ...[
                           const SizedBox(height: 12),
@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                         const SizedBox(height: 24),
                         SizedBox(
-                          height: 52,
+                              height: 52,
                           child: ElevatedButton(
                             onPressed: auth.isLoading ? null : _submit,
                             child: auth.isLoading
@@ -162,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text('تسجيل الدخول'),
+                                : const Text('Sign in'),
                           ),
                         ),
                         if (settings.signupEnabled) ...[
@@ -173,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 builder: (_) => const SignupScreen(),
                               ),
                             ),
-                            child: const Text('إنشاء حساب'),
+                            child: const Text('Create account'),
                           ),
                         ],
                         if (settings.forgetPasswordEnabled)
@@ -183,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 builder: (_) => const ForgotPasswordScreen(),
                               ),
                             ),
-                            child: const Text('نسيت كلمة المرور؟'),
+                            child: const Text('Forgot password?'),
                           ),
                       ],
                     ),

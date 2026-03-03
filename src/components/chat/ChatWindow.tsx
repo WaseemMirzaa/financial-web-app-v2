@@ -26,13 +26,17 @@ interface ChatWindowProps {
   onMessageUpdate?: (update?: { type: 'messageEdited'; message: Partial<ChatMessage> & { id: string }; } | { type: 'messageDeleted'; messageId: string }) => void;
   /** Available chats for forwarding (optional) */
   availableChats?: Chat[];
+  /** Admin only: employees to forward to (creates room and sends) */
+  availableEmployees?: { id: string; name: string }[];
   /** ID of the currently pinned message in this chat */
   pinnedMessageId?: string | null;
   /** Called when pinned message is updated */
   onPinnedMessageUpdate?: (messageId: string | null) => void;
+  /** Called after forward so parent can refresh chat list (e.g. when new room created) */
+  onForwardComplete?: () => void;
 }
 
-export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, onMessageUpdate, availableChats, pinnedMessageId, onPinnedMessageUpdate }: ChatWindowProps) {
+export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, onMessageUpdate, availableChats, availableEmployees, pinnedMessageId, onPinnedMessageUpdate, onForwardComplete }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -58,6 +62,9 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
   const [forwardMode, setForwardMode] = useState<'copy' | 'move'>('copy');
   const [forwardLoading, setForwardLoading] = useState(false);
+  const [forwardChatSearch, setForwardChatSearch] = useState('');
+  const [forwardEmployeeSearch, setForwardEmployeeSearch] = useState('');
+  const isAdmin = user?.role === 'admin';
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const [pinningMessageId, setPinningMessageId] = useState<string | null>(null);
@@ -285,9 +292,32 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
       }
 
       setForwardingMessage(null);
+      setForwardChatSearch('');
+      setForwardEmployeeSearch('');
       if (forwardMode === 'move' && onMessageUpdate) {
         onMessageUpdate({ type: 'messageDeleted', messageId: forwardingMessage.id });
       }
+      onForwardComplete?.();
+    } catch (error: any) {
+      console.error(error);
+      alert(t('error.genericError'));
+    } finally {
+      setForwardLoading(false);
+    }
+  };
+
+  const handleForwardToEmployee = async (employeeId: string) => {
+    if (!user?.id || user.role !== 'admin' || !forwardingMessage) return;
+    setForwardLoading(true);
+    try {
+      const res = await fetchApi('/api/chat/get-or-create-admin-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: user.id, employeeId }),
+      });
+      const data = await res.json();
+      if (!data.success || !data.data?.chatId) throw new Error('Failed to get or create chat');
+      await handleForward(data.data.chatId);
     } catch (error: any) {
       console.error(error);
       alert(t('error.genericError'));
@@ -432,9 +462,23 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                     }
                   }}
                   placeholder={t('chat.searchMessages')}
-                  className="w-full rounded-full border border-neutral-200 bg-white px-10 py-1.5 text-xs sm:text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  className="w-full rounded-full border border-neutral-200 bg-white pl-10 pr-10 py-1.5 text-xs sm:text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                 />
                 <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                {(searchQuery || (searchResults !== null && (searchResults.length > 0 || !searchLoading))) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults(null);
+                      setSearchError(null);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                    aria-label={t('common.close')}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
               <Button
                 variant="secondary"
@@ -811,7 +855,12 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
               <Smile className="w-5 h-5 text-neutral-600" />
             </button>
             {showEmojiPicker && (
-              <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 z-50 shadow-lg">
+              <div
+                ref={emojiPickerRef}
+                className={`fixed mb-2 z-50 shadow-lg bottom-24 ${
+                  locale === 'ar' ? 'left-4' : 'right-4'
+                }`}
+              >
                 <EmojiPicker
                   onEmojiClick={(emojiData) => {
                     const input = messageInputRef.current;
@@ -869,7 +918,11 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
       {/* Forward Message Modal */}
       <Modal
         isOpen={forwardingMessage !== null}
-        onClose={() => setForwardingMessage(null)}
+        onClose={() => {
+          setForwardingMessage(null);
+          setForwardChatSearch('');
+          setForwardEmployeeSearch('');
+        }}
         title={t('chat.forwardMessage')}
       >
         <div className="space-y-4">
@@ -877,28 +930,88 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
             <label className="text-sm font-medium text-neutral-700">
               {t('chat.selectChatToForward')}
             </label>
-            <div className="max-h-60 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-200">
-              {availableChats && availableChats.map((chat) => {
-                const chatName = chat.type === 'internal_room' && chat.roomName
-                  ? chat.roomName
-                  : chat.participantNames && chat.participantNames.length > 0
-                  ? chat.participantNames.join(', ')
-                  : chat.type;
-                return (
-                  <button
-                    key={chat.id}
-                    type="button"
-                    onClick={() => handleForward(chat.id)}
-                    disabled={forwardLoading || chat.id === chatId}
-                    className="w-full text-left px-4 py-3 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <p className="font-medium text-sm text-neutral-800">{chatName}</p>
-                    <p className="text-xs text-neutral-500">{chat.type}</p>
-                  </button>
-                );
-              })}
-            </div>
+            {isAdmin && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <input
+                  type="text"
+                  value={forwardChatSearch}
+                  onChange={(e) => setForwardChatSearch(e.target.value)}
+                  placeholder={t('chat.forwardSearchChats')}
+                  className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-lg text-sm"
+                />
+              </div>
+            )}
+            {(() => {
+              const q = forwardChatSearch.trim().toLowerCase();
+              const chatsToShow = availableChats && (isAdmin && q
+                ? availableChats.filter((chat) => {
+                    const name = (chat.type === 'internal_room' && chat.roomName ? chat.roomName : (chat.participantNames || []).join(' ')).toLowerCase();
+                    return name.includes(q);
+                  })
+                : availableChats);
+              return (
+                <div className="max-h-48 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-200">
+                  {chatsToShow && chatsToShow.length > 0 ? chatsToShow.map((chat) => {
+                    const chatName = chat.type === 'internal_room' && chat.roomName
+                      ? chat.roomName
+                      : chat.participantNames && chat.participantNames.length > 0
+                      ? chat.participantNames.join(', ')
+                      : chat.type;
+                    return (
+                      <button
+                        key={chat.id}
+                        type="button"
+                        onClick={() => handleForward(chat.id)}
+                        disabled={forwardLoading || chat.id === chatId}
+                        className="w-full text-left px-4 py-3 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <p className="font-medium text-sm text-neutral-800">{chatName}</p>
+                        <p className="text-xs text-neutral-500">{chat.type}</p>
+                      </button>
+                    );
+                  }) : (
+                    <p className="px-4 py-3 text-sm text-neutral-500">{t('common.noResults')}</p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
+          {isAdmin && availableEmployees && availableEmployees.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-neutral-700">
+                {t('chat.sendToEmployee')}
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <input
+                  type="text"
+                  value={forwardEmployeeSearch}
+                  onChange={(e) => setForwardEmployeeSearch(e.target.value)}
+                  placeholder={t('chat.forwardSearchEmployees')}
+                  className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-lg text-sm"
+                />
+              </div>
+              <div className="max-h-40 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-200">
+                {(() => {
+                  const eq = forwardEmployeeSearch.trim().toLowerCase();
+                  const list = eq ? availableEmployees.filter((e) => e.name.toLowerCase().includes(eq)) : availableEmployees;
+                  return list.length > 0 ? list.map((emp) => (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      onClick={() => handleForwardToEmployee(emp.id)}
+                      disabled={forwardLoading}
+                      className="w-full text-left px-4 py-3 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+                    >
+                      <p className="font-medium text-sm text-neutral-800">{emp.name}</p>
+                      <p className="text-xs text-neutral-500">{t('chat.employee')}</p>
+                    </button>
+                  )) : <p className="px-4 py-3 text-sm text-neutral-500">{t('common.noResults')}</p>;
+                })()}
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-3 pt-2">
             <label className="flex items-center gap-2 text-sm text-neutral-700">
               <input

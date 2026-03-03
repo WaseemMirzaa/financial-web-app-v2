@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -7,12 +9,14 @@ class WebViewTab extends StatefulWidget {
   final String path;
   final String? userId;
   final VoidCallback? onWebLogout;
+  final Map<String, dynamic>? userJson;
 
   const WebViewTab({
     super.key,
     required this.path,
     this.userId,
     this.onWebLogout,
+    this.userJson,
   });
 
   @override
@@ -24,17 +28,12 @@ class _WebViewTabState extends State<WebViewTab> {
   bool _loading = true;
 
   String get _url {
-    final base = kBaseUrl.endsWith('/') ? kBaseUrl : kBaseUrl;
+    final base = kBaseUrl.endsWith('/') ? kBaseUrl.substring(0, kBaseUrl.length - 1) : kBaseUrl;
     final path = widget.path.startsWith('/') ? widget.path : '/${widget.path}';
-    final sep = base.endsWith('/') ? '' : path.startsWith('/') ? '' : '/';
-    var u = '$base$sep$path';
-    if (widget.userId != null) {
-      u += u.contains('?') ? '&' : '?';
-      u += 'userId=${Uri.encodeComponent(widget.userId!)}';
-    }
-    u += u.contains('?') ? '&' : '?';
-    u += 'flutter_app=1';
-    return u;
+    final uri = Uri.parse('$base$path');
+    final query = <String, String>{'flutter_app': '1'};
+    if (widget.userId != null) query['userId'] = widget.userId!;
+    return uri.replace(queryParameters: {...uri.queryParameters, ...query}).toString();
   }
 
   @override
@@ -57,6 +56,40 @@ class _WebViewTabState extends State<WebViewTab> {
             );
           },
           onLoadStop: (_, __) async {
+            // Inject mobile user into web localStorage to share session with web app
+            if (widget.userJson != null) {
+              final userString = jsonEncode(widget.userJson);
+              final escaped = userString
+                  .replaceAll(r'\', r'\\')
+                  .replaceAll("'", r"\'");
+
+              await _controller?.evaluateJavascript(source: """
+                (function() {
+                  try {
+                    var shouldSet = true;
+                    if (window.localStorage) {
+                      var existing = window.localStorage.getItem('user');
+                      if (existing) {
+                        try {
+                          var ex = JSON.parse(existing);
+                          if (ex && ex.id === ${jsonEncode(widget.userJson!['id'])}) {
+                            shouldSet = false;
+                          }
+                        } catch(e) {}
+                      }
+                    }
+                    if (shouldSet && window.localStorage) {
+                      window.localStorage.setItem('user', '$escaped');
+                      if (!window.__flutterSsoApplied) {
+                        window.__flutterSsoApplied = true;
+                        window.location.reload();
+                      }
+                    }
+                  } catch(e) {}
+                })();
+              """);
+            }
+
             await _controller?.evaluateJavascript(source: '''
               (function() {
                 if (!window.FlutterAppBridge) {
