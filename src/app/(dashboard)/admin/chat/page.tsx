@@ -148,14 +148,14 @@ export default function AdminChatPage() {
   // Real-time: poll messages while a chat is open (keeps polling when tab minimized)
   useEffect(() => {
     if (!selectedChat) return;
-    const interval = setInterval(() => fetchMessages(selectedChat), 60000);
+    const interval = setInterval(() => fetchMessages(selectedChat), 45000);
     return () => clearInterval(interval);
   }, [selectedChat, locale]);
 
   // Real-time: poll chat list for pinning updates (keeps polling when tab minimized)
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => fetchChats(), 60000);
+    const interval = setInterval(() => fetchChats(), 45000);
     return () => clearInterval(interval);
   }, [user?.id]);
 

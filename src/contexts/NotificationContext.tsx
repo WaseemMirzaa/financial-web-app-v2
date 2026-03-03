@@ -188,10 +188,10 @@ export function NotificationProvider({ children, userId, locale }: { children: R
     return () => window.removeEventListener('focus', onFocus);
   }, [userId, fetchNotifications]);
 
-  // Realtime: poll every 10s (reduced from 5s to lower load; beep still plays on new unread)
+  // Realtime: poll every 45s (reduced to lower load; beep still plays on new unread)
   useEffect(() => {
     if (!userId) return;
-    const interval = setInterval(() => fetchNotifications(), 10000);
+    const interval = setInterval(() => fetchNotifications(), 45000);
     return () => clearInterval(interval);
   }, [userId, fetchNotifications]);
 
