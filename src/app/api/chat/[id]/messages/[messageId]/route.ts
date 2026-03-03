@@ -6,11 +6,11 @@ import { translateToBothLanguages } from '@/lib/translate';
 
 export const dynamic = 'force-dynamic';
 
-const EDIT_WINDOW_SECONDS = 600; // 10 minutes
+const EDIT_WINDOW_SECONDS = 24 * 60 * 60; // 24 hours
 
 /**
  * PUT /api/chat/[id]/messages/[messageId]
- * Edit a message (within 10 minutes, sender only, admin/employee only)
+ * Edit a message (within 24 hours, sender only, admin/employee only)
  */
 export async function PUT(
   request: NextRequest,
@@ -69,13 +69,13 @@ export async function PUT(
       return errorResponse('Cannot edit deleted message', 400, 'error.cannotEditDeleted');
     }
 
-    // Check if within 10-minute window
+    // Check if within allowed edit window
     const messageTime = new Date(message.timestamp).getTime();
     const now = Date.now();
     const ageSeconds = (now - messageTime) / 1000;
 
     if (ageSeconds > EDIT_WINDOW_SECONDS) {
-      return errorResponse('Message can only be edited within 10 minutes', 400, 'error.editWindowExpired');
+      return errorResponse('Message can only be edited within 24 hours', 400, 'error.editWindowExpired');
     }
 
     // Store original content if first edit (use English content as original)
@@ -138,7 +138,7 @@ export async function PUT(
 
 /**
  * DELETE /api/chat/[id]/messages/[messageId]
- * Delete a message (within 10 minutes, sender only, admin/employee only)
+ * Delete a message (within 24 hours, sender only, admin/employee only)
  */
 export async function DELETE(
   request: NextRequest,
@@ -186,13 +186,13 @@ export async function DELETE(
       return errorResponse('Message already deleted', 400, 'error.messageAlreadyDeleted');
     }
 
-    // Check if within 10-minute window
+    // Check if within allowed delete window
     const messageTime = new Date(message.timestamp).getTime();
     const now = Date.now();
     const ageSeconds = (now - messageTime) / 1000;
 
     if (ageSeconds > EDIT_WINDOW_SECONDS) {
-      return errorResponse('Message can only be deleted within 10 minutes', 400, 'error.deleteWindowExpired');
+      return errorResponse('Message can only be deleted within 24 hours', 400, 'error.deleteWindowExpired');
     }
 
     // Soft delete

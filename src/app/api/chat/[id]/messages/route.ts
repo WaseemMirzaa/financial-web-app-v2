@@ -130,10 +130,28 @@ export async function GET(
         cmt_en.content as content_en,
         cmt_ar.content as content_ar,
         cmt_en.sender_name as sender_name_en,
-        cmt_ar.sender_name as sender_name_ar
+        cmt_ar.sender_name as sender_name_ar,
+        rm.id as reply_id,
+        rm.timestamp as reply_timestamp,
+        rmt_en.content as reply_content_en,
+        rmt_ar.content as reply_content_ar,
+        rmt_en.sender_name as reply_sender_name_en,
+        rmt_ar.sender_name as reply_sender_name_ar,
+        fm.id as fwd_id,
+        fm.timestamp as fwd_timestamp,
+        fmt_en.sender_name as fwd_sender_name_en,
+        fmt_ar.sender_name as fwd_sender_name_ar,
+        fmt_en.content as fwd_content_en,
+        fmt_ar.content as fwd_content_ar
       FROM chat_messages cm
       LEFT JOIN chat_message_translations cmt_en ON cm.id = cmt_en.message_id AND cmt_en.locale = 'en'
       LEFT JOIN chat_message_translations cmt_ar ON cm.id = cmt_ar.message_id AND cmt_ar.locale = 'ar'
+      LEFT JOIN chat_messages rm ON cm.reply_to_message_id = rm.id
+      LEFT JOIN chat_message_translations rmt_en ON rm.id = rmt_en.message_id AND rmt_en.locale = 'en'
+      LEFT JOIN chat_message_translations rmt_ar ON rm.id = rmt_ar.message_id AND rmt_ar.locale = 'ar'
+      LEFT JOIN chat_messages fm ON cm.forwarded_from_message_id = fm.id
+      LEFT JOIN chat_message_translations fmt_en ON fm.id = fmt_en.message_id AND fmt_en.locale = 'en'
+      LEFT JOIN chat_message_translations fmt_ar ON fm.id = fmt_ar.message_id AND fmt_ar.locale = 'ar'
       WHERE cm.chat_id = ?
       ORDER BY cm.timestamp ASC`,
       [chatId]
@@ -153,6 +171,39 @@ export async function GET(
         msg.sender_name_ar || 
         'Unknown';
 
+      let replyTo = null;
+      if (msg.reply_id) {
+        const replyContent = locale === 'ar'
+          ? (msg.reply_content_ar || msg.reply_content_en || '')
+          : (msg.reply_content_en || msg.reply_content_ar || '');
+        const replySenderName =
+          msg.reply_sender_name_en ||
+          msg.reply_sender_name_ar ||
+          'Unknown';
+        replyTo = {
+          id: msg.reply_id,
+          senderName: replySenderName,
+          content: msg.is_deleted ? '' : replyContent,
+          fileName: msg.file_name,
+          fileType: msg.file_type,
+          timestamp: msg.reply_timestamp,
+        };
+      }
+
+      let forwardedFrom = null;
+      if (msg.forwarded_from_message_id && msg.fwd_id) {
+        const fwdContent = locale === 'ar'
+          ? (msg.fwd_content_ar || msg.fwd_content_en || '')
+          : (msg.fwd_content_en || msg.fwd_content_ar || '');
+        const fwdSenderName = msg.fwd_sender_name_en || msg.fwd_sender_name_ar || 'Unknown';
+        forwardedFrom = {
+          id: msg.fwd_id,
+          senderName: fwdSenderName,
+          content: fwdContent,
+          timestamp: msg.fwd_timestamp,
+        };
+      }
+
       return {
         id: msg.id,
         chatId: msg.chat_id,
@@ -168,6 +219,10 @@ export async function GET(
         isDeleted: !!(msg.is_deleted),
         deletedAt: msg.deleted_at || null,
         timestamp: msg.timestamp,
+        replyToMessageId: msg.reply_to_message_id || null,
+        replyTo,
+        forwardedFromMessageId: msg.forwarded_from_message_id || null,
+        forwardedFrom,
       };
     });
 
@@ -189,7 +244,7 @@ export async function POST(
   try {
     const chatId = params.id;
     const body = await request.json();
-    const { senderId, content, fileName, fileType, fileUrl } = body;
+    const { senderId, content, fileName, fileType, fileUrl, replyToMessageId } = body;
 
     if (!chatId || !senderId) {
       return validationError('Chat ID and sender ID are required', 'error.missingRequiredFields');
@@ -205,6 +260,18 @@ export async function POST(
     if (sendErr) return sendErr;
 
     // Get sender name translations (will be fetched after getting user data)
+
+    // If this is a reply, ensure the referenced message exists in this chat
+    let safeReplyToMessageId: string | null = null;
+    if (replyToMessageId) {
+      const [replyRows] = await pool.query(
+        `SELECT id, chat_id FROM chat_messages WHERE id = ?`,
+        [replyToMessageId]
+      ) as any[];
+      if (replyRows.length > 0 && replyRows[0].chat_id === chatId) {
+        safeReplyToMessageId = replyRows[0].id;
+      }
+    }
 
     // Generate message ID
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -247,9 +314,9 @@ export async function POST(
 
     // Insert message
     await pool.query(
-      `INSERT INTO chat_messages (id, chat_id, sender_id, sender_name, sender_role, file_url, file_name, file_type, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [messageId, chatId, senderId, senderName, senderRole, fileUrl || null, fileName || null, fileType || null]
+      `INSERT INTO chat_messages (id, chat_id, sender_id, sender_name, sender_role, file_url, file_name, file_type, reply_to_message_id, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [messageId, chatId, senderId, senderName, senderRole, fileUrl || null, fileName || null, fileType || null, safeReplyToMessageId]
     );
 
     // Save translations
@@ -313,6 +380,7 @@ export async function POST(
       fileName: fileName || undefined,
       fileType: fileType || undefined,
       timestamp: new Date().toISOString(),
+      replyToMessageId: safeReplyToMessageId || undefined,
     };
 
     return successResponse(message, 'Message sent successfully', 'error.messageSentSuccessfully');

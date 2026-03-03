@@ -191,6 +191,16 @@ async function migrate() {
       if (e.code !== 'ER_DUP_FIELDNAME') throw e;
     }
     try {
+      await connection.query(`ALTER TABLE chats ADD COLUMN pinned_message_id VARCHAR(255) NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chats ADD COLUMN pinned_message_at TIMESTAMP NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
       await connection.query(`ALTER TABLE chats ADD COLUMN created_by VARCHAR(255) NULL`);
     } catch (e: any) {
       if (e.code !== 'ER_DUP_FIELDNAME') throw e;
@@ -283,7 +293,7 @@ async function migrate() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Add edit/delete fields if table exists (migration)
+    // Add edit/delete and relation fields if table exists (migration)
     try {
       await connection.query(`ALTER TABLE chat_messages ADD COLUMN is_edited BOOLEAN DEFAULT FALSE`);
     } catch (e: any) {
@@ -318,6 +328,42 @@ async function migrate() {
       await connection.query(`ALTER TABLE chat_messages ADD INDEX idx_is_edited (is_edited)`);
     } catch (e: any) {
       if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD COLUMN reply_to_message_id VARCHAR(255) NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD COLUMN forwarded_from_message_id VARCHAR(255) NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD INDEX idx_reply_to_message_id (reply_to_message_id)`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE chat_messages ADD INDEX idx_forwarded_from_message_id (forwarded_from_message_id)`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
+    try {
+      await connection.query(
+        `ALTER TABLE chat_messages ADD CONSTRAINT fk_reply_to_message
+         FOREIGN KEY (reply_to_message_id) REFERENCES chat_messages(id) ON DELETE SET NULL`
+      );
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEY' && e.code !== 'ER_CANNOT_ADD_FOREIGN') throw e;
+    }
+    try {
+      await connection.query(
+        `ALTER TABLE chat_messages ADD CONSTRAINT fk_forwarded_from_message
+         FOREIGN KEY (forwarded_from_message_id) REFERENCES chat_messages(id) ON DELETE SET NULL`
+      );
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEY' && e.code !== 'ER_CANNOT_ADD_FOREIGN') throw e;
     }
 
     // Create chat_message_translations table

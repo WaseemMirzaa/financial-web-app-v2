@@ -172,7 +172,7 @@ export default function EmployeeChatPage() {
     }
   };
 
-  const handleSendMessage = async (content: string, file?: File) => {
+  const handleSendMessage = async (content: string, file?: File, options?: { replyToMessageId?: string }) => {
     if (!selectedChat || !user) return;
 
     try {
@@ -202,6 +202,7 @@ export default function EmployeeChatPage() {
           fileName,
           fileType,
           fileUrl,
+          replyToMessageId: options?.replyToMessageId,
         }),
       });
 
@@ -340,6 +341,7 @@ export default function EmployeeChatPage() {
               messages={messages}
               onSendMessage={handleSendMessage}
               chatId={selectedChat ?? undefined}
+              availableChats={chats.filter((c) => c.id !== selectedChat)}
               onMessageUpdate={(update) => {
                 if (!update || !selectedChat) return;
                 if (update.type === 'messageEdited') {
@@ -379,6 +381,16 @@ export default function EmployeeChatPage() {
                   ? selectedChatData.participantNames.join(', ')
                   : t('chat.customerChat')
               }
+              pinnedMessageId={selectedChatData.pinnedMessageId}
+              onPinnedMessageUpdate={(messageId) => {
+                setChats((prev) =>
+                  prev.map((c) =>
+                    c.id === selectedChat
+                      ? { ...c, pinnedMessageId: messageId, pinnedMessageAt: messageId ? new Date().toISOString() : null }
+                      : c
+                  )
+                );
+              }}
             />
           ) : (
             <Card variant="elevated" padding="large">

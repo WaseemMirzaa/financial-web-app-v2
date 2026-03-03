@@ -274,7 +274,7 @@ export default function AdminChatPage() {
     }
   };
 
-  const handleSendMessage = async (content: string, file?: File) => {
+  const handleSendMessage = async (content: string, file?: File, options?: { replyToMessageId?: string }) => {
     if (!selectedChat || !user) return;
 
     try {
@@ -304,6 +304,7 @@ export default function AdminChatPage() {
           fileName,
           fileType,
           fileUrl,
+          replyToMessageId: options?.replyToMessageId,
         }),
       });
 
@@ -409,6 +410,11 @@ export default function AdminChatPage() {
                                     ? chat.participantNames.join(', ')
                                     : t('chat.customerChat')}
                                 </p>
+                                {chat.assignedEmployeeName && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium shrink-0">
+                                    {chat.assignedEmployeeName}
+                                  </span>
+                                )}
                                 {chat.unreadCount > 0 && (
                                   <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-500 text-white text-xs font-semibold shrink-0">
                                     {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
@@ -487,6 +493,11 @@ export default function AdminChatPage() {
                                 ? chat.participantNames.join(', ')
                                 : t('chat.customerChat')}
                             </p>
+                            {chat.assignedEmployeeName && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium shrink-0">
+                                {chat.assignedEmployeeName}
+                              </span>
+                            )}
                             {chat.unreadCount > 0 && (
                               <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-500 text-white text-xs font-semibold shrink-0">
                                 {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
@@ -542,6 +553,7 @@ export default function AdminChatPage() {
               messages={messages}
               onSendMessage={handleSendMessage}
               chatId={selectedChat ?? undefined}
+              availableChats={chats.filter((c) => c.id !== selectedChat)}
               onMessageUpdate={(update) => {
                 if (!update || !selectedChat) return;
                 if (update.type === 'messageEdited') {
@@ -584,6 +596,16 @@ export default function AdminChatPage() {
                   : t('chat.customerChat')
               }
               readOnly={selectedChatData.type === 'customer_employee'}
+              pinnedMessageId={selectedChatData.pinnedMessageId}
+              onPinnedMessageUpdate={(messageId) => {
+                setChats((prev) =>
+                  prev.map((c) =>
+                    c.id === selectedChat
+                      ? { ...c, pinnedMessageId: messageId, pinnedMessageAt: messageId ? new Date().toISOString() : null }
+                      : c
+                  )
+                );
+              }}
             />
           ) : (
             <Card variant="elevated" padding="large">

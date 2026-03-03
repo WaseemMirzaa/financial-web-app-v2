@@ -133,6 +133,8 @@ export async function GET(request: NextRequest) {
         // Get participant names and ids (for search)
         let participantNames: string[] = [];
         let participantIds: string[] = [];
+        let assignedEmployeeName: string | null = null;
+        let assignedEmployeeId: string | null = null;
         if (chat.type === 'customer_employee') {
           const [participants] = await pool.query(
             `SELECT cp.user_id, u.role, u.email,
@@ -142,14 +144,18 @@ export async function GET(request: NextRequest) {
             INNER JOIN users u ON cp.user_id = u.id
             LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
             LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-            WHERE cp.chat_id = ? AND cp.user_id != ?`,
-            [chat.id, userId]
+            WHERE cp.chat_id = ?`,
+            [chat.id]
           ) as any[];
-          // Only include customer names (exclude admin and employee roles from display)
-          participantNames = participants
-            .filter((p: any) => p.role === 'customer')
-            .map((p: any) => p.name_en || p.name_ar || p.user_id);
+          const customers = (participants || []).filter((p: any) => p.role === 'customer');
+          const employees = (participants || []).filter((p: any) => p.role === 'employee');
+          participantNames = customers.map((p: any) => p.name_en || p.name_ar || p.user_id);
           participantIds = participants.map((p: any) => p.user_id);
+          if (employees.length > 0) {
+            const emp = employees[0];
+            assignedEmployeeName = emp.name_en || emp.name_ar || emp.user_id;
+            assignedEmployeeId = emp.user_id;
+          }
         } else if (chat.type === 'internal_room') {
           const [participants] = await pool.query(
             `SELECT cp.user_id, u.role, u.email,
@@ -206,8 +212,12 @@ export async function GET(request: NextRequest) {
           roomName: chat.room_name,
           participantNames,
           participantIds,
+          assignedEmployeeName,
+          assignedEmployeeId,
           isPinned: Boolean(chat.is_pinned),
           pinnedAt: chat.pinned_at || null,
+          pinnedMessageId: chat.pinned_message_id || null,
+          pinnedMessageAt: chat.pinned_message_at || null,
           createdBy: chat.created_by || null,
           lastMessage,
           unreadCount,

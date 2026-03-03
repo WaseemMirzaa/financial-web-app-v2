@@ -66,6 +66,22 @@ export interface ChatMessage {
   isDeleted?: boolean;
   deletedAt?: string;
   timestamp: string;
+  replyToMessageId?: string;
+  replyTo?: {
+    id: string;
+    senderName: string;
+    content: string;
+    fileName?: string;
+    fileType?: string;
+    timestamp: string;
+  } | null;
+  forwardedFromMessageId?: string;
+  forwardedFrom?: {
+    id: string;
+    senderName: string;
+    content: string;
+    timestamp: string;
+  } | null;
 }
 
 export interface Chat {
@@ -76,6 +92,10 @@ export interface Chat {
   roomName?: string; // For internal rooms
   isPinned?: boolean;
   pinnedAt?: string;
+  assignedEmployeeName?: string | null;
+  assignedEmployeeId?: string | null;
+  pinnedMessageId?: string | null;
+  pinnedMessageAt?: string | null;
   createdBy?: string;
   lastMessage?: ChatMessage & { isDeleted?: boolean };
   unreadCount: number;

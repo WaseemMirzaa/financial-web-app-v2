@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Image as ImageIcon, Edit2, Trash2, MoreVertical } from 'lucide-react';
+import { Send, Paperclip, Edit2, Trash2, Search, CornerUpRight, Forward, Smile, Pin, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { ChatMessage } from '@/types';
+import { ChatMessage, Chat } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 import { useLocale } from '@/contexts/LocaleContext';
 import { formatDate } from '@/lib/utils';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
@@ -14,16 +17,22 @@ import { fetchApi } from '@/lib/fetchApi';
 
 interface ChatWindowProps {
   messages: ChatMessage[];
-  onSendMessage: (content: string, file?: File) => void;
+  onSendMessage: (content: string, file?: File, options?: { replyToMessageId?: string }) => void;
   title?: string;
   chatId?: string;
   /** When true, hide send input (e.g. admin monitoring customer chat) */
   readOnly?: boolean;
   /** Called when a message is edited or deleted. Pass an update to patch state without refetch, or call with no args to refetch. */
   onMessageUpdate?: (update?: { type: 'messageEdited'; message: Partial<ChatMessage> & { id: string }; } | { type: 'messageDeleted'; messageId: string }) => void;
+  /** Available chats for forwarding (optional) */
+  availableChats?: Chat[];
+  /** ID of the currently pinned message in this chat */
+  pinnedMessageId?: string | null;
+  /** Called when pinned message is updated */
+  onPinnedMessageUpdate?: (messageId: string | null) => void;
 }
 
-export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, onMessageUpdate }: ChatWindowProps) {
+export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, onMessageUpdate, availableChats, pinnedMessageId, onPinnedMessageUpdate }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -39,6 +48,20 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const { t, locale } = useLocale();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ChatMessage[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
+  const [forwardMode, setForwardMode] = useState<'copy' | 'move'>('copy');
+  const [forwardLoading, setForwardLoading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const [pinningMessageId, setPinningMessageId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Keep cursor at end after type; after paste use paste position. Scroll input to show cursor.
   useEffect(() => {
@@ -85,6 +108,9 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
   useEffect(() => {
     prevLastMessageIdRef.current = null;
     isUserScrollingRef.current = false;
+    setSearchResults(null);
+    setSearchQuery('');
+    setHighlightedMessageId(null);
   }, [chatId]);
 
   // Auto-scroll only on first load or when a real new message appears (last message id changed)
@@ -129,11 +155,27 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
     }, 100);
   };
 
+  // Close emoji picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
+
   const handleSend = () => {
     if (inputValue.trim() || selectedFile) {
-      onSendMessage(inputValue, selectedFile || undefined);
+      onSendMessage(inputValue, selectedFile || undefined, replyingTo ? { replyToMessageId: replyingTo.id } : undefined);
       setInputValue('');
       setSelectedFile(null);
+      setReplyingTo(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -156,7 +198,8 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
       const messageTime = new Date(message.timestamp).getTime();
       if (isNaN(messageTime)) return false;
       const ageSeconds = (Date.now() - messageTime) / 1000;
-      return ageSeconds <= 600; // 10 minutes
+      // 24 hours
+      return ageSeconds <= 24 * 60 * 60;
     } catch {
       return false;
     }
@@ -222,13 +265,247 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
     }
   };
 
+  const handleForward = async (targetChatId: string) => {
+    if (!chatId || !user?.id || !forwardingMessage) return;
+    setForwardLoading(true);
+    try {
+      const response = await fetchApi(`/api/chat/${chatId}/messages/${forwardingMessage.id}/forward`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          targetChatId,
+          mode: forwardMode,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.errorKey || 'Forward failed');
+      }
+
+      setForwardingMessage(null);
+      if (forwardMode === 'move' && onMessageUpdate) {
+        onMessageUpdate({ type: 'messageDeleted', messageId: forwardingMessage.id });
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert(t('error.genericError'));
+    } finally {
+      setForwardLoading(false);
+    }
+  };
+
+  const handlePinToggle = async (messageId: string | null) => {
+    if (!chatId || !user?.id) return;
+    setPinningMessageId(messageId);
+    try {
+      const response = await fetchApi(`/api/chat/${chatId}/pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          messageId,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.errorKey || 'Pin failed');
+      }
+
+      if (onPinnedMessageUpdate) {
+        onPinnedMessageUpdate(messageId);
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert(t('error.genericError'));
+    } finally {
+      setPinningMessageId(null);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    if (readOnly) return;
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      setSelectedFile(files[0]);
+    }
+  };
+
+  const scrollToMessage = (messageId: string) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const el = container.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedMessageId(messageId);
+    setTimeout(() => {
+      setHighlightedMessageId((current) => (current === messageId ? null : current));
+    }, 2000);
+  };
+
+  const handleSearch = async () => {
+    if (!chatId || !user?.id || !searchQuery.trim()) return;
+    setSearchLoading(true);
+    setSearchError(null);
+    try {
+      const params = new URLSearchParams({
+        userId: user.id,
+        locale,
+        query: searchQuery.trim(),
+      });
+      const res = await fetchApi(`/api/chat/${chatId}/messages/search?${params.toString()}`);
+      const data = await res.json();
+      if (!data.success) {
+        setSearchError(data.error || t('error.genericError'));
+        setSearchResults(null);
+        return;
+      }
+      setSearchResults(data.data || []);
+    } catch (error) {
+      reloadIfStaleDeploy(error);
+      console.error('Search messages error:', error);
+      setSearchError(t('error.genericError'));
+      setSearchResults(null);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   return (
-    <Card variant="elevated" padding="none" className="flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
-      {title && (
-        <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-neutral-100 shrink-0">
-          <h3 className="text-base sm:text-lg font-semibold text-neutral-900 truncate">{title}</h3>
+    <Card
+      variant="elevated"
+      padding="none"
+      className="flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)] relative"
+      onDragOver={!readOnly ? handleDragOver : undefined}
+      onDragLeave={!readOnly ? handleDragLeave : undefined}
+      onDrop={!readOnly ? handleDrop : undefined}
+    >
+      {isDragging && !readOnly && (
+        <div className="absolute inset-0 z-50 bg-primary-50/90 backdrop-blur-sm border-2 border-dashed border-primary-500 rounded-xl flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <Paperclip className="w-12 h-12 mx-auto mb-3 text-primary-600" />
+            <p className="text-lg font-semibold text-primary-900">{t('chat.dropFileHere')}</p>
+            <p className="text-sm text-primary-700">{t('chat.releaseToUpload')}</p>
+          </div>
         </div>
       )}
+      {(title || (!readOnly && chatId)) && (
+        <div className="px-3 sm:px-6 pt-3 sm:pt-4 pb-2 border-b border-neutral-100 shrink-0 space-y-2">
+          {title && (
+            <h3 className="text-base sm:text-lg font-semibold text-neutral-900 truncate">{title}</h3>
+          )}
+          {!readOnly && chatId && (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
+                  placeholder={t('chat.searchMessages')}
+                  className="w-full rounded-full border border-neutral-200 bg-white px-10 py-1.5 text-xs sm:text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+                <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={handleSearch}
+                disabled={searchLoading || !searchQuery.trim()}
+                className="text-xs sm:text-sm"
+              >
+                {searchLoading ? t('common.loading') + '...' : t('common.search')}
+              </Button>
+            </div>
+          )}
+          {searchResults && searchResults.length > 0 && (
+            <div className="max-h-32 overflow-y-auto -mx-1 px-1 pb-1 space-y-1">
+              {searchResults.map((msg) => (
+                <button
+                  key={msg.id}
+                  type="button"
+                  onClick={() => scrollToMessage(msg.id)}
+                  className="w-full text-left text-xs sm:text-[13px] px-2 py-1 rounded-md hover:bg-neutral-100 flex items-center justify-between gap-2"
+                >
+                  <span className="truncate flex-1">
+                    {msg.content || msg.fileName || t('chat.file')}
+                  </span>
+                  <span className="shrink-0 text-[10px] text-neutral-500">
+                    {formatDate(msg.timestamp, locale)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {searchResults && searchResults.length === 0 && !searchLoading && (
+            <p className="text-[11px] text-neutral-500">{t('chat.noSearchResults')}</p>
+          )}
+          {searchError && (
+            <p className="text-[11px] text-error">{searchError}</p>
+          )}
+        </div>
+      )}
+      {pinnedMessageId && (() => {
+        const pinnedMsg = messages.find((m) => m.id === pinnedMessageId);
+        if (!pinnedMsg || pinnedMsg.isDeleted) return null;
+        return (
+          <div className="px-3 sm:px-6 py-2 bg-primary-50 border-b border-primary-100 flex items-start gap-2 shrink-0">
+            <Pin className="w-4 h-4 text-primary-600 mt-0.5 shrink-0" />
+            <button
+              type="button"
+              onClick={() => scrollToMessage(pinnedMessageId)}
+              className="flex-1 text-left min-w-0"
+            >
+              <p className="text-xs font-semibold text-primary-900 mb-0.5">
+                {t('chat.pinnedMessage')}
+              </p>
+              <p className="text-xs text-primary-700 line-clamp-2 break-words">
+                {pinnedMsg.content || pinnedMsg.fileName || t('chat.file')}
+              </p>
+            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => handlePinToggle(null)}
+                disabled={pinningMessageId !== null}
+                className="text-primary-600 hover:text-primary-800 disabled:opacity-50"
+                title={t('chat.unpinMessage')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        );
+      })()}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-3 sm:space-y-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-neutral-500">
@@ -257,13 +534,14 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
             return (
               <div
                 key={message.id}
+                data-message-id={message.id}
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}
               >
                 <div className={`max-w-[85%] sm:max-w-[75%] md:max-w-[70%] rounded-xl sm:rounded-lg px-3 py-2.5 sm:px-4 sm:py-2 ${
                   isOwn
                     ? 'bg-primary-500 text-white'
                     : 'bg-neutral-100 text-neutral-900'
-                }`}>
+                } ${highlightedMessageId === message.id ? 'ring-2 ring-primary-300' : ''}`}>
                   {isEditing ? (
                     <div className="space-y-2">
                       <textarea
@@ -307,8 +585,49 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                         }`}>
                           {message.senderNameKey ? t(message.senderNameKey) : message.senderName}
                         </span>
-                        {canEdit && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyingTo(message);
+                                if (messageInputRef.current) {
+                                  messageInputRef.current.focus();
+                                }
+                              }}
+                              className="p-1 hover:bg-white/20 rounded"
+                              title={t('chat.replyMessage')}
+                            >
+                              <CornerUpRight className="w-3 h-3" />
+                            </button>
+                          )}
+                          {!readOnly && availableChats && availableChats.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForwardingMessage(message);
+                                setForwardMode('copy');
+                              }}
+                              className="p-1 hover:bg-white/20 rounded"
+                              title={t('chat.forwardMessage')}
+                            >
+                              <Forward className="w-3 h-3" />
+                            </button>
+                          )}
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => handlePinToggle(pinnedMessageId === message.id ? null : message.id)}
+                              disabled={pinningMessageId !== null}
+                              className={`p-1 hover:bg-white/20 rounded disabled:opacity-50 ${
+                                pinnedMessageId === message.id ? 'text-primary-400' : ''
+                              }`}
+                              title={pinnedMessageId === message.id ? t('chat.unpinMessage') : t('chat.pinMessage')}
+                            >
+                              <Pin className="w-3 h-3" />
+                            </button>
+                          )}
+                          {canEdit && (
                             <button
                               type="button"
                               onClick={() => handleEdit(message)}
@@ -317,6 +636,8 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
+                          )}
+                          {canEdit && (
                             <button
                               type="button"
                               onClick={() => setDeleteConfirmMessageId(message.id)}
@@ -325,9 +646,34 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
+                      {message.forwardedFrom && (
+                        <div className={`mb-2 text-[10px] italic ${
+                          isOwn ? 'text-white/60' : 'text-neutral-500'
+                        }`}>
+                          {t('chat.forwardedFrom')}{' '}{message.forwardedFrom.senderName}
+                        </div>
+                      )}
+                      {message.replyTo && (
+                        <button
+                          type="button"
+                          onClick={() => scrollToMessage(message.replyTo!.id)}
+                          className={`mb-2 w-full text-left text-xs rounded-lg px-3 py-2 border ${
+                            isOwn
+                              ? 'border-white/40 bg-white/10 text-white/90'
+                              : 'border-neutral-200 bg-white text-neutral-800'
+                          }`}
+                        >
+                          <p className="font-semibold mb-0.5">
+                            {t('chat.replyingTo')}{' '}{message.replyTo.senderName}
+                          </p>
+                          <p className="line-clamp-2 break-words">
+                            {message.replyTo.content || message.replyTo.fileName || t('chat.file')}
+                          </p>
+                        </button>
+                      )}
                       {message.fileUrl && (() => {
                         // Convert old /assets/ URLs to /api/assets/ for proper serving
                         const fileUrl = message.fileUrl.startsWith('/assets/')
@@ -378,6 +724,26 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
       </div>
       {!readOnly && (
       <div className="px-3 sm:px-6 py-4 sm:py-5 border-t border-neutral-200 shrink-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
+        {replyingTo && (
+          <div className="mb-3 px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-neutral-700 mb-0.5">
+                {t('chat.replyingTo')}{' '}{replyingTo.senderName}
+              </p>
+              <p className="text-xs text-neutral-600 line-clamp-2 break-words">
+                {replyingTo.content || replyingTo.fileName || t('chat.file')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReplyingTo(null)}
+              className="text-neutral-400 hover:text-neutral-600 text-xs px-1"
+              aria-label={t('common.cancel')}
+            >
+              ×
+            </button>
+          </div>
+        )}
         {selectedFile && (
           <div className="flex items-center gap-2 text-sm text-neutral-600 min-w-0 mb-3">
             <Paperclip className="w-4 h-4 shrink-0" />
@@ -435,6 +801,37 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
             rows={3}
             className="flex-1 min-w-0 min-h-[72px] max-h-[220px] py-3.5 px-4 rounded-2xl border border-neutral-200 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 resize-y whitespace-pre-wrap break-words shadow-sm"
           />
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-neutral-50 rounded-xl transition-colors mb-0.5 touch-manipulation border border-transparent hover:border-neutral-200"
+              title={t('chat.addEmoji')}
+            >
+              <Smile className="w-5 h-5 text-neutral-600" />
+            </button>
+            {showEmojiPicker && (
+              <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 z-50 shadow-lg">
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => {
+                    const input = messageInputRef.current;
+                    if (!input) return;
+                    const start = input.selectionStart ?? input.value.length;
+                    const end = input.selectionEnd ?? input.value.length;
+                    const newVal = input.value.slice(0, start) + emojiData.emoji + input.value.slice(end);
+                    setInputValue(newVal);
+                    setShowEmojiPicker(false);
+                    input.focus();
+                    setTimeout(() => {
+                      input.setSelectionRange(start + emojiData.emoji.length, start + emojiData.emoji.length);
+                    }, 0);
+                  }}
+                  width={300}
+                  height={400}
+                />
+              </div>
+            )}
+          </div>
           <Button onClick={handleSend} variant="primary" size="medium" className="shrink-0 min-w-[48px] min-h-[48px] sm:min-h-[72px] self-end mb-0.5">
             <Send className="w-5 h-5" />
           </Button>
@@ -465,6 +862,66 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
             >
               {t('common.delete')}
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Forward Message Modal */}
+      <Modal
+        isOpen={forwardingMessage !== null}
+        onClose={() => setForwardingMessage(null)}
+        title={t('chat.forwardMessage')}
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-neutral-700">
+              {t('chat.selectChatToForward')}
+            </label>
+            <div className="max-h-60 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-200">
+              {availableChats && availableChats.map((chat) => {
+                const chatName = chat.type === 'internal_room' && chat.roomName
+                  ? chat.roomName
+                  : chat.participantNames && chat.participantNames.length > 0
+                  ? chat.participantNames.join(', ')
+                  : chat.type;
+                return (
+                  <button
+                    key={chat.id}
+                    type="button"
+                    onClick={() => handleForward(chat.id)}
+                    disabled={forwardLoading || chat.id === chatId}
+                    className="w-full text-left px-4 py-3 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <p className="font-medium text-sm text-neutral-800">{chatName}</p>
+                    <p className="text-xs text-neutral-500">{chat.type}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <input
+                type="radio"
+                name="forwardMode"
+                value="copy"
+                checked={forwardMode === 'copy'}
+                onChange={() => setForwardMode('copy')}
+                className="w-4 h-4"
+              />
+              {t('chat.forwardCopy')}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <input
+                type="radio"
+                name="forwardMode"
+                value="move"
+                checked={forwardMode === 'move'}
+                onChange={() => setForwardMode('move')}
+                className="w-4 h-4"
+              />
+              {t('chat.forwardMove')}
+            </label>
           </div>
         </div>
       </Modal>
