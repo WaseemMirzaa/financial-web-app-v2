@@ -20,10 +20,15 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 const NOTIFICATION_SOUND_PATH = '/notification-beep.wav';
+const NOTIFICATION_OWNER_KEY = 'notifications-poller-owner-v1';
+const NOTIFICATION_DATA_KEY = 'notifications-latest-v1';
+const OWNER_STALE_MS = 60000;
 
 export function NotificationProvider({ children, userId, locale }: { children: ReactNode; userId?: string; locale?: string }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const tabIdRef = React.useRef<string | null>(null);
   const prevUnreadIdsRef = React.useRef<Set<string>>(new Set());
   const audioUnlockedRef = React.useRef<boolean>(false);
   const audioContextRef = React.useRef<AudioContext | null>(null);
@@ -31,6 +36,7 @@ export function NotificationProvider({ children, userId, locale }: { children: R
   const permissionRequestedRef = React.useRef<boolean>(false);
   const mountedRef = React.useRef<boolean>(true);
   const initialFetchDoneRef = React.useRef<boolean>(false);
+  const isFetchingRef = React.useRef<boolean>(false);
   React.useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -39,6 +45,93 @@ export function NotificationProvider({ children, userId, locale }: { children: R
     initialFetchDoneRef.current = false;
     prevUnreadIdsRef.current = new Set();
   }, [userId]);
+
+  // Generate stable tab id
+  if (typeof window !== 'undefined' && !tabIdRef.current) {
+    tabIdRef.current = `tab-${Math.random().toString(36).slice(2)}`;
+  }
+
+  const tryClaimOwnership = useCallback(() => {
+    if (typeof window === 'undefined' || !tabIdRef.current) return;
+    try {
+      const now = Date.now();
+      const raw = window.localStorage.getItem(NOTIFICATION_OWNER_KEY);
+      let current: { ownerId: string; ts: number } | null = null;
+      if (raw) {
+        try {
+          current = JSON.parse(raw);
+        } catch {
+          current = null;
+        }
+      }
+      const isStale = !current || now - current.ts > OWNER_STALE_MS;
+      if (!current || isStale || current.ownerId === tabIdRef.current) {
+        const next = { ownerId: tabIdRef.current, ts: now };
+        window.localStorage.setItem(NOTIFICATION_OWNER_KEY, JSON.stringify(next));
+        setIsOwner(true);
+      } else {
+        setIsOwner(current.ownerId === tabIdRef.current);
+      }
+    } catch {
+      // ignore lock errors
+    }
+  }, []);
+
+  // Ownership & cross-tab sync
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    tryClaimOwnership();
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === NOTIFICATION_OWNER_KEY && event.newValue && tabIdRef.current) {
+        try {
+          const parsed = JSON.parse(event.newValue);
+          setIsOwner(parsed.ownerId === tabIdRef.current);
+        } catch {
+          // ignore
+        }
+      }
+      if (event.key === NOTIFICATION_DATA_KEY && event.newValue && !isOwner) {
+        try {
+          const parsed = JSON.parse(event.newValue) as AppNotification[];
+          if (mountedRef.current && Array.isArray(parsed)) {
+            setNotifications(parsed);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        tryClaimOwnership();
+      }
+    };
+
+    window.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [isOwner, tryClaimOwnership]);
+
+  // Owner heartbeat so other tabs can detect stale owners
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isOwner || !tabIdRef.current) return;
+    const interval = window.setInterval(() => {
+      try {
+        const now = Date.now();
+        const payload = { ownerId: tabIdRef.current, ts: now };
+        window.localStorage.setItem(NOTIFICATION_OWNER_KEY, JSON.stringify(payload));
+      } catch {
+        // ignore
+      }
+    }, OWNER_STALE_MS / 2);
+    return () => window.clearInterval(interval);
+  }, [isOwner]);
 
   // Unlock audio and request notification permission on first user interaction (browser requirement)
   useEffect(() => {
@@ -126,6 +219,8 @@ export function NotificationProvider({ children, userId, locale }: { children: R
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
       if (mountedRef.current) setLoading(true);
       const params = new URLSearchParams({ userId });
@@ -166,34 +261,57 @@ export function NotificationProvider({ children, userId, locale }: { children: R
 
         prevUnreadIdsRef.current = newUnreadIds;
         setNotifications(newNotifications);
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.setItem(NOTIFICATION_DATA_KEY, JSON.stringify(newNotifications));
+          } catch {
+            // ignore storage errors
+          }
+        }
       }
     } catch (error) {
       reloadIfStaleDeploy(error);
       if (mountedRef.current) console.error('Failed to fetch notifications:', error);
     } finally {
+      isFetchingRef.current = false;
       if (mountedRef.current) setLoading(false);
     }
   }, [userId, locale, playBeepSound, showSystemNotification]);
 
-  useEffect(() => {
-    if (userId) {
-      fetchNotifications();
-    }
-  }, [userId, fetchNotifications]);
-
+  // Initial load: only owner hits API; others hydrate from localStorage
   useEffect(() => {
     if (!userId) return;
+    if (isOwner) {
+      fetchNotifications();
+    } else if (typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem(NOTIFICATION_DATA_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as AppNotification[];
+          if (Array.isArray(parsed)) {
+            setNotifications(parsed);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [userId, isOwner, fetchNotifications]);
+
+  // On focus, only owner refreshes from API
+  useEffect(() => {
+    if (!userId || !isOwner) return;
     const onFocus = () => fetchNotifications();
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [userId, fetchNotifications]);
+  }, [userId, isOwner, fetchNotifications]);
 
-  // Realtime: poll every 30s (reduced to lower load; beep still plays on new unread)
+  // Realtime: poll every 30s from owner tab only
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !isOwner) return;
     const interval = setInterval(() => fetchNotifications(), 30000);
     return () => clearInterval(interval);
-  }, [userId, fetchNotifications]);
+  }, [userId, isOwner, fetchNotifications]);
 
   const addNotification = async (notification: Omit<AppNotification, 'id' | 'createdAt'>) => {
     try {

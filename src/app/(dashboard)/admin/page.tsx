@@ -21,23 +21,24 @@ export default function AdminDashboard() {
   const [loans, setLoans] = useState<any[]>([]);
   const [chats, setChats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [overviewLoading, setOverviewLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
+    fetchOverview();
   }, [locale, user?.id, pathname]);
 
   useEffect(() => {
     const onVisible = () => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && user?.id) fetchData();
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && user?.id) fetchOverview();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [locale, user?.id, pathname]);
 
-  const fetchData = async () => {
+  const fetchOverview = async () => {
     if (!user?.id) return;
     try {
-      setLoading(true);
+      setOverviewLoading(true);
       const [customersRes, employeesRes, loansRes, chatsRes] = await Promise.all([
         fetchApi('/api/customers'),
         fetchApi('/api/employees'),
@@ -58,11 +59,11 @@ export default function AdminDashboard() {
       reloadIfStaleDeploy(error);
       console.error('Failed to fetch data:', error);
     } finally {
-      setLoading(false);
+      setOverviewLoading(false);
     }
   };
 
-  if (loading) {
+  if (overviewLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader size="large" />
