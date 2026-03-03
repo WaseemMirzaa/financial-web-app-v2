@@ -98,6 +98,26 @@ class ApiService {
     }
   }
 
+  /// Temporary: employee signup via POST /api/employees (can be disabled from admin later).
+  static Future<Map<String, dynamic>> signupEmployee({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_base/api/employees'),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: jsonEncode({'name': name, 'email': email, 'password': password}),
+      );
+      final data = _parseJson(res.body);
+      if (data != null) return data;
+      return {'success': false, 'error': 'Invalid response (${res.statusCode})'};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
   static Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
       final res = await http.post(

@@ -995,6 +995,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('locale', newLocale);
       document.documentElement.setAttribute('dir', newLocale === 'ar' ? 'rtl' : 'ltr');
       document.documentElement.setAttribute('lang', newLocale);
+      const bridge = (window as unknown as { FlutterAppBridge?: { setLocale?: (l: string) => void } }).FlutterAppBridge;
+      if (bridge?.setLocale) bridge.setLocale(newLocale);
     }
   };
 

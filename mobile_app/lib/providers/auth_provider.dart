@@ -101,6 +101,42 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Temporary: employee signup (can be turned off from admin dashboard via API).
+  Future<bool> signupEmployee({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final data = await ApiService.signupEmployee(
+        name: name,
+        email: email,
+        password: password,
+      );
+      if (data['success'] == true && data['data'] != null) {
+        final d = Map<String, dynamic>.from(data['data'] as Map);
+        _user = UserModel.fromJson(d);
+        await SessionService.saveUser(_user!);
+        _error = null;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+      _error = _mapAuthError(data, isSignup: true);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     await SessionService.clearUser();
     _user = null;

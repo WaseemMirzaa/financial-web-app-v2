@@ -47,61 +47,49 @@ class _LoginScreenState extends State<LoginScreen> {
     final settings = context.watch<SettingsProvider>();
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primary900,
-              AppTheme.primary800,
-              AppTheme.primary900,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 24),
-                  Center(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      height: 48,
-                      width: 60,
-                      fit: BoxFit.contain,
-                    ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 32),
+                Center(
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 56,
+                    width: 72,
+                    fit: BoxFit.contain,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Alkhalij for Finance',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 24,
-                        ),
-                    textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'الخليج للتمويل',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppTheme.primary500,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 22,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.neutral200),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 32),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -165,7 +153,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const Text('Sign in'),
                           ),
                         ),
-                        if (settings.signupEnabled) ...[
+                        // Signup / Forgot password: only show when server says enabled (hide when disabled)
+                        if (settings.loaded && settings.signupEnabled) ...[
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => Navigator.of(context).push(
@@ -176,7 +165,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: const Text('Create account'),
                           ),
                         ],
-                        if (settings.forgetPasswordEnabled)
+                        if (settings.loaded && settings.forgetPasswordEnabled) ...[
+                          const SizedBox(height: 4),
                           TextButton(
                             onPressed: () => Navigator.of(context).push(
                               MaterialPageRoute(
@@ -185,6 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             child: const Text('Forgot password?'),
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -193,7 +184,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 }

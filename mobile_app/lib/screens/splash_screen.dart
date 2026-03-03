@@ -49,69 +49,47 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primary900,
-              AppTheme.primary800,
-              AppTheme.primary900,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/logo.png',
+                height: 72,
+                width: 90,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'الخليج للتمويل',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppTheme.primary500,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 24,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'منصة إدارة التمويل',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.neutral500,
+                      fontSize: 14,
+                    ),
+              ),
+              const Spacer(),
+              const SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary500),
+                ),
+              ),
+              const SizedBox(height: 48),
             ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 48),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    height: 64,
-                    width: 80,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Alkhalij for Finance',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 24,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'منصة إدارة التمويل',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                ),
-                const Spacer(),
-                const SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary100),
-                  ),
-                ),
-                const SizedBox(height: 48),
-              ],
-            ),
           ),
         ),
       ),

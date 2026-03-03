@@ -10,6 +10,7 @@ class WebViewTab extends StatefulWidget {
   final String? userId;
   final VoidCallback? onWebLogout;
   final Map<String, dynamic>? userJson;
+  final void Function(String locale)? onLocaleFromWeb;
 
   const WebViewTab({
     super.key,
@@ -17,6 +18,7 @@ class WebViewTab extends StatefulWidget {
     this.userId,
     this.onWebLogout,
     this.userJson,
+    this.onLocaleFromWeb,
   });
 
   @override
@@ -52,6 +54,13 @@ class _WebViewTabState extends State<WebViewTab> {
               handlerName: 'flutterLogout',
               callback: (_) {
                 widget.onWebLogout?.call();
+              },
+            );
+            c.addJavaScriptHandler(
+              handlerName: 'flutterSetLocale',
+              callback: (args) {
+                final l = args.isNotEmpty ? args[0]?.toString() : null;
+                if (l == 'en' || l == 'ar') widget.onLocaleFromWeb?.call(l!);
               },
             );
           },
@@ -100,8 +109,22 @@ class _WebViewTabState extends State<WebViewTab> {
                     window.flutter_inappwebview.callHandler('flutterLogout');
                   }
                 };
+                window.FlutterAppBridge.setLocale = function(locale) {
+                  if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                    window.flutter_inappwebview.callHandler('flutterSetLocale', locale);
+                  }
+                };
               })();
             ''');
+            if (widget.onLocaleFromWeb != null) {
+              try {
+                final result = await _controller?.evaluateJavascript(
+                  source: "(function(){ return window.localStorage.getItem('locale') || 'en'; })();",
+                );
+                final l = result?.toString().replaceAll(RegExp(r'^"|"$'), '');
+                if (l != null && (l == 'en' || l == 'ar') && mounted) widget.onLocaleFromWeb!.call(l);
+              } catch (_) {}
+            }
             if (mounted) setState(() => _loading = false);
           },
         ),

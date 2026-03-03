@@ -166,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       localStorage.removeItem('user');
+      const bridge = (typeof window !== 'undefined' && (window as unknown as { FlutterAppBridge?: { logout?: () => void } }).FlutterAppBridge);
+      if (bridge?.logout) bridge.logout();
     }
   };
 

@@ -12,6 +12,7 @@ class SessionService {
   );
   static const _userKey = 'user';
   static const _settingsKey = 'mobile_settings';
+  static const _localeKey = 'locale';
 
   static Future<void> saveUser(UserModel user) async {
     await _storage.write(
@@ -60,5 +61,16 @@ class SessionService {
     await _storage.deleteAll();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_settingsKey);
+    await prefs.remove(_localeKey);
+  }
+
+  static Future<void> saveLocale(String locale) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_localeKey, locale);
+  }
+
+  static Future<String> getLocale() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_localeKey) ?? 'en';
   }
 }

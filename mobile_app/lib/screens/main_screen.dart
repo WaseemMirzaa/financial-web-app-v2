@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/web_view_tab.dart';
 import 'profile_screen.dart';
@@ -17,16 +18,18 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _index = 0;
 
-  List<_NavItem> _navItemsFor(UserModel user) {
+  List<_NavItem> _navItemsFor(UserModel user, String locale) {
+    final isAr = locale == 'ar';
     return [
-      _NavItem(Icons.dashboard, 'لوحة التحكم', user.homePath),
-      _NavItem(Icons.menu_book, 'القائمة', 'menu'),
+      _NavItem(Icons.dashboard, isAr ? 'لوحة التحكم' : 'Dashboard', user.homePath),
+      _NavItem(Icons.menu_book, isAr ? 'القائمة' : 'Menu', 'menu'),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final locale = context.watch<LocaleProvider>();
     final user = auth.user;
     if (user == null) {
       return const Scaffold(
@@ -34,7 +37,7 @@ class _MainScreenState extends State<MainScreen> {
       );
     }
 
-    final items = _navItemsFor(user);
+    final items = _navItemsFor(user, locale.locale);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -53,6 +56,7 @@ class _MainScreenState extends State<MainScreen> {
                         userId: user.id,
                         userJson: user.toJson(),
                         onWebLogout: () => auth.logout(),
+                        onLocaleFromWeb: (l) => locale.setLocale(l),
                       ),
             ],
           ),
