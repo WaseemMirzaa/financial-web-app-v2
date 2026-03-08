@@ -9,6 +9,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Chat, ChatMessage } from '@/types';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
 import { fetchApi } from '@/lib/fetchApi';
 
@@ -258,6 +259,8 @@ export default function CustomerChatPage() {
     );
   }
 
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
@@ -265,6 +268,103 @@ export default function CustomerChatPage() {
         <p className="text-sm sm:text-base text-neutral-600">{t('chat.withEmployee')}</p>
       </div>
 
+      {isMobile && selectedChatData ? (
+        <div className="flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
+          <ChatWindow
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            chatId={selectedChat ?? undefined}
+            availableChats={chats.filter((c) => c.id !== selectedChat)}
+            onBack={() => setSelectedChat(null)}
+            onMessageUpdate={(update) => {
+              if (!update || !selectedChat) return;
+              if (update.type === 'messageEdited') {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === update.message.id
+                      ? { ...m, ...update.message, content: update.message.content ?? m.content }
+                      : m
+                  )
+                );
+                setChats((prev) =>
+                  prev.map((c) => {
+                    if (c.id !== selectedChat) return c;
+                    if (c.lastMessage?.id === update.message.id)
+                      return { ...c, lastMessage: { ...c.lastMessage, content: update.message.content ?? c.lastMessage!.content, isEdited: true } };
+                    return c;
+                  })
+                );
+              } else if (update.type === 'messageDeleted') {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === update.messageId ? { ...m, isDeleted: true, content: '' } : m
+                  )
+                );
+                setChats((prev) =>
+                  prev.map((c) => {
+                    if (c.id !== selectedChat) return c;
+                    if (c.lastMessage?.id === update.messageId)
+                      return { ...c, lastMessage: { ...c.lastMessage!, content: 'Message deleted', isDeleted: true } };
+                    return c;
+                  })
+                );
+              }
+            }}
+            title={t('chat.companyName')}
+            pinnedMessageId={selectedChatData.pinnedMessageId}
+            onPinnedMessageUpdate={(messageId) => {
+              setChats((prev) =>
+                prev.map((c) =>
+                  c.id === selectedChat
+                    ? { ...c, pinnedMessageId: messageId, pinnedMessageAt: messageId ? new Date().toISOString() : null }
+                    : c
+                )
+              );
+            }}
+          />
+        </div>
+      ) : isMobile ? (
+        <Card variant="elevated" padding="none" className="flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
+          <div className="p-3 sm:p-4 border-b border-neutral-100 shrink-0">
+            <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
+          </div>
+          <div className="divide-y divide-neutral-100 overflow-y-auto overflow-x-hidden flex-1 min-w-0">
+            {chats.map((chat) => (
+              <button
+                key={chat.id}
+                type="button"
+                onClick={(e) => {
+                  setSelectedChat(chat.id);
+                  (e.currentTarget as HTMLElement).blur();
+                }}
+                className={`w-full min-w-0 overflow-hidden p-3 sm:p-4 min-h-[52px] text-left rtl:text-right hover:bg-neutral-50 transition-colors border-b border-neutral-100 touch-manipulation ${
+                  selectedChat === chat.id ? 'bg-primary-50' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="font-semibold text-neutral-900 truncate min-w-0">
+                    {t('chat.companyName')}
+                  </p>
+                  {chat.unreadCount > 0 && (
+                    <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-500 text-white text-xs font-semibold shrink-0">
+                      {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                    </span>
+                  )}
+                </div>
+                {chat.lastMessage && (
+                  <p className={`text-sm mt-1 line-clamp-1 break-words ${
+                    chat.unreadCount > 0
+                      ? 'text-neutral-900 font-medium'
+                      : 'text-neutral-600'
+                  }`}>
+                    {chat.lastMessage.content}
+                  </p>
+                )}
+              </button>
+            ))}
+          </div>
+        </Card>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card variant="elevated" padding="none" className="lg:col-span-1 flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
           <div className="p-3 sm:p-4 border-b border-neutral-100 shrink-0">
@@ -367,6 +467,7 @@ export default function CustomerChatPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

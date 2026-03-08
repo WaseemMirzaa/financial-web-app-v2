@@ -24,7 +24,7 @@ class _MainScreenState extends State<MainScreen> {
     final isAr = locale == 'ar';
     return [
       _NavItem(Icons.dashboard, isAr ? 'لوحة التحكم' : 'Dashboard', user.homePath),
-      _NavItem(Icons.menu_book, isAr ? 'القائمة' : 'Menu', 'menu'),
+      _NavItem(Icons.menu_rounded, isAr ? 'القائمة' : 'Menu', 'menu'),
     ];
   }
 

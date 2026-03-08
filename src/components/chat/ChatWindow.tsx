@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Edit2, Trash2, Search, CornerUpRight, Forward, Smile, Pin, X } from 'lucide-react';
+import { Send, Paperclip, Edit2, Trash2, Search, CornerUpRight, Forward, Smile, Pin, X, ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -34,9 +34,11 @@ interface ChatWindowProps {
   onPinnedMessageUpdate?: (messageId: string | null) => void;
   /** Called after forward so parent can refresh chat list (e.g. when new room created) */
   onForwardComplete?: () => void;
+  /** When set, show a back button in the header (e.g. for mobile view) */
+  onBack?: () => void;
 }
 
-export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, onMessageUpdate, availableChats, availableEmployees, pinnedMessageId, onPinnedMessageUpdate, onForwardComplete }: ChatWindowProps) {
+export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, onMessageUpdate, availableChats, availableEmployees, pinnedMessageId, onPinnedMessageUpdate, onForwardComplete, onBack }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -443,11 +445,23 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
           </div>
         </div>
       )}
-      {(title || (!readOnly && chatId)) && (
+      {(title || onBack || (!readOnly && chatId)) && (
         <div className="px-3 sm:px-6 pt-3 sm:pt-4 pb-2 border-b border-neutral-100 shrink-0 space-y-2">
-          {title && (
-            <h3 className="text-base sm:text-lg font-semibold text-neutral-900 truncate">{title}</h3>
-          )}
+          <div className="flex items-center gap-2 min-w-0">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="shrink-0 flex items-center justify-center min-w-[40px] min-h-[40px] -ml-1 rounded-lg hover:bg-neutral-100 text-neutral-700 transition-colors rtl:ml-0 rtl:mr-[-4px]"
+                aria-label={t('common.back')}
+              >
+                <ChevronLeft className="w-6 h-6 rtl:rotate-180" />
+              </button>
+            )}
+            {title && (
+              <h3 className="text-base sm:text-lg font-semibold text-neutral-900 truncate flex-1 min-w-0">{title}</h3>
+            )}
+          </div>
           {!readOnly && chatId && (
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
