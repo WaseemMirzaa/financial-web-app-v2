@@ -5,6 +5,10 @@ import * as path from 'path';
 // Load environment variables
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
+/**
+ * Additive migration only: creates DB/tables if not exist, adds columns/indexes/constraints.
+ * Does NOT drop tables, truncate, or delete data. Existing data is preserved.
+ */
 async function migrate() {
   const connection = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
@@ -362,7 +366,7 @@ async function migrate() {
          FOREIGN KEY (reply_to_message_id) REFERENCES chat_messages(id) ON DELETE SET NULL`
       );
     } catch (e: any) {
-      if (e.code !== 'ER_DUP_KEY' && e.code !== 'ER_CANNOT_ADD_FOREIGN') throw e;
+      if (e.code !== 'ER_DUP_KEY' && e.code !== 'ER_FK_DUP_NAME' && e.code !== 'ER_CANNOT_ADD_FOREIGN') throw e;
     }
     try {
       await connection.query(
@@ -370,7 +374,7 @@ async function migrate() {
          FOREIGN KEY (forwarded_from_message_id) REFERENCES chat_messages(id) ON DELETE SET NULL`
       );
     } catch (e: any) {
-      if (e.code !== 'ER_DUP_KEY' && e.code !== 'ER_CANNOT_ADD_FOREIGN') throw e;
+      if (e.code !== 'ER_DUP_KEY' && e.code !== 'ER_FK_DUP_NAME' && e.code !== 'ER_CANNOT_ADD_FOREIGN') throw e;
     }
 
     // Create chat_message_translations table
