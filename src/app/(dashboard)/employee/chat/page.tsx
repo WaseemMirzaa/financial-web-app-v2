@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { ChatWindow } from '@/components/chat/ChatWindow';
@@ -20,6 +20,7 @@ export default function EmployeeChatPage() {
   const { user } = useAuth();
   const { refreshNotifications } = useNotifications();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const userReturnedToListRef = useRef(false);
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [assignedCustomers, setAssignedCustomers] = useState<Customer[]>([]);
@@ -64,7 +65,9 @@ export default function EmployeeChatPage() {
         setChats(data.data);
         setSelectedChat((current) => {
           if (data.data.length === 0) return null;
-          const stillExists = current && data.data.some((c: Chat) => c.id === current);
+          if (current === null && userReturnedToListRef.current) return null; // preserve list after mobile back
+          if (current === null) return data.data[0].id;
+          const stillExists = data.data.some((c: Chat) => c.id === current);
           return stillExists ? current : data.data[0].id;
         });
       }
@@ -258,7 +261,7 @@ export default function EmployeeChatPage() {
             onSendMessage={handleSendMessage}
             chatId={selectedChat ?? undefined}
             availableChats={chats.filter((c) => c.id !== selectedChat)}
-            onBack={() => setSelectedChat(null)}
+            onBack={() => { userReturnedToListRef.current = true; setSelectedChat(null); }}
             onMessageUpdate={(update) => {
               if (!update || !selectedChat) return;
               if (update.type === 'messageEdited') {
@@ -372,6 +375,7 @@ export default function EmployeeChatPage() {
                   key={chat.id}
                   type="button"
                   onClick={(e) => {
+                    userReturnedToListRef.current = false;
                     setSelectedChat(chat.id);
                     (e.currentTarget as HTMLElement).blur();
                   }}
@@ -470,6 +474,7 @@ export default function EmployeeChatPage() {
                   key={chat.id}
                   type="button"
                   onClick={(e) => {
+                    userReturnedToListRef.current = false;
                     setSelectedChat(chat.id);
                     (e.currentTarget as HTMLElement).blur();
                   }}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { ChatWindow } from '@/components/chat/ChatWindow';
@@ -19,6 +19,7 @@ export default function CustomerChatPage() {
   const { user } = useAuth();
   const { refreshNotifications } = useNotifications();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const userReturnedToListRef = useRef(false);
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [assignedEmployee, setAssignedEmployee] = useState<any>(null);
@@ -51,8 +52,11 @@ export default function CustomerChatPage() {
         const customerChats = data.data.filter((c: Chat) => c.type === 'customer_employee');
         setChats(customerChats);
         setSelectedChat((current) => {
-          if (customerChats.length === 0) return null;
-          const stillExists = current && customerChats.some((c: Chat) => c.id === current);
+          if (customerChats.length === 0) return current ?? null; // don't clear selection on empty response
+          // Only preserve list view (null) on mobile after user tapped Back
+          if (current === null && isMobileRef.current && userReturnedToListRef.current) return null;
+          if (current === null) return customerChats[0].id;
+          const stillExists = customerChats.some((c: Chat) => c.id === current);
           return stillExists ? current : customerChats[0].id;
         });
       }
@@ -260,6 +264,8 @@ export default function CustomerChatPage() {
   }
 
   const isMobile = useMediaQuery('(max-width: 1023px)');
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -275,7 +281,7 @@ export default function CustomerChatPage() {
             onSendMessage={handleSendMessage}
             chatId={selectedChat ?? undefined}
             availableChats={chats.filter((c) => c.id !== selectedChat)}
-            onBack={() => setSelectedChat(null)}
+            onBack={() => { userReturnedToListRef.current = true; setSelectedChat(null); }}
             onMessageUpdate={(update) => {
               if (!update || !selectedChat) return;
               if (update.type === 'messageEdited') {
@@ -334,6 +340,7 @@ export default function CustomerChatPage() {
                 key={chat.id}
                 type="button"
                 onClick={(e) => {
+                  userReturnedToListRef.current = false;
                   setSelectedChat(chat.id);
                   (e.currentTarget as HTMLElement).blur();
                 }}
@@ -376,6 +383,7 @@ export default function CustomerChatPage() {
                 key={chat.id}
                 type="button"
                 onClick={(e) => {
+                  userReturnedToListRef.current = false;
                   setSelectedChat(chat.id);
                   (e.currentTarget as HTMLElement).blur();
                 }}
