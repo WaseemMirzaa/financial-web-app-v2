@@ -18,6 +18,9 @@ export default function CustomerChatPage() {
   const { t, locale } = useLocale();
   const { user } = useAuth();
   const { refreshNotifications } = useNotifications();
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const userReturnedToListRef = useRef(false);
   const [chats, setChats] = useState<Chat[]>([]);
@@ -262,10 +265,6 @@ export default function CustomerChatPage() {
       </div>
     );
   }
-
-  const isMobile = useMediaQuery('(max-width: 1023px)');
-  const isMobileRef = useRef(isMobile);
-  isMobileRef.current = isMobile;
 
   return (
     <div className="space-y-4 sm:space-y-6">
