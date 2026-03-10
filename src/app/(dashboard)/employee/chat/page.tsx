@@ -15,9 +15,10 @@ import { reloadIfStaleDeploy } from '@/lib/client-utils';
 import { fetchApi } from '@/lib/fetchApi';
 import { formatLastSeenDateTime } from '@/lib/utils';
 
-function getPresenceLinesForList(chat: Chat, t: (k: string) => string, locale: string): string[] {
-  const pres = chat.participantPresence;
-  if (!pres?.length) return [];
+function getPresenceLinesForList(chat: Chat, t: (k: string) => string, locale: string, currentUserId?: string): string[] {
+  if (chat.type === 'internal_room') return [];
+  const pres = (chat.participantPresence ?? []).filter((p) => p.userId !== currentUserId);
+  if (!pres.length) return [];
   if (pres.length === 1) {
     const p = pres[0];
     return [
@@ -36,9 +37,10 @@ function getPresenceLinesForList(chat: Chat, t: (k: string) => string, locale: s
   return lines;
 }
 
-function getPresenceSubtitleForHeader(chat: Chat | undefined, t: (k: string) => string, locale: string): string {
-  if (!chat?.participantPresence?.length) return '';
-  const pres = chat.participantPresence;
+function getPresenceSubtitleForHeader(chat: Chat | undefined, t: (k: string) => string, locale: string, currentUserId?: string): string {
+  if (!chat?.participantPresence?.length || chat?.type === 'internal_room') return '';
+  const pres = chat.participantPresence.filter((p) => p.userId !== currentUserId);
+  if (!pres.length) return '';
   if (pres.length === 1) {
     const p = pres[0];
     return p.isOnline
@@ -358,7 +360,7 @@ export default function EmployeeChatPage() {
                 ? selectedChatData.participantNames.join(', ')
                 : t('chat.customerChat')) + (selectedChatData.customerPhone ? ` · ${selectedChatData.customerPhone}` : '')
             }
-            presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale)}
+            presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale, user?.id)}
             pinnedMessageId={selectedChatData.pinnedMessageId}
             onPinnedMessageUpdate={(messageId) => {
               setChats((prev) =>
@@ -466,7 +468,7 @@ export default function EmployeeChatPage() {
                       {chat.lastMessage.content}
                     </p>
                   )}
-                  {getPresenceLinesForList(chat, t, locale).map((line, idx) => (
+                  {getPresenceLinesForList(chat, t, locale, user?.id).map((line, idx) => (
                     <p
                       key={idx}
                       className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5"
@@ -582,7 +584,7 @@ export default function EmployeeChatPage() {
                       {chat.lastMessage.content}
                     </p>
                   )}
-                  {getPresenceLinesForList(chat, t, locale).map((line, idx) => (
+                  {getPresenceLinesForList(chat, t, locale, user?.id).map((line, idx) => (
                     <p
                       key={idx}
                       className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5"
@@ -649,7 +651,7 @@ export default function EmployeeChatPage() {
                   ? selectedChatData.participantNames.join(', ')
                   : t('chat.customerChat')) + (selectedChatData.customerPhone ? ` · ${selectedChatData.customerPhone}` : '')
               }
-              presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale)}
+              presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale, user?.id)}
               pinnedMessageId={selectedChatData.pinnedMessageId}
               onPinnedMessageUpdate={(messageId) => {
                 setChats((prev) =>
