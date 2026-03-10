@@ -74,6 +74,20 @@ export function formatLastSeen(lastSeenAt: string | null | undefined): string {
   return formatDateOnly(lastSeenAt);
 }
 
+/** Full date and time for "last seen" (e.g. "10 Mar 2025, 3:45 PM"). Returns empty string if null. */
+export function formatLastSeenDateTime(lastSeenAt: string | null | undefined, locale: string = 'en'): string {
+  if (lastSeenAt == null || lastSeenAt === '') return '';
+  const d = new Date(lastSeenAt);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-SA' : 'en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d);
+}
+
 /** Normalize a date (Date, string, or from DB) to YYYY-MM-DD. Returns null for invalid/missing. */
 export function toDateOnlyString(v: unknown): string | null {
   if (v == null || v === '') return null;

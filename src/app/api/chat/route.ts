@@ -252,14 +252,17 @@ export async function GET(request: NextRequest) {
 
       const others = participants.filter((p: any) => p.user_id !== userId);
       const participantPresence = others.map((p: any) => {
-        const name = p.role === 'admin' ? 'Admin' : (p.name_en || p.name_ar || p.user_id);
+        const name =
+          p.role === 'admin'
+            ? 'Admin'
+            : (p.name_en || p.name_ar || (p.role === 'customer' ? 'Customer' : p.role === 'employee' ? 'Employee' : null) || p.user_id);
         const lastSeenAt = p.last_seen_at ?? null;
         const isOnline =
           lastSeenAt &&
           new Date(lastSeenAt).getTime() > Date.now() - ONLINE_THRESHOLD_MS;
         return {
           userId: p.user_id,
-          name,
+          name: name || 'User',
           lastSeenAt,
           isOnline: !!isOnline,
         };

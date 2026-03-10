@@ -12,18 +12,36 @@ import { Chat, ChatMessage } from '@/types';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
 import { fetchApi } from '@/lib/fetchApi';
-import { formatLastSeen } from '@/lib/utils';
+import { formatLastSeenDateTime } from '@/lib/utils';
 
-function getPresenceSubtitle(chat: Chat, t: (k: string) => string): string {
+function getPresenceSubtitle(chat: Chat, t: (k: string) => string, locale: string): string {
   const pres = chat.participantPresence;
   if (!pres?.length) return '';
   if (pres.length === 1) {
-    return pres[0].isOnline ? t('chat.online') : `${t('chat.lastSeen')} ${formatLastSeen(pres[0].lastSeenAt)}`;
+    const p = pres[0];
+    return p.isOnline ? `${p.name} – ${t('chat.online')}` : `${p.name} – ${t('chat.lastSeen')} ${formatLastSeenDateTime(p.lastSeenAt, locale)}`;
   }
-  const onlineCount = pres.filter((p) => p.isOnline).length;
-  if (onlineCount > 0) return `${onlineCount} ${t('chat.online')}`;
-  const mostRecent = pres.reduce((a, b) => (a.lastSeenAt && b.lastSeenAt && a.lastSeenAt > b.lastSeenAt ? a : b));
-  return `${t('chat.lastSeen')} ${formatLastSeen(mostRecent.lastSeenAt)}`;
+  const online = pres.filter((p) => p.isOnline).map((p) => p.name);
+  const offline = pres.filter((p) => !p.isOnline).map((p) => `${p.name} (${formatLastSeenDateTime(p.lastSeenAt, locale)})`);
+  const parts: string[] = [];
+  if (online.length) parts.push(`${t('chat.online')}: ${online.join(', ')}`);
+  if (offline.length) parts.push(`${t('chat.lastSeen')}: ${offline.join(', ')}`);
+  return parts.join(' · ');
+}
+
+function getPresenceSubtitleForHeader(chat: Chat | undefined, t: (k: string) => string, locale: string): string {
+  if (!chat?.participantPresence?.length) return '';
+  const pres = chat.participantPresence;
+  if (pres.length === 1) {
+    const p = pres[0];
+    return p.isOnline ? `${p.name} – ${t('chat.online')}` : `${p.name} – ${t('chat.lastSeen')} ${formatLastSeenDateTime(p.lastSeenAt, locale)}`;
+  }
+  const online = pres.filter((p) => p.isOnline).map((p) => p.name);
+  const offline = pres.filter((p) => !p.isOnline).map((p) => `${p.name} (${formatLastSeenDateTime(p.lastSeenAt, locale)})`);
+  const parts: string[] = [];
+  if (online.length) parts.push(`${t('chat.online')}: ${online.join(', ')}`);
+  if (offline.length) parts.push(`${t('chat.lastSeen')}: ${offline.join(', ')}`);
+  return parts.join(' · ');
 }
 
 export default function CustomerChatPage() {
@@ -345,6 +363,7 @@ export default function CustomerChatPage() {
               }
             }}
             title={t('chat.companyName')}
+            presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale)}
             pinnedMessageId={selectedChatData.pinnedMessageId}
             onPinnedMessageUpdate={(messageId) => {
               setChats((prev) =>
@@ -395,8 +414,13 @@ export default function CustomerChatPage() {
                     {chat.lastMessage.content}
                   </p>
                 )}
-                {getPresenceSubtitle(chat, t) && (
-                  <p className="text-xs text-neutral-500 mt-0.5">{getPresenceSubtitle(chat, t)}</p>
+                {getPresenceSubtitle(chat, t, locale) && (
+                  <p className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5">
+                    {chat.participantPresence?.some((p) => p.isOnline) && (
+                      <span className="shrink-0 w-2 h-2 rounded-full bg-green-500" title={t('chat.online')} aria-hidden />
+                    )}
+                    {getPresenceSubtitle(chat, t, locale)}
+                  </p>
                 )}
               </button>
             ))}
@@ -441,8 +465,13 @@ export default function CustomerChatPage() {
                     {chat.lastMessage.content}
                   </p>
                 )}
-                {getPresenceSubtitle(chat, t) && (
-                  <p className="text-xs text-neutral-500 mt-0.5">{getPresenceSubtitle(chat, t)}</p>
+                {getPresenceSubtitle(chat, t, locale) && (
+                  <p className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5">
+                    {chat.participantPresence?.some((p) => p.isOnline) && (
+                      <span className="shrink-0 w-2 h-2 rounded-full bg-green-500" title={t('chat.online')} aria-hidden />
+                    )}
+                    {getPresenceSubtitle(chat, t, locale)}
+                  </p>
                 )}
               </button>
             ))}
@@ -491,6 +520,7 @@ export default function CustomerChatPage() {
                 }
               }}
               title={t('chat.companyName')}
+              presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale)}
               pinnedMessageId={selectedChatData.pinnedMessageId}
               onPinnedMessageUpdate={(messageId) => {
                 setChats((prev) =>

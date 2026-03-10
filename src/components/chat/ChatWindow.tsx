@@ -36,9 +36,11 @@ interface ChatWindowProps {
   onForwardComplete?: () => void;
   /** When set, show a back button in the header (e.g. for mobile view) */
   onBack?: () => void;
+  /** Optional line under title: who is online / last seen date and time */
+  presenceSubtitle?: string;
 }
 
-export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, onMessageUpdate, availableChats, availableEmployees, pinnedMessageId, onPinnedMessageUpdate, onForwardComplete, onBack }: ChatWindowProps) {
+export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, onMessageUpdate, availableChats, availableEmployees, pinnedMessageId, onPinnedMessageUpdate, onForwardComplete, onBack, presenceSubtitle }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -445,7 +447,12 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
               </button>
             )}
             {title && (
-              <h3 className="text-base sm:text-lg font-semibold text-neutral-900 truncate flex-1 min-w-0">{title}</h3>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-semibold text-neutral-900 truncate">{title}</h3>
+                {presenceSubtitle && (
+                  <p className="text-xs text-neutral-500 mt-0.5 truncate">{presenceSubtitle}</p>
+                )}
+              </div>
             )}
           </div>
           {!readOnly && chatId && (
