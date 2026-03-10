@@ -419,7 +419,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
     <Card
       variant="elevated"
       padding="none"
-      className="flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)] relative"
+      className="flex flex-col min-h-[320px] h-[82vh] sm:h-[78vh] md:h-[600px] max-h-[calc(100dvh-4rem)] relative"
       onDragOver={!readOnly ? handleDragOver : undefined}
       onDragLeave={!readOnly ? handleDragLeave : undefined}
       onDrop={!readOnly ? handleDrop : undefined}

@@ -331,7 +331,7 @@ export default function CustomerChatPage() {
       </div>
 
       {isMobile && selectedChatData ? (
-        <div className="flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
+        <div className="flex flex-col min-h-[320px] h-[82vh] sm:h-[78vh] md:h-[600px] max-h-[calc(100dvh-4rem)]">
           <ChatWindow
             messages={messages}
             onSendMessage={handleSendMessage}
@@ -387,7 +387,7 @@ export default function CustomerChatPage() {
           />
         </div>
       ) : isMobile ? (
-        <Card variant="elevated" padding="none" className="flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
+        <Card variant="elevated" padding="none" className="flex flex-col min-h-[320px] h-[82vh] sm:h-[78vh] md:h-[600px] max-h-[calc(100dvh-4rem)]">
           <div className="p-3 sm:p-4 border-b border-neutral-100 shrink-0">
             <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
           </div>
@@ -445,7 +445,7 @@ export default function CustomerChatPage() {
         </Card>
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card variant="elevated" padding="none" className="lg:col-span-1 flex flex-col min-h-[280px] h-[55vh] sm:h-[60vh] md:h-[600px] max-h-[calc(100dvh-10rem)]">
+        <Card variant="elevated" padding="none" className="lg:col-span-1 flex flex-col min-h-[320px] h-[82vh] sm:h-[78vh] md:h-[600px] max-h-[calc(100dvh-4rem)]">
           <div className="p-3 sm:p-4 border-b border-neutral-100 shrink-0">
             <h2 className="font-semibold text-neutral-900 text-base sm:text-lg">{t('chat.chats')}</h2>
           </div>
