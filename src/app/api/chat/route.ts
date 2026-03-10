@@ -273,16 +273,19 @@ export async function GET(request: NextRequest) {
       const others = participants.filter((p: any) => p.user_id !== userId);
       // Don't show admin online/last seen to customer or employee
       const othersForPresence = role === 'admin' ? others : others.filter((p: any) => p.role !== 'admin');
-      // Hide online/last seen for internal rooms (admin-created chatrooms with employees)
+      // Only chats with customers (customer_employee) show online/last seen; admin sees customer + employees, customer and employees see each other
+      // Never include the current user in presence (no one sees themselves as online or last seen)
       const participantPresence =
-        chat.type === 'internal_room'
+        chat.type !== 'customer_employee'
           ? []
-          : othersForPresence.map((p: any) => {
+          : othersForPresence
+              .filter((p: any) => p.user_id !== userId)
+              .map((p: any) => {
         const name =
           p.role === 'admin'
             ? 'Admin'
             : (p.name_en || p.name_ar || (p.role === 'customer' ? 'Customer' : p.role === 'employee' ? 'Employee' : null) || p.user_id);
-        const lastSeenAt = p.last_seen_at ?? null;
+        const lastSeenAt = p.last_seen_at ?? p.lastSeenAt ?? null;
         const isOnline =
           lastSeenAt &&
           new Date(lastSeenAt).getTime() > Date.now() - ONLINE_THRESHOLD_MS;

@@ -16,7 +16,7 @@ import { formatLastSeenDateTime } from '@/lib/utils';
 
 function getPresenceLinesForList(chat: Chat, t: (k: string) => string, locale: string, currentUserId?: string): string[] {
   if (chat.type === 'internal_room') return [];
-  const pres = (chat.participantPresence ?? []).filter((p) => p.userId !== currentUserId);
+  const pres = (chat.participantPresence ?? []).filter((p) => (p.userId ?? (p as { user_id?: string }).user_id) !== currentUserId);
   if (!pres.length) return [];
   if (pres.length === 1) {
     const p = pres[0];
@@ -38,7 +38,7 @@ function getPresenceLinesForList(chat: Chat, t: (k: string) => string, locale: s
 
 function getPresenceSubtitleForHeader(chat: Chat | undefined, t: (k: string) => string, locale: string, currentUserId?: string): string {
   if (!chat?.participantPresence?.length || chat?.type === 'internal_room') return '';
-  const pres = chat.participantPresence.filter((p) => p.userId !== currentUserId);
+  const pres = chat.participantPresence.filter((p) => (p.userId ?? (p as { user_id?: string }).user_id) !== currentUserId);
   if (!pres.length) return '';
   if (pres.length === 1) {
     const p = pres[0];

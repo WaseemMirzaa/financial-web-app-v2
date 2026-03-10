@@ -8,6 +8,7 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Loader } from '@/components/ui/Loader';
+import { fetchApi } from '@/lib/fetchApi';
 
 export default function DashboardLayoutClient({
   children,
@@ -18,6 +19,19 @@ export default function DashboardLayoutClient({
   const { locale } = useLocale();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Global presence heartbeat: update last_seen_at when tab is visible (any dashboard page)
+  useEffect(() => {
+    if (!user?.id) return;
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchApi(`/api/auth/heartbeat?userId=${encodeURIComponent(user.id)}`).catch(() => {});
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 60000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   useEffect(() => {
     if (isVerifying) return;
