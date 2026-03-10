@@ -13,11 +13,12 @@ import { useLocale } from '../../../../contexts/LocaleContext';
 import { Customer } from '../../../../types';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
 import { fetchApi } from '@/lib/fetchApi';
+import { formatDateOnly } from '@/lib/utils';
 
 export default function CustomersPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -343,6 +344,9 @@ export default function CustomersPage() {
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.name')}</th>
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.email')}</th>
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.phone')}</th>
+                <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('form.customerIdNumber')}</th>
+                <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('form.nationality')}</th>
+                <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('form.systemEntryDate')}</th>
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('form.assignedEmployee')}</th>
                 <th className="px-6 py-4 text-left rtl:text-right text-sm font-semibold text-neutral-900">{t('table.status')}</th>
                 <th className="px-6 py-4 text-right rtl:text-left text-sm font-semibold text-neutral-900 bg-neutral-50 sticky right-0 shadow-[-4px_0_8px_rgba(0,0,0,0.04)] rtl:shadow-[4px_0_8px_rgba(0,0,0,0.04)]">{t('table.actions')}</th>
@@ -355,6 +359,8 @@ export default function CustomersPage() {
                 return customer.name.toLowerCase().includes(query) ||
                        customer.email.toLowerCase().includes(query) ||
                        (customer.phone && customer.phone.toLowerCase().includes(query)) ||
+                       (customer.customerIdNumber && customer.customerIdNumber.toLowerCase().includes(query)) ||
+                       (customer.nationality && customer.nationality.toLowerCase().includes(query)) ||
                        customer.id.toLowerCase().includes(query);
               }).map((customer) => {
                 const assignedEmployee = employees.find(e => e.id === customer.assignedEmployeeId);
@@ -367,6 +373,11 @@ export default function CustomersPage() {
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-900 font-medium">{customer.name}</td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">{customer.email}</td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">{customer.phone || '-'}</td>
+                    <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">{customer.customerIdNumber || '-'}</td>
+                    <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">{customer.nationality || '-'}</td>
+                    <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">
+                      {customer.systemEntryDate ? formatDateOnly(customer.systemEntryDate, locale) : '-'}
+                    </td>
                     <td className="px-6 py-4 text-left rtl:text-right text-sm text-neutral-600">
                       {assignedEmployee ? assignedEmployee.name : t('detail.unassigned')}
                     </td>

@@ -28,7 +28,7 @@ export function EmployeeCustomerDetailClient() {
   const [customerLoans, setCustomerLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '', confirmPassword: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '', confirmPassword: '', customerIdNumber: '', nationality: '', systemEntryDate: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -96,6 +96,9 @@ export function EmployeeCustomerDetailClient() {
         address: customer.address || '',
         password: '',
         confirmPassword: '',
+        customerIdNumber: customer.customerIdNumber ?? '',
+        nationality: customer.nationality ?? '',
+        systemEntryDate: customer.systemEntryDate ? String(customer.systemEntryDate).slice(0, 10) : '',
       });
       setFormErrors({});
       setSubmitError('');
@@ -125,11 +128,14 @@ export function EmployeeCustomerDetailClient() {
     if (!validateForm()) return;
     setSubmitting(true);
     try {
-      const payload: { name: string; email: string; phone?: string; address?: string; password?: string } = {
+      const payload: { name: string; email: string; phone?: string; address?: string; password?: string; customerIdNumber?: string; nationality?: string; systemEntryDate?: string } = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
+        customerIdNumber: formData.customerIdNumber || undefined,
+        nationality: formData.nationality || undefined,
+        systemEntryDate: formData.systemEntryDate || undefined,
       };
       if (formData.password) payload.password = formData.password;
       const response = await fetchApi(`/api/customers/${customer.id}`, {
@@ -245,6 +251,20 @@ export function EmployeeCustomerDetailClient() {
               <p className="text-sm text-neutral-600 mb-1">{t('form.memberSince')}</p>
               <p className="text-base font-semibold text-neutral-900">{formatDateOnly(customer.createdAt, locale)}</p>
             </div>
+            <div>
+              <p className="text-sm text-neutral-600 mb-1">{t('form.customerIdNumber')}</p>
+              <p className="text-base font-semibold text-neutral-900">{customer.customerIdNumber || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-neutral-600 mb-1">{t('form.nationality')}</p>
+              <p className="text-base font-semibold text-neutral-900">{customer.nationality || '—'}</p>
+            </div>
+            <div className="text-left rtl:text-right">
+              <p className="text-sm text-neutral-600 mb-1">{t('form.systemEntryDate')}</p>
+              <p className="text-base font-semibold text-neutral-900">
+                {customer.systemEntryDate ? formatDateOnly(customer.systemEntryDate, locale) : '—'}
+              </p>
+            </div>
           </div>
         </Card>
       </div>
@@ -273,7 +293,7 @@ export function EmployeeCustomerDetailClient() {
                       {formatPercent(loan.interestRate, locale)} {t('loan.interest')} • {formatNumber(loan.numberOfInstallments, locale)} {t('loan.installments')}
                     </p>
                     <p className="text-xs text-neutral-500 mt-1">
-                      {t('loan.started')}: {formatDateOnly(loan.startDate, locale)}
+                      {t('detail.startDate')}: {formatDateOnly(loan.startDate, locale)}
                     </p>
                   </div>
                   <Badge variant={getLoanStatusColor(loan.status)}>
@@ -337,6 +357,22 @@ export function EmployeeCustomerDetailClient() {
             label={t('common.address')}
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          />
+          <Input
+            label={t('form.customerIdNumber')}
+            value={formData.customerIdNumber}
+            onChange={(e) => setFormData({ ...formData, customerIdNumber: e.target.value })}
+          />
+          <Input
+            label={t('form.nationality')}
+            value={formData.nationality}
+            onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+          />
+          <Input
+            label={t('form.systemEntryDate')}
+            type="date"
+            value={formData.systemEntryDate}
+            onChange={(e) => setFormData({ ...formData, systemEntryDate: e.target.value })}
           />
           <PasswordInput
             label={t('auth.newPassword')}
