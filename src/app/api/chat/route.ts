@@ -253,7 +253,11 @@ export async function GET(request: NextRequest) {
       const others = participants.filter((p: any) => p.user_id !== userId);
       // Do not show admin online/last-seen to employees or customers
       const othersForPresence = role === 'admin' ? others : others.filter((p: any) => p.role !== 'admin');
-      const participantPresence = othersForPresence.map((p: any) => {
+      // Hide online/last seen for internal rooms (admin-created chatrooms with employees)
+      const participantPresence =
+        chat.type === 'internal_room'
+          ? []
+          : othersForPresence.map((p: any) => {
         const name =
           p.role === 'admin'
             ? 'Admin'

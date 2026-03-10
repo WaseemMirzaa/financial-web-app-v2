@@ -4,9 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { ChatWindow } from '@/components/chat/ChatWindow';
-import { ChatPresenceList } from '@/components/chat/ChatPresenceList';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
 import { Loader } from '@/components/ui/Loader';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,8 +47,6 @@ export default function EmployeeChatPage() {
   const [loading, setLoading] = useState(true);
   const [startingChat, setStartingChat] = useState(false);
   const [chatSearchQuery, setChatSearchQuery] = useState('');
-  const [presenceModalChat, setPresenceModalChat] = useState<Chat | null>(null);
-  const [presenceModalKind, setPresenceModalKind] = useState<'online' | 'lastseen' | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -450,14 +445,21 @@ export default function EmployeeChatPage() {
                       {chat.lastMessage.content}
                     </p>
                   )}
-                  <ChatPresenceList
-                    chat={chat}
-                    t={t}
-                    locale={locale}
-                    showGreenDot={chat.participantPresence?.some((p) => p.isOnline)}
-                    onViewAllOnline={(c) => { setPresenceModalChat(c); setPresenceModalKind('online'); }}
-                    onViewAllLastSeen={(c) => { setPresenceModalChat(c); setPresenceModalKind('lastseen'); }}
-                  />
+                  {getPresenceLinesForList(chat, t, locale, user?.id).map((line, idx) => (
+                    <p
+                      key={idx}
+                      className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5"
+                    >
+                      {idx === 0 && chat.participantPresence?.some((p) => p.isOnline) && (
+                        <span
+                          className="shrink-0 w-2 h-2 rounded-full bg-green-500"
+                          title={t('chat.online')}
+                          aria-hidden
+                        />
+                      )}
+                      {line}
+                    </p>
+                  ))}
                 </button>
               ))
             )}
@@ -559,14 +561,21 @@ export default function EmployeeChatPage() {
                       {chat.lastMessage.content}
                     </p>
                   )}
-                  <ChatPresenceList
-                    chat={chat}
-                    t={t}
-                    locale={locale}
-                    showGreenDot={chat.participantPresence?.some((p) => p.isOnline)}
-                    onViewAllOnline={(c) => { setPresenceModalChat(c); setPresenceModalKind('online'); }}
-                    onViewAllLastSeen={(c) => { setPresenceModalChat(c); setPresenceModalKind('lastseen'); }}
-                  />
+                  {getPresenceLinesForList(chat, t, locale, user?.id).map((line, idx) => (
+                    <p
+                      key={idx}
+                      className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5"
+                    >
+                      {idx === 0 && chat.participantPresence?.some((p) => p.isOnline) && (
+                        <span
+                          className="shrink-0 w-2 h-2 rounded-full bg-green-500"
+                          title={t('chat.online')}
+                          aria-hidden
+                        />
+                      )}
+                      {line}
+                    </p>
+                  ))}
                 </button>
               ))
             )}
@@ -639,35 +648,6 @@ export default function EmployeeChatPage() {
         </div>
       </div>
       )}
-
-      <Modal
-        isOpen={!!presenceModalChat && !!presenceModalKind}
-        onClose={() => { setPresenceModalChat(null); setPresenceModalKind(null); }}
-        title={presenceModalKind === 'online' ? t('chat.onlineUsers') : t('chat.lastSeenUsers')}
-        footer={
-          <Button variant="primary" onClick={() => { setPresenceModalChat(null); setPresenceModalKind(null); }}>
-            {t('common.close')}
-          </Button>
-        }
-      >
-        {presenceModalChat && presenceModalKind && (
-          <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
-            {(presenceModalKind === 'online'
-              ? presenceModalChat.participantPresence?.filter((p) => p.isOnline)
-              : presenceModalChat.participantPresence?.filter((p) => !p.isOnline)
-            )?.map((p) => (
-              <li key={p.userId} className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
-                <span className="font-medium text-neutral-900">{p.name}</span>
-                {presenceModalKind === 'online' ? (
-                  <span className="text-xs text-green-600">{t('chat.online')}</span>
-                ) : (
-                  <span className="text-xs text-neutral-500">{formatLastSeenDateTime(p.lastSeenAt, locale)}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Modal>
     </div>
   );
 }
