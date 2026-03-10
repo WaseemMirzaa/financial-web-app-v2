@@ -71,7 +71,6 @@ export default function CustomerChatPage() {
   const [assignedEmployee, setAssignedEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [startingChat, setStartingChat] = useState(false);
-
   useEffect(() => {
     if (user?.id) {
       fetchChats();
