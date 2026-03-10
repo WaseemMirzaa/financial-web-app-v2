@@ -104,10 +104,9 @@ export default function LoginPage() {
       {/* Right: Login form */}
       <div className="flex-1 flex flex-col justify-center px-4 py-8 sm:px-6 sm:py-12 md:px-10 lg:px-12 xl:px-20 min-h-[100dvh] lg:min-h-0 safe-area-pb">
         <div className="mx-auto w-full max-w-[440px] bg-white rounded-2xl shadow-soft-lg border border-neutral-100 p-6 sm:p-8 md:p-10">
-          {/* Logo + headline for mobile/tablet */}
+          {/* Logo for mobile/tablet (no branded title) */}
           <div className="lg:hidden text-center mb-8">
             <img src="/logo.png" alt="" className="mx-auto h-14 w-auto object-contain mb-4" />
-            <h1 className="text-3xl sm:text-4xl font-bold text-primary-600 leading-[1.25] tracking-tight mb-2">{t('app.loanManager')}</h1>
             <p className="text-neutral-500 text-sm">{t('auth.professionalPlatform')}</p>
           </div>
 
