@@ -168,6 +168,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('user');
       const bridge = (typeof window !== 'undefined' && (window as unknown as { FlutterAppBridge?: { logout?: () => void } }).FlutterAppBridge);
       if (bridge?.logout) bridge.logout();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
   };
 

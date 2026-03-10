@@ -65,7 +65,6 @@ export function Header({ onMenuClick }: HeaderProps) {
 
   const handleLogout = () => {
     logout();
-    window.location.href = '/login';
   };
 
   return (
@@ -85,7 +84,6 @@ export function Header({ onMenuClick }: HeaderProps) {
             )}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img src="/logo.png" alt="" className="h-7 sm:h-8 md:h-9 w-auto object-contain" />
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-primary-600 truncate tracking-tight">{t('app.loanManager')}</h1>
             </div>
           </div>
 

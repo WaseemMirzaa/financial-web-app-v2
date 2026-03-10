@@ -66,7 +66,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.openMenu': 'Open menu',
     'common.changeLanguage': 'Change language',
     'common.notificationsAria': 'Notifications',
-    'app.loanManager': 'Loan Management Platform',
+    'app.loanManager': 'الخليج للتمويل',
     
     // Login & Signup
     'auth.emailOrCustomerId': 'Email or Customer ID',
@@ -176,7 +176,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'form.interestRate': 'Interest Rate',
     'form.numberOfInstallments': 'Number of Installments',
     'form.installmentTotal': 'Installment Amount',
-    'form.startDate': 'Start Date',
+    'form.startDate': 'Start loan date',
     'form.notes': 'Notes',
     'form.assigned': 'Assigned',
     'form.assignedEmployee': 'Assigned Employee',
@@ -545,7 +545,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.openMenu': 'فتح القائمة',
     'common.changeLanguage': 'تغيير اللغة',
     'common.notificationsAria': 'الإشعارات',
-    'app.loanManager': 'منصة إدارة القروض',
+    'app.loanManager': 'الخليج للتمويل',
     
     // Login & Signup
     'auth.emailOrCustomerId': 'البريد الإلكتروني أو رقم هوية العميل',
@@ -655,7 +655,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'form.interestRate': 'معدل الفائدة',
     'form.numberOfInstallments': 'عدد الأقساط',
     'form.installmentTotal': 'مبلغ القسط',
-    'form.startDate': 'تاريخ البدء',
+    'form.startDate': 'تاريخ بدء القرض',
     'form.notes': 'ملاحظات',
     'form.assigned': 'معين',
     'form.assignedEmployee': 'الموظف المعين',
