@@ -5,9 +5,10 @@ import { successResponse, errorResponse, notFoundError, serverError } from '@/li
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    const params = await Promise.resolve(context.params);
     const id = params?.id;
     if (!id) {
       return notFoundError('Customer');
@@ -61,20 +62,36 @@ export async function GET(
           [id]
         ) as any[];
       } else if (e?.code === 'ER_BAD_FIELD_ERROR') {
-        [rows] = await pool.query(
-          `SELECT u.*, 
-            ut_en.name as name_en,
-            ut_ar.name as name_ar,
-            c.phone,
-            c.address,
-            c.assigned_employee_id
-          FROM users u
-          INNER JOIN customers c ON u.id = c.id
-          LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-          LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-          WHERE u.id = ? AND u.role = 'customer'${customerFilter}`,
-          [id]
-        ) as any[];
+        try {
+          [rows] = await pool.query(
+            `SELECT u.*, 
+              ut_en.name as name_en,
+              ut_ar.name as name_ar,
+              c.phone,
+              c.address,
+              c.assigned_employee_id
+            FROM users u
+            INNER JOIN customers c ON u.id = c.id
+            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+            WHERE u.id = ? AND u.role = 'customer'${customerFilter}`,
+            [id]
+          ) as any[];
+        } catch (e2: any) {
+          if (e2?.code === 'ER_BAD_FIELD_ERROR') {
+            const activeFilter = isEmployee ? ' AND u.is_active = TRUE' : '';
+            [rows] = await pool.query(
+              `SELECT u.*, ut_en.name as name_en, ut_ar.name as name_ar, c.phone, c.address, c.assigned_employee_id
+               FROM users u INNER JOIN customers c ON u.id = c.id
+               LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+               LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+               WHERE u.id = ? AND u.role = 'customer'${activeFilter}`,
+              [id]
+            ) as any[];
+          } else {
+            throw e2;
+          }
+        }
       } else {
         throw e;
       }
@@ -116,16 +133,26 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const body = await request.json();
-    const { name, email, phone, address, password, isActive, customerIdNumber, nationality, systemEntryDate } = body;
+    const params = await Promise.resolve(context.params);
+    const id = params?.id;
+    if (!id) {
+      return notFoundError('Customer');
+    }
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (_) {
+      return errorResponse('Invalid JSON body', 400, 'error.invalidRequest');
+    }
+    const { name, email, phone, address, password, isActive, customerIdNumber, nationality, systemEntryDate } = body || {};
 
     // Check if customer exists
     const [existing] = await pool.query(
       'SELECT id FROM users WHERE id = ? AND role = ?',
-      [params.id, 'customer']
+      [id, 'customer']
     ) as any[];
 
     if (existing.length === 0) {
@@ -137,7 +164,7 @@ export async function PUT(
       try {
         const [dup] = await pool.query(
           'SELECT id FROM customers WHERE customer_id_number = ? AND id != ?',
-          [custIdNum, params.id]
+          [custIdNum, id]
         ) as any[];
         if (dup?.length > 0) {
           return errorResponse('Customer ID Number already in use', 409, 'error.customerIdNumberExists');
@@ -155,7 +182,7 @@ export async function PUT(
       if (email) {
         await connection.query(
           'UPDATE users SET email = ? WHERE id = ?',
-          [email, params.id]
+          [email, id]
         );
       }
 
@@ -164,7 +191,7 @@ export async function PUT(
         const passwordHash = await hashPassword(password);
         await connection.query(
           'UPDATE users SET password_hash = ? WHERE id = ?',
-          [passwordHash, params.id]
+          [passwordHash, id]
         );
       }
 
@@ -173,12 +200,12 @@ export async function PUT(
         await connection.query(
           `INSERT INTO user_translations (user_id, locale, name) VALUES (?, 'en', ?)
            ON DUPLICATE KEY UPDATE name = VALUES(name)`,
-          [params.id, name]
+          [id, name]
         );
         await connection.query(
           `INSERT INTO user_translations (user_id, locale, name) VALUES (?, 'ar', ?)
            ON DUPLICATE KEY UPDATE name = VALUES(name)`,
-          [params.id, name]
+          [id, name]
         );
       }
 
@@ -198,7 +225,7 @@ export async function PUT(
           updates.push('system_entry_date = ?');
           values.push(systemEntryDate || null);
         }
-        values.push(params.id);
+        values.push(id);
         await connection.query(
           `UPDATE customers SET ${updates.join(', ')} WHERE id = ?`,
           values
@@ -207,7 +234,7 @@ export async function PUT(
         if (colErr?.code === 'ER_BAD_FIELD_ERROR') {
           await connection.query(
             'UPDATE customers SET phone = ?, address = ? WHERE id = ?',
-            [phone || null, address || null, params.id]
+            [phone || null, address || null, id]
           );
         } else {
           throw colErr;
@@ -218,7 +245,7 @@ export async function PUT(
       if (typeof isActive === 'boolean') {
         await connection.query(
           'UPDATE users SET is_active = ? WHERE id = ?',
-          [isActive, params.id]
+          [isActive, id]
         );
       }
 
@@ -242,7 +269,7 @@ export async function PUT(
           LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
           LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
           WHERE u.id = ? AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
-          [params.id]
+          [id]
         ) as any[];
       } catch (e: any) {
         if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
@@ -261,23 +288,32 @@ export async function PUT(
             LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
             LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
             WHERE u.id = ?`,
-            [params.id]
+            [id]
           ) as any[];
         } else if (e?.code === 'ER_BAD_FIELD_ERROR') {
-          [rows] = await pool.query(
-            `SELECT u.*, 
-              ut_en.name as name_en,
-              ut_ar.name as name_ar,
-              c.phone,
-              c.address,
-              c.assigned_employee_id
-            FROM users u
-            INNER JOIN customers c ON u.id = c.id
-            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-            WHERE u.id = ? AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
-            [params.id]
-          ) as any[];
+          try {
+            [rows] = await pool.query(
+              `SELECT u.*, ut_en.name as name_en, ut_ar.name as name_ar, c.phone, c.address, c.assigned_employee_id
+               FROM users u INNER JOIN customers c ON u.id = c.id
+               LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+               LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+               WHERE u.id = ? AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
+              [id]
+            ) as any[];
+          } catch (e2: any) {
+            if (e2?.code === 'ER_BAD_FIELD_ERROR') {
+              [rows] = await pool.query(
+                `SELECT u.*, ut_en.name as name_en, ut_ar.name as name_ar, c.phone, c.address, c.assigned_employee_id
+                 FROM users u INNER JOIN customers c ON u.id = c.id
+                 LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+                 LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+                 WHERE u.id = ?`,
+                [id]
+              ) as any[];
+            } else {
+              throw e2;
+            }
+          }
         } else {
           throw e;
         }
@@ -316,12 +352,17 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    const params = await Promise.resolve(context.params);
+    const id = params?.id;
+    if (!id) {
+      return notFoundError('Customer');
+    }
     const [existing] = await pool.query(
       'SELECT id FROM users WHERE id = ? AND role = ?',
-      [params.id, 'customer']
+      [id, 'customer']
     ) as any[];
 
     if (existing.length === 0) {
@@ -335,17 +376,17 @@ export async function DELETE(
       // 1. Unassign all employees from this customer
       await connection.query(
         'DELETE FROM employee_customer_assignments WHERE customer_id = ?',
-        [params.id]
+        [id]
       );
       await connection.query(
         'UPDATE customers SET assigned_employee_id = NULL WHERE id = ?',
-        [params.id]
+        [id]
       );
 
       // 2. Delete all loans (notifications, translations, loan_employees, then loans)
       const [loanRows] = await connection.query(
         'SELECT id FROM loans WHERE customer_id = ?',
-        [params.id]
+        [id]
       ) as any[];
       const loanIds = loanRows.map((r: any) => r.id);
       if (loanIds.length > 0) {
@@ -357,7 +398,7 @@ export async function DELETE(
       }
       await connection.query(
         'DELETE FROM notifications WHERE reference_id = ?',
-        [`assignment-${params.id}`]
+        [`assignment-${id}`]
       );
       for (const loanId of loanIds) {
         await connection.query('DELETE FROM loan_translations WHERE loan_id = ?', [loanId]);
@@ -367,12 +408,12 @@ export async function DELETE(
           // loan_employees table may not exist
         }
       }
-      await connection.query('DELETE FROM loans WHERE customer_id = ?', [params.id]);
+      await connection.query('DELETE FROM loans WHERE customer_id = ?', [id]);
 
       // 3. Delete all unified chats (read status, messages, participants, chats) and chat-related notifications
       const [customerChats] = await connection.query(
         'SELECT chat_id FROM chat_participants WHERE user_id = ?',
-        [params.id]
+        [id]
       ) as any[];
       const chatIds = customerChats.map((r: any) => r.chat_id);
       if (chatIds.length > 0) {
@@ -394,11 +435,11 @@ export async function DELETE(
       }
 
       // 4. Delete all notifications for this customer (translations CASCADE from notifications)
-      await connection.query('DELETE FROM notifications WHERE user_id = ?', [params.id]);
+      await connection.query('DELETE FROM notifications WHERE user_id = ?', [id]);
 
       // 5. Hard delete customer and user (no archive)
-      await connection.query('DELETE FROM customers WHERE id = ?', [params.id]);
-      await connection.query('DELETE FROM users WHERE id = ?', [params.id]);
+      await connection.query('DELETE FROM customers WHERE id = ?', [id]);
+      await connection.query('DELETE FROM users WHERE id = ?', [id]);
 
       await connection.commit();
       return successResponse({}, 'Customer deleted successfully', 'error.customerDeletedSuccessfully');
