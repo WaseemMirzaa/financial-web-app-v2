@@ -29,7 +29,10 @@ export async function GET(
           ut_ar.name as name_ar,
           c.phone,
           c.address,
-          c.assigned_employee_id
+          c.assigned_employee_id,
+          c.customer_id_number,
+          c.nationality,
+          c.system_entry_date
         FROM users u
         INNER JOIN customers c ON u.id = c.id
         LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
@@ -46,12 +49,30 @@ export async function GET(
             ut_ar.name as name_ar,
             c.phone,
             c.address,
-            c.assigned_employee_id
+            c.assigned_employee_id,
+            c.customer_id_number,
+            c.nationality,
+            c.system_entry_date
           FROM users u
           INNER JOIN customers c ON u.id = c.id
           LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
           LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
           WHERE u.id = ? AND u.role = 'customer'${activeFilter}`,
+          [id]
+        ) as any[];
+      } else if (e?.code === 'ER_BAD_FIELD_ERROR') {
+        [rows] = await pool.query(
+          `SELECT u.*, 
+            ut_en.name as name_en,
+            ut_ar.name as name_ar,
+            c.phone,
+            c.address,
+            c.assigned_employee_id
+          FROM users u
+          INNER JOIN customers c ON u.id = c.id
+          LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+          LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+          WHERE u.id = ? AND u.role = 'customer'${customerFilter}`,
           [id]
         ) as any[];
       } else {
@@ -69,7 +90,7 @@ export async function GET(
       [id]
     ) as any[];
     const assignedEmployeeIds = assignRows?.map((r: any) => r.employee_id) || [];
-    const customerData = {
+    const customerData: any = {
       id: customer.id,
       email: customer.email,
       name: customer.name_en || customer.email,
@@ -82,6 +103,9 @@ export async function GET(
       assignedEmployeeId: customer.assigned_employee_id || (assignedEmployeeIds[0] || ''),
       assignedEmployeeIds,
     };
+    if (customer.customer_id_number !== undefined) customerData.customerIdNumber = customer.customer_id_number ?? null;
+    if (customer.nationality !== undefined) customerData.nationality = customer.nationality ?? null;
+    if (customer.system_entry_date !== undefined) customerData.systemEntryDate = customer.system_entry_date ?? null;
 
     return successResponse(customerData);
   } catch (error: any) {
@@ -96,7 +120,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, email, phone, address, password, isActive } = body;
+    const { name, email, phone, address, password, isActive, customerIdNumber, nationality, systemEntryDate } = body;
 
     // Check if customer exists
     const [existing] = await pool.query(
@@ -106,6 +130,21 @@ export async function PUT(
 
     if (existing.length === 0) {
       return notFoundError('Customer');
+    }
+
+    const custIdNum = typeof customerIdNumber === 'string' ? customerIdNumber.trim() || null : undefined;
+    if (custIdNum !== undefined) {
+      try {
+        const [dup] = await pool.query(
+          'SELECT id FROM customers WHERE customer_id_number = ? AND id != ?',
+          [custIdNum, params.id]
+        ) as any[];
+        if (dup?.length > 0) {
+          return errorResponse('Customer ID Number already in use', 409, 'error.customerIdNumberExists');
+        }
+      } catch (colErr: any) {
+        if (colErr?.code !== 'ER_BAD_FIELD_ERROR') throw colErr;
+      }
     }
 
     const connection = await pool.getConnection();
@@ -144,10 +183,36 @@ export async function PUT(
       }
 
       // Update customer
-      await connection.query(
-        'UPDATE customers SET phone = ?, address = ? WHERE id = ?',
-        [phone || null, address || null, params.id]
-      );
+      try {
+        const updates: string[] = ['phone = ?', 'address = ?'];
+        const values: any[] = [phone ?? null, address ?? null];
+        if (custIdNum !== undefined) {
+          updates.push('customer_id_number = ?');
+          values.push(custIdNum);
+        }
+        if (nationality !== undefined) {
+          updates.push('nationality = ?');
+          values.push(nationality || null);
+        }
+        if (systemEntryDate !== undefined) {
+          updates.push('system_entry_date = ?');
+          values.push(systemEntryDate || null);
+        }
+        values.push(params.id);
+        await connection.query(
+          `UPDATE customers SET ${updates.join(', ')} WHERE id = ?`,
+          values
+        );
+      } catch (colErr: any) {
+        if (colErr?.code === 'ER_BAD_FIELD_ERROR') {
+          await connection.query(
+            'UPDATE customers SET phone = ?, address = ? WHERE id = ?',
+            [phone || null, address || null, params.id]
+          );
+        } else {
+          throw colErr;
+        }
+      }
 
       // Update is_active if provided
       if (typeof isActive === 'boolean') {
@@ -159,7 +224,7 @@ export async function PUT(
 
       await connection.commit();
 
-      // Return updated customer (fallback if is_deleted column missing)
+      // Return updated customer (fallback if is_deleted or new columns missing)
       let rows: any[];
       try {
         [rows] = await pool.query(
@@ -168,7 +233,10 @@ export async function PUT(
             ut_ar.name as name_ar,
             c.phone,
             c.address,
-            c.assigned_employee_id
+            c.assigned_employee_id,
+            c.customer_id_number,
+            c.nationality,
+            c.system_entry_date
           FROM users u
           INNER JOIN customers c ON u.id = c.id
           LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
@@ -184,12 +252,30 @@ export async function PUT(
               ut_ar.name as name_ar,
               c.phone,
               c.address,
-              c.assigned_employee_id
+              c.assigned_employee_id,
+              c.customer_id_number,
+              c.nationality,
+              c.system_entry_date
             FROM users u
             INNER JOIN customers c ON u.id = c.id
             LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
             LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
             WHERE u.id = ?`,
+            [params.id]
+          ) as any[];
+        } else if (e?.code === 'ER_BAD_FIELD_ERROR') {
+          [rows] = await pool.query(
+            `SELECT u.*, 
+              ut_en.name as name_en,
+              ut_ar.name as name_ar,
+              c.phone,
+              c.address,
+              c.assigned_employee_id
+            FROM users u
+            INNER JOIN customers c ON u.id = c.id
+            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+            WHERE u.id = ? AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
             [params.id]
           ) as any[];
         } else {
@@ -198,7 +284,7 @@ export async function PUT(
       }
 
       const customer = rows[0];
-      const customerData = {
+      const customerData: any = {
         id: customer.id,
         email: customer.email,
         name: customer.name_en || customer.email,
@@ -211,6 +297,9 @@ export async function PUT(
         address: customer.address,
         assignedEmployeeId: customer.assigned_employee_id || '',
       };
+      if (customer.customer_id_number !== undefined) customerData.customerIdNumber = customer.customer_id_number ?? null;
+      if (customer.nationality !== undefined) customerData.nationality = customer.nationality ?? null;
+      if (customer.system_entry_date !== undefined) customerData.systemEntryDate = customer.system_entry_date ?? null;
 
       return successResponse(customerData, 'Customer updated successfully', 'error.customerUpdatedSuccessfully');
     } catch (error) {

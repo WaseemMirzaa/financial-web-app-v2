@@ -12,6 +12,19 @@ import { Chat, ChatMessage } from '@/types';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
 import { fetchApi } from '@/lib/fetchApi';
+import { formatLastSeen } from '@/lib/utils';
+
+function getPresenceSubtitle(chat: Chat, t: (k: string) => string): string {
+  const pres = chat.participantPresence;
+  if (!pres?.length) return '';
+  if (pres.length === 1) {
+    return pres[0].isOnline ? t('chat.online') : `${t('chat.lastSeen')} ${formatLastSeen(pres[0].lastSeenAt)}`;
+  }
+  const onlineCount = pres.filter((p) => p.isOnline).length;
+  if (onlineCount > 0) return `${onlineCount} ${t('chat.online')}`;
+  const mostRecent = pres.reduce((a, b) => (a.lastSeenAt && b.lastSeenAt && a.lastSeenAt > b.lastSeenAt ? a : b));
+  return `${t('chat.lastSeen')} ${formatLastSeen(mostRecent.lastSeenAt)}`;
+}
 
 export default function CustomerChatPage() {
   const pathname = usePathname();
@@ -129,17 +142,33 @@ export default function CustomerChatPage() {
     }
   }, [selectedChat, locale]);
 
-  // Real-time: poll messages while a chat is open (keeps polling when tab minimized)
   useEffect(() => {
     if (!selectedChat) return;
-    const interval = setInterval(() => fetchMessages(selectedChat), 45000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchMessages(selectedChat);
+      }
+    }, 90000);
     return () => clearInterval(interval);
   }, [selectedChat, locale]);
 
-  // Real-time: poll chat list for new/deleted chats
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => fetchChats(), 30000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchChats();
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchApi(`/api/auth/heartbeat?userId=${encodeURIComponent(user.id)}`).catch(() => {});
+      }
+    }, 60000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
@@ -366,6 +395,9 @@ export default function CustomerChatPage() {
                     {chat.lastMessage.content}
                   </p>
                 )}
+                {getPresenceSubtitle(chat, t) && (
+                  <p className="text-xs text-neutral-500 mt-0.5">{getPresenceSubtitle(chat, t)}</p>
+                )}
               </button>
             ))}
           </div>
@@ -408,6 +440,9 @@ export default function CustomerChatPage() {
                   }`}>
                     {chat.lastMessage.content}
                   </p>
+                )}
+                {getPresenceSubtitle(chat, t) && (
+                  <p className="text-xs text-neutral-500 mt-0.5">{getPresenceSubtitle(chat, t)}</p>
                 )}
               </button>
             ))}

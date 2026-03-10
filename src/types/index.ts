@@ -26,6 +26,9 @@ export interface Customer extends User {
   assignedEmployeeIds?: string[];
   phone?: string;
   address?: string;
+  customerIdNumber?: string;
+  nationality?: string;
+  systemEntryDate?: string;
 }
 
 export interface Loan {
@@ -84,11 +87,20 @@ export interface ChatMessage {
   } | null;
 }
 
+export interface ParticipantPresence {
+  userId: string;
+  name: string;
+  lastSeenAt: string | null;
+  isOnline: boolean;
+}
+
 export interface Chat {
   id: string;
   type: 'customer_employee' | 'internal_room';
   participantIds?: string[]; // Other participants' user ids (for search)
   participantNames?: string[]; // Names of other participants (excluding current user)
+  participantPresence?: ParticipantPresence[]; // Last seen / online for each other participant
+  customerPhone?: string; // Customer phone (customer_employee chats, for admin/employee header)
   roomName?: string; // For internal rooms
   isPinned?: boolean;
   pinnedAt?: string;

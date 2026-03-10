@@ -113,6 +113,20 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
     };
   }, []);
 
+  // Instant search: filter current messages by query (same chat only)
+  const instantSearchResults = React.useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.toLowerCase().trim();
+    return messages.filter(
+      (m) =>
+        !m.isDeleted &&
+        ((m.content && m.content.toLowerCase().includes(q)) ||
+          (m.fileName && m.fileName.toLowerCase().includes(q)))
+    );
+  }, [messages, searchQuery]);
+
+  const searchResultsToShow = instantSearchResults;
+
   // Reset when switching chats
   useEffect(() => {
     prevLastMessageIdRef.current = null;
@@ -399,34 +413,6 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
     }, 2000);
   };
 
-  const handleSearch = async () => {
-    if (!chatId || !user?.id || !searchQuery.trim()) return;
-    setSearchLoading(true);
-    setSearchError(null);
-    try {
-      const params = new URLSearchParams({
-        userId: user.id,
-        locale,
-        query: searchQuery.trim(),
-      });
-      const res = await fetchApi(`/api/chat/${chatId}/messages/search?${params.toString()}`);
-      const data = await res.json();
-      if (!data.success) {
-        setSearchError(data.error || t('error.genericError'));
-        setSearchResults(null);
-        return;
-      }
-      setSearchResults(data.data || []);
-    } catch (error) {
-      reloadIfStaleDeploy(error);
-      console.error('Search messages error:', error);
-      setSearchError(t('error.genericError'));
-      setSearchResults(null);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
   return (
     <Card
       variant="elevated"
@@ -469,22 +455,15 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSearch();
-                    }
-                  }}
                   placeholder={t('chat.searchMessages')}
                   className="w-full rounded-full border border-neutral-200 bg-white pl-10 pr-10 py-1.5 text-xs sm:text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                 />
                 <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                {(searchQuery || (searchResults !== null && (searchResults.length > 0 || !searchLoading))) && (
+                {searchQuery && (
                   <button
                     type="button"
                     onClick={() => {
                       setSearchQuery('');
-                      setSearchResults(null);
                       setSearchError(null);
                     }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
@@ -494,20 +473,11 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
                   </button>
                 )}
               </div>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={handleSearch}
-                disabled={searchLoading || !searchQuery.trim()}
-                className="text-xs sm:text-sm"
-              >
-                {searchLoading ? t('common.loading') + '...' : t('common.search')}
-              </Button>
             </div>
           )}
-          {searchResults && searchResults.length > 0 && (
+          {searchResultsToShow && searchResultsToShow.length > 0 && (
             <div className="max-h-32 overflow-y-auto -mx-1 px-1 pb-1 space-y-1">
-              {searchResults.map((msg) => (
+              {searchResultsToShow.map((msg) => (
                 <button
                   key={msg.id}
                   type="button"
@@ -524,7 +494,7 @@ export function ChatWindow({ messages, onSendMessage, title, chatId, readOnly, o
               ))}
             </div>
           )}
-          {searchResults && searchResults.length === 0 && !searchLoading && (
+          {searchQuery.trim() && searchResultsToShow && searchResultsToShow.length === 0 && (
             <p className="text-[11px] text-neutral-500">{t('chat.noSearchResults')}</p>
           )}
           {searchError && (

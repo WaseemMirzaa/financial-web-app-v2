@@ -140,18 +140,40 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // Get participants for all chats in a single query
-    const [participantRows] = await pool.query(
-      `SELECT cp.chat_id, cp.user_id, u.role, u.email,
-        ut_en.name AS name_en,
-        ut_ar.name AS name_ar
-      FROM chat_participants cp
-      INNER JOIN users u ON cp.user_id = u.id
-      LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-      LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-      WHERE cp.chat_id IN (?)`,
-      [chatIds]
-    ) as any[];
+    // Get participants for all chats (include customer phone for customer_employee)
+    let participantRows: any[];
+    try {
+      [participantRows] = await pool.query(
+        `SELECT cp.chat_id, cp.user_id, u.role, u.email,
+          ut_en.name AS name_en,
+          ut_ar.name AS name_ar,
+          u.last_seen_at,
+          cust.phone AS customer_phone
+        FROM chat_participants cp
+        INNER JOIN users u ON cp.user_id = u.id
+        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+        LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+        LEFT JOIN customers cust ON cust.id = cp.user_id AND u.role = 'customer'
+        WHERE cp.chat_id IN (?)`,
+        [chatIds]
+      ) as any[];
+    } catch (e: any) {
+      if (e?.code === 'ER_BAD_FIELD_ERROR') {
+        [participantRows] = await pool.query(
+          `SELECT cp.chat_id, cp.user_id, u.role, u.email,
+            ut_en.name AS name_en,
+            ut_ar.name AS name_ar
+          FROM chat_participants cp
+          INNER JOIN users u ON cp.user_id = u.id
+          LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+          LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+          WHERE cp.chat_id IN (?)`,
+          [chatIds]
+        ) as any[];
+      } else {
+        throw e;
+      }
+    }
 
     const participantsByChatId = new Map<string, any[]>();
     (participantRows || []).forEach((p: any) => {
@@ -222,20 +244,42 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+
     const chats = rows.map((chat: any) => {
       const lastMessage = lastMessageByChatId.get(chat.id);
       const participants = participantsByChatId.get(chat.id) || [];
+
+      const others = participants.filter((p: any) => p.user_id !== userId);
+      const participantPresence = others.map((p: any) => {
+        const name = p.role === 'admin' ? 'Admin' : (p.name_en || p.name_ar || p.user_id);
+        const lastSeenAt = p.last_seen_at ?? null;
+        const isOnline =
+          lastSeenAt &&
+          new Date(lastSeenAt).getTime() > Date.now() - ONLINE_THRESHOLD_MS;
+        return {
+          userId: p.user_id,
+          name,
+          lastSeenAt,
+          isOnline: !!isOnline,
+        };
+      });
 
       let participantNames: string[] = [];
       let participantIds: string[] = [];
       let assignedEmployeeName: string | null = null;
       let assignedEmployeeId: string | null = null;
+      let customerPhone: string | null = null;
 
       if (chat.type === 'customer_employee') {
         const customers = (participants || []).filter((p: any) => p.role === 'customer');
         const employees = (participants || []).filter((p: any) => p.role === 'employee');
         participantNames = customers.map((p: any) => p.name_en || p.name_ar || p.user_id);
         participantIds = participants.map((p: any) => p.user_id);
+        if (customers.length > 0) {
+          const cust = customers[0];
+          if (cust?.customer_phone) customerPhone = cust.customer_phone;
+        }
         if (employees.length > 0) {
           const emp = employees[0];
           assignedEmployeeName = emp.name_en || emp.name_ar || emp.user_id;
@@ -257,6 +301,8 @@ export async function GET(request: NextRequest) {
         roomName: chat.room_name,
         participantNames,
         participantIds,
+        participantPresence,
+        customerPhone: customerPhone ?? undefined,
         assignedEmployeeName,
         assignedEmployeeId,
         isPinned: Boolean(chat.is_pinned),

@@ -119,12 +119,12 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             <div className="space-y-1">
               <Input
-                label={t('common.email')}
-                type="email"
+                label={t('auth.emailOrCustomerId')}
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder={t('form.placeholder.email')}
+                placeholder={t('form.placeholder.emailOrCustomerId')}
                 size="medium"
               />
             </div>

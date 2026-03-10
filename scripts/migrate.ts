@@ -7,7 +7,8 @@ dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 /**
  * Additive migration only: creates DB/tables if not exist, adds columns/indexes/constraints.
- * Does NOT drop tables, truncate, or delete data. Existing data is preserved.
+ * Does NOT drop tables, truncate, or delete data. All existing data is preserved.
+ * New columns are NULL or have defaults so current rows are unchanged. Safe to run repeatedly.
  */
 async function migrate() {
   const connection = await mysql.createConnection({
@@ -61,6 +62,11 @@ async function migrate() {
     } catch (e: any) {
       if (e.code !== 'ER_DUP_KEYNAME') throw e;
     }
+    try {
+      await connection.query(`ALTER TABLE users ADD COLUMN last_seen_at TIMESTAMP NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
 
     // Create password_reset_tokens table
     await connection.query(`
@@ -104,6 +110,28 @@ async function migrate() {
         INDEX idx_assigned_employee (assigned_employee_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Add customer_id_number, nationality, system_entry_date (additive only)
+    try {
+      await connection.query(`ALTER TABLE customers ADD COLUMN customer_id_number VARCHAR(255) NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE customers ADD COLUMN nationality VARCHAR(255) NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE customers ADD COLUMN system_entry_date DATE NULL`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await connection.query(`ALTER TABLE customers ADD INDEX idx_customer_id_number (customer_id_number)`);
+    } catch (e: any) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
 
     // Create employees table
     await connection.query(`

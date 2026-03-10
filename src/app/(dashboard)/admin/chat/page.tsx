@@ -17,6 +17,19 @@ import { Pin, PinOff, Trash2, Bookmark } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
 import { fetchApi } from '@/lib/fetchApi';
+import { formatLastSeen } from '@/lib/utils';
+
+function getPresenceSubtitle(chat: Chat, t: (k: string) => string): string {
+  const pres = chat.participantPresence;
+  if (!pres?.length) return '';
+  if (pres.length === 1) {
+    return pres[0].isOnline ? t('chat.online') : `${t('chat.lastSeen')} ${formatLastSeen(pres[0].lastSeenAt)}`;
+  }
+  const onlineCount = pres.filter((p) => p.isOnline).length;
+  if (onlineCount > 0) return `${onlineCount} ${t('chat.online')}`;
+  const mostRecent = pres.reduce((a, b) => (a.lastSeenAt && b.lastSeenAt && a.lastSeenAt > b.lastSeenAt ? a : b));
+  return `${t('chat.lastSeen')} ${formatLastSeen(mostRecent.lastSeenAt)}`;
+}
 
 export default function AdminChatPage() {
   const pathname = usePathname();
@@ -35,6 +48,7 @@ export default function AdminChatPage() {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [creatingRoom, setCreatingRoom] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [employeeFilterId, setEmployeeFilterId] = useState('');
   const [deleteConfirmChat, setDeleteConfirmChat] = useState<Chat | null>(null);
   const [deleteRoomError, setDeleteRoomError] = useState('');
   const [createRoomError, setCreateRoomError] = useState('');
@@ -148,23 +162,45 @@ export default function AdminChatPage() {
     }
   }, [selectedChat, locale]);
 
-  // Real-time: poll messages while a chat is open (keeps polling when tab minimized)
+  // Real-time: poll only when tab visible; 90s messages, 60s chat list
   useEffect(() => {
     if (!selectedChat) return;
-    const interval = setInterval(() => fetchMessages(selectedChat), 45000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchMessages(selectedChat);
+      }
+    }, 90000);
     return () => clearInterval(interval);
   }, [selectedChat, locale]);
 
-  // Real-time: poll chat list for pinning updates (keeps polling when tab minimized)
   useEffect(() => {
     if (!user?.id) return;
-    const interval = setInterval(() => fetchChats(), 30000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchChats();
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
+  // Heartbeat: update last_seen_at when tab visible (every 60s)
+  useEffect(() => {
+    if (!user?.id) return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchApi(`/api/auth/heartbeat?userId=${encodeURIComponent(user.id)}`).catch(() => {});
+      }
+    }, 60000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
   const selectedChatData = chats.find(c => c.id === selectedChat);
-  
-  const filteredChats = chats.filter((chat) => {
+
+  const chatsByEmployee = employeeFilterId
+    ? chats.filter((c) => c.type === 'customer_employee' && c.assignedEmployeeId === employeeFilterId)
+    : chats;
+
+  const filteredChats = chatsByEmployee.filter((chat) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     if (chat.type === 'internal_room' && chat.roomName) {
@@ -402,9 +438,9 @@ export default function AdminChatPage() {
             title={
               selectedChatData.type === 'internal_room'
                 ? translateRoomName(selectedChatData.roomName)
-                : selectedChatData.participantNames && selectedChatData.participantNames.length > 0
-                ? selectedChatData.participantNames.join(', ')
-                : t('chat.customerChat')
+                : (selectedChatData.participantNames && selectedChatData.participantNames.length > 0
+                  ? selectedChatData.participantNames.join(', ')
+                  : t('chat.customerChat')) + (selectedChatData.customerPhone ? ` · ${selectedChatData.customerPhone}` : '')
             }
             readOnly={selectedChatData.type === 'customer_employee'}
             pinnedMessageId={selectedChatData.pinnedMessageId}
@@ -434,6 +470,19 @@ export default function AdminChatPage() {
               </Button>
             </div>
             <p className="text-xs text-neutral-500 mb-2">{t('chat.adminMonitorOnly')}</p>
+            <div className="mb-2">
+              <select
+                value={employeeFilterId}
+                onChange={(e) => setEmployeeFilterId(e.target.value)}
+                className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                aria-label={t('chat.filterAllEmployees')}
+              >
+                <option value="">{t('chat.filterAllEmployees')}</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>{emp.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-center gap-2">
               <Input
                 value={searchQuery}
@@ -455,7 +504,7 @@ export default function AdminChatPage() {
           <div className="divide-y divide-neutral-100 overflow-y-auto overflow-x-hidden flex-1 min-w-0">
             {filteredChats.length === 0 ? (
               <div className="p-4 text-center text-neutral-500">
-                <p>{searchQuery ? t('common.noResults') : t('chat.noChats')}</p>
+                <p>{searchQuery || employeeFilterId ? t('common.noResults') : t('chat.noChats')}</p>
               </div>
             ) : (
               <>
@@ -504,14 +553,17 @@ export default function AdminChatPage() {
                               </div>
                               {chat.lastMessage && (
                                 <p className={`text-sm mt-1 line-clamp-1 break-words ${
-                                  chat.lastMessage.isDeleted 
-                                    ? 'text-neutral-400 italic' 
+                                  chat.lastMessage.isDeleted
+                                    ? 'text-neutral-400 italic'
                                     : chat.unreadCount > 0
                                     ? 'text-neutral-900 font-medium'
                                     : 'text-neutral-600'
                                 }`}>
                                   {chat.lastMessage.content}
                                 </p>
+                              )}
+                              {getPresenceSubtitle(chat, t) && (
+                                <p className="text-xs text-neutral-500 mt-0.5">{getPresenceSubtitle(chat, t)}</p>
                               )}
                             </div>
                           </div>
@@ -594,6 +646,9 @@ export default function AdminChatPage() {
                             }`}>
                               {chat.lastMessage.content}
                             </p>
+                          )}
+                          {getPresenceSubtitle(chat, t) && (
+                            <p className="text-xs text-neutral-500 mt-0.5">{getPresenceSubtitle(chat, t)}</p>
                           )}
                         </button>
                         <div className="flex items-center gap-1 px-2 shrink-0">
@@ -644,6 +699,19 @@ export default function AdminChatPage() {
               </Button>
             </div>
             <p className="text-xs text-neutral-500 mb-2">{t('chat.adminMonitorOnly')}</p>
+            <div className="mb-2">
+              <select
+                value={employeeFilterId}
+                onChange={(e) => setEmployeeFilterId(e.target.value)}
+                className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                aria-label={t('chat.filterAllEmployees')}
+              >
+                <option value="">{t('chat.filterAllEmployees')}</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>{emp.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-center gap-2">
               <Input
                 value={searchQuery}
@@ -665,7 +733,7 @@ export default function AdminChatPage() {
           <div className="divide-y divide-neutral-100 overflow-y-auto overflow-x-hidden flex-1 min-w-0">
             {filteredChats.length === 0 ? (
               <div className="p-4 text-center text-neutral-500">
-                <p>{searchQuery ? t('common.noResults') : t('chat.noChats')}</p>
+                <p>{searchQuery || employeeFilterId ? t('common.noResults') : t('chat.noChats')}</p>
               </div>
             ) : (
               <>
@@ -714,14 +782,17 @@ export default function AdminChatPage() {
                               </div>
                               {chat.lastMessage && (
                                 <p className={`text-sm mt-1 line-clamp-1 break-words ${
-                                  chat.lastMessage.isDeleted 
-                                    ? 'text-neutral-400 italic' 
+                                  chat.lastMessage.isDeleted
+                                    ? 'text-neutral-400 italic'
                                     : chat.unreadCount > 0
                                     ? 'text-neutral-900 font-medium'
                                     : 'text-neutral-600'
                                 }`}>
                                   {chat.lastMessage.content}
                                 </p>
+                              )}
+                              {getPresenceSubtitle(chat, t) && (
+                                <p className="text-xs text-neutral-500 mt-0.5">{getPresenceSubtitle(chat, t)}</p>
                               )}
                             </div>
                           </div>
@@ -804,6 +875,9 @@ export default function AdminChatPage() {
                             }`}>
                               {chat.lastMessage.content}
                             </p>
+                          )}
+                          {getPresenceSubtitle(chat, t) && (
+                            <p className="text-xs text-neutral-500 mt-0.5">{getPresenceSubtitle(chat, t)}</p>
                           )}
                         </button>
                         <div className="flex items-center gap-1 px-2 shrink-0">
@@ -885,9 +959,9 @@ export default function AdminChatPage() {
               title={
                 selectedChatData.type === 'internal_room'
                   ? translateRoomName(selectedChatData.roomName)
-                  : selectedChatData.participantNames && selectedChatData.participantNames.length > 0
-                  ? selectedChatData.participantNames.join(', ')
-                  : t('chat.customerChat')
+                  : (selectedChatData.participantNames && selectedChatData.participantNames.length > 0
+                    ? selectedChatData.participantNames.join(', ')
+                    : t('chat.customerChat')) + (selectedChatData.customerPhone ? ` · ${selectedChatData.customerPhone}` : '')
               }
               readOnly={selectedChatData.type === 'customer_employee'}
               pinnedMessageId={selectedChatData.pinnedMessageId}

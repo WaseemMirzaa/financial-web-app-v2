@@ -13,7 +13,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'الخليج للتمويل',
+  title: 'Loan Management Platform',
   description: 'Professional loan management platform',
   icons: { icon: '/icon.png', apple: '/icon.png' },
 };

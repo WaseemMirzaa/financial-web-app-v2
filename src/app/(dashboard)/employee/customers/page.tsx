@@ -26,7 +26,7 @@ export default function EmployeeCustomersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', password: '', customerIdNumber: '', nationality: '', systemEntryDate: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -78,14 +78,14 @@ export default function EmployeeCustomersPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingCustomer(null);
-    setFormData({ name: '', email: '', phone: '', address: '', password: '' });
+    setFormData({ name: '', email: '', phone: '', address: '', password: '', customerIdNumber: '', nationality: '', systemEntryDate: '' });
     setFormErrors({});
     setSubmitError('');
   };
 
   const handleCreate = () => {
     setEditingCustomer(null);
-    setFormData({ name: '', email: '', phone: '', address: '', password: '' });
+    setFormData({ name: '', email: '', phone: '', address: '', password: '', customerIdNumber: '', nationality: '', systemEntryDate: new Date().toISOString().slice(0, 10) });
     setFormErrors({});
     setSubmitError('');
     setIsModalOpen(true);
@@ -101,6 +101,9 @@ export default function EmployeeCustomersPage() {
       phone: customer.phone || '',
       address: customer.address || '',
       password: '',
+      customerIdNumber: customer.customerIdNumber ?? '',
+      nationality: customer.nationality ?? '',
+      systemEntryDate: customer.systemEntryDate ?? '',
     });
     setFormErrors({});
     setSubmitError('');
@@ -123,6 +126,9 @@ export default function EmployeeCustomersPage() {
             phone: formData.phone,
             address: formData.address,
             ...(formData.password && { password: formData.password }),
+            customerIdNumber: formData.customerIdNumber || undefined,
+            nationality: formData.nationality || undefined,
+            systemEntryDate: formData.systemEntryDate || undefined,
           }),
         });
         const data = await response.json();
@@ -136,7 +142,16 @@ export default function EmployeeCustomersPage() {
         const response = await fetchApi('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            password: formData.password,
+            customerIdNumber: formData.customerIdNumber || undefined,
+            nationality: formData.nationality || undefined,
+            systemEntryDate: formData.systemEntryDate || undefined,
+          }),
         });
         const data = await response.json();
         if (data.success) {
@@ -293,6 +308,22 @@ export default function EmployeeCustomersPage() {
             label={t('common.address')}
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          />
+          <Input
+            label={t('form.customerIdNumber')}
+            value={formData.customerIdNumber}
+            onChange={(e) => setFormData({ ...formData, customerIdNumber: e.target.value })}
+          />
+          <Input
+            label={t('form.nationality')}
+            value={formData.nationality}
+            onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+          />
+          <Input
+            label={t('form.systemEntryDate')}
+            type="date"
+            value={formData.systemEntryDate}
+            onChange={(e) => setFormData({ ...formData, systemEntryDate: e.target.value })}
           />
           <PasswordInput
             label={t('common.password')}

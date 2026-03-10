@@ -8,31 +8,21 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email: emailOrId, password } = body;
+    const credential = typeof emailOrId === 'string' ? emailOrId.trim() : '';
 
-    if (!email || !password) {
-      return validationError('Email and password are required', 'error.emailPasswordRequired');
+    if (!credential || !password) {
+      return validationError('Email or Customer ID and password are required', 'error.emailPasswordRequired');
     }
 
-    if (!isValidEmail(email)) {
+    const isEmail = credential.includes('@');
+    if (isEmail && !isValidEmail(credential)) {
       return validationError('Invalid email format', 'error.invalidEmailFormat');
     }
 
-    // Get user from database (with optional is_deleted for pre-migration DBs)
     let users: any[];
-    try {
-      [users] = await pool.query(
-        `SELECT u.*, 
-          ut_en.name as name_en,
-          ut_ar.name as name_ar
-        FROM users u
-        LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-        LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-        WHERE u.email = ? AND u.is_active = TRUE AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
-        [email]
-      ) as any[];
-    } catch (e: any) {
-      if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+    if (isEmail) {
+      try {
         [users] = await pool.query(
           `SELECT u.*, 
             ut_en.name as name_en,
@@ -40,15 +30,57 @@ export async function POST(request: NextRequest) {
           FROM users u
           LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
           LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-          WHERE u.email = ? AND u.is_active = TRUE`,
-          [email]
+          WHERE u.email = ? AND u.is_active = TRUE AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
+          [credential]
         ) as any[];
-      } else {
-        throw e;
+      } catch (e: any) {
+        if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('is_deleted')) {
+          [users] = await pool.query(
+            `SELECT u.*, 
+              ut_en.name as name_en,
+              ut_ar.name as name_ar
+            FROM users u
+            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+            WHERE u.email = ? AND u.is_active = TRUE`,
+            [credential]
+          ) as any[];
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      try {
+        const [rows] = await pool.query(
+          `SELECT u.id FROM users u
+           INNER JOIN customers c ON u.id = c.id
+           WHERE c.customer_id_number = ? AND u.is_active = TRUE AND (u.is_deleted = FALSE OR u.is_deleted IS NULL)`,
+          [credential]
+        ) as any[];
+        if (!rows?.length) {
+          users = [];
+        } else {
+          [users] = await pool.query(
+            `SELECT u.*, 
+              ut_en.name as name_en,
+              ut_ar.name as name_ar
+            FROM users u
+            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+            WHERE u.id = ?`,
+            [rows[0].id]
+          ) as any[];
+        }
+      } catch (e: any) {
+        if (e?.code === 'ER_BAD_FIELD_ERROR' && e?.message?.includes('customer_id_number')) {
+          users = [];
+        } else {
+          throw e;
+        }
       }
     }
 
-    if (users.length === 0) {
+    if (!users?.length) {
       return errorResponse('Invalid email or password', 401, 'error.invalidEmailOrPassword');
     }
 
