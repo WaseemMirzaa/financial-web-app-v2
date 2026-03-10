@@ -23,13 +23,13 @@ function getPresenceLinesForList(chat: Chat, t: (k: string) => string, locale: s
     return [
       p.isOnline
         ? `${p.name} – ${t('chat.online')}`
-        : `${p.name} – ${t('chat.lastSeen')} ${formatLastSeenDateTime(p.lastSeenAt, locale)}`,
+        : `${p.name} – ${t('chat.lastSeen')} ${formatLastSeenDateTime(p.lastSeenAt, locale) || '—'}`,
     ];
   }
   const online = pres.filter((p) => p.isOnline).map((p) => p.name);
   const offline = pres
     .filter((p) => !p.isOnline)
-    .map((p) => `${p.name} (${formatLastSeenDateTime(p.lastSeenAt, locale)})`);
+    .map((p) => `${p.name} (${formatLastSeenDateTime(p.lastSeenAt, locale) || '—'})`);
   const lines: string[] = [];
   if (online.length) lines.push(`${t('chat.online')}: ${online.join(', ')}`);
   if (offline.length) lines.push(`${t('chat.lastSeen')}: ${offline.join(', ')}`);
@@ -44,12 +44,12 @@ function getPresenceSubtitleForHeader(chat: Chat | undefined, t: (k: string) => 
     const p = pres[0];
     return p.isOnline
       ? `${p.name} – ${t('chat.online')}`
-      : `${p.name} – ${t('chat.lastSeen')} ${formatLastSeenDateTime(p.lastSeenAt, locale)}`;
+      : `${p.name} – ${t('chat.lastSeen')} ${formatLastSeenDateTime(p.lastSeenAt, locale) || '—'}`;
   }
   const online = pres.filter((p) => p.isOnline).map((p) => p.name);
   const offline = pres
     .filter((p) => !p.isOnline)
-    .map((p) => `${p.name} (${formatLastSeenDateTime(p.lastSeenAt, locale)})`);
+    .map((p) => `${p.name} (${formatLastSeenDateTime(p.lastSeenAt, locale) || '—'})`);
   const parts: string[] = [];
   if (online.length) parts.push(`${t('chat.online')}: ${online.join(', ')}`);
   if (offline.length) parts.push(`${t('chat.lastSeen')}: ${offline.join(', ')}`);

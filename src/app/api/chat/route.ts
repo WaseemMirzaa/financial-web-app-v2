@@ -159,17 +159,37 @@ export async function GET(request: NextRequest) {
       ) as any[];
     } catch (e: any) {
       if (e?.code === 'ER_BAD_FIELD_ERROR') {
-        [participantRows] = await pool.query(
-          `SELECT cp.chat_id, cp.user_id, u.role, u.email,
-            ut_en.name AS name_en,
-            ut_ar.name AS name_ar
-          FROM chat_participants cp
-          INNER JOIN users u ON cp.user_id = u.id
-          LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
-          LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
-          WHERE cp.chat_id IN (?)`,
-          [chatIds]
-        ) as any[];
+        try {
+          // Retry with last_seen_at but without customer_phone so presence (online/last seen) still works
+          [participantRows] = await pool.query(
+            `SELECT cp.chat_id, cp.user_id, u.role, u.email,
+              ut_en.name AS name_en,
+              ut_ar.name AS name_ar,
+              u.last_seen_at
+            FROM chat_participants cp
+            INNER JOIN users u ON cp.user_id = u.id
+            LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+            LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+            WHERE cp.chat_id IN (?)`,
+            [chatIds]
+          ) as any[];
+        } catch (e2: any) {
+          if (e2?.code === 'ER_BAD_FIELD_ERROR') {
+            [participantRows] = await pool.query(
+              `SELECT cp.chat_id, cp.user_id, u.role, u.email,
+                ut_en.name AS name_en,
+                ut_ar.name AS name_ar
+              FROM chat_participants cp
+              INNER JOIN users u ON cp.user_id = u.id
+              LEFT JOIN user_translations ut_en ON u.id = ut_en.user_id AND ut_en.locale = 'en'
+              LEFT JOIN user_translations ut_ar ON u.id = ut_ar.user_id AND ut_ar.locale = 'ar'
+              WHERE cp.chat_id IN (?)`,
+              [chatIds]
+            ) as any[];
+          } else {
+            throw e2;
+          }
+        }
       } else {
         throw e;
       }
