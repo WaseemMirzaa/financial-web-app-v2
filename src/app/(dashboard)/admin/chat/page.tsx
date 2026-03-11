@@ -192,6 +192,13 @@ export default function AdminChatPage() {
     }
   }, [selectedChat, locale]);
 
+  // Update last_seen as soon as chat view opens (mobile and web)
+  useEffect(() => {
+    if (selectedChat && user?.id && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      fetchApi(`/api/auth/heartbeat?userId=${encodeURIComponent(user.id)}`).catch(() => {});
+    }
+  }, [selectedChat, user?.id]);
+
   // Real-time: poll only when tab visible; 90s messages, 60s chat list
   useEffect(() => {
     if (!selectedChat) return;
@@ -397,6 +404,7 @@ export default function AdminChatPage() {
       const data = await response.json();
       if (data.success) {
         fetchMessages(selectedChat);
+        fetchApi(`/api/auth/heartbeat?userId=${encodeURIComponent(user.id)}`).catch(() => {});
       } else {
         setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
         console.error('Failed to send message:', data.error);

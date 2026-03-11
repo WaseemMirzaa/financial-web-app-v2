@@ -171,6 +171,13 @@ export default function CustomerChatPage() {
     }
   }, [selectedChat, locale]);
 
+  // Update last_seen as soon as chat view opens (mobile and web)
+  useEffect(() => {
+    if (selectedChat && user?.id && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      fetchApi(`/api/auth/heartbeat?userId=${encodeURIComponent(user.id)}`).catch(() => {});
+    }
+  }, [selectedChat, user?.id]);
+
   useEffect(() => {
     if (!selectedChat) return;
     const interval = setInterval(() => {
@@ -278,6 +285,7 @@ export default function CustomerChatPage() {
       const data = await response.json();
       if (data.success) {
         fetchMessages(selectedChat);
+        fetchApi(`/api/auth/heartbeat?userId=${encodeURIComponent(user.id)}`).catch(() => {});
       } else {
         setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
         console.error('Failed to send message:', data.error);
