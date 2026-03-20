@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Loader } from '@/components/ui/Loader';
 import {
+  getAnnouncementsPathForRole,
   getChatPathForRole,
   getDashboardWithNotificationsOpenPath,
   getLoansPathForRole,
@@ -89,6 +90,12 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
         done();
         return;
       }
+      if (p === '/announcements') {
+        const role = isAppRole(user.role) ? user.role : 'customer';
+        schedule(() => router.replace(getAnnouncementsPathForRole(role)));
+        done();
+        return;
+      }
       const isOnDashboard =
         p.startsWith('/admin') ||
         p.startsWith('/employee') ||
@@ -165,6 +172,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
       p === '/chat' ||
       p === '/loans' ||
       p === '/notifications' ||
+      p === '/announcements' ||
       isPublicNoAuthPath(p);
     if (!isOnDashboard) {
       return <Loader fullScreen text={t('common.loading')} />;

@@ -10,7 +10,7 @@ export type AppRole = 'admin' | 'employee' | 'customer';
  */
 export function isPathAllowedForRole(pathname: string | null | undefined, role: AppRole): boolean {
   const p = normalizePathname(pathname);
-  if (p === '/chat' || p === '/loans' || p === '/notifications') return true;
+  if (p === '/chat' || p === '/loans' || p === '/notifications' || p === '/announcements') return true;
   if (p === '/notifications_mobile' || p.startsWith('/notifications_mobile/')) return true;
   if (p.startsWith('/admin')) return role === 'admin';
   if (p.startsWith('/employee')) return role === 'employee';
@@ -25,6 +25,12 @@ export function getDashboardPathForRole(role: AppRole): string {
 /** Role home + query so Header opens the notifications popover. */
 export function getDashboardWithNotificationsOpenPath(role: AppRole): string {
   return `${getDashboardPathForRole(role)}?openNotifications=1`;
+}
+
+/** Admin → broadcast page; employee/customer → dashboard with notifications open (announcements in feed). */
+export function getAnnouncementsPathForRole(role: AppRole): string {
+  if (role === 'admin') return '/admin/broadcast';
+  return getDashboardWithNotificationsOpenPath(role);
 }
 
 export function getChatPathForRole(role: AppRole): string {
