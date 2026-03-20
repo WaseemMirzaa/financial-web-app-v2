@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { clsx } from 'clsx';
+import { getChatPathForRole, getDashboardPathForRole, getLoansPathForRole } from '@/lib/roleRoutes';
 
 interface SidebarItem {
   href: string;
@@ -36,7 +37,7 @@ export function Sidebar({ inDrawer = false, onItemClick }: SidebarProps) {
 
   const sidebarItems: SidebarItem[] = [
     {
-      href: '/admin',
+      href: getDashboardPathForRole('admin'),
       icon: LayoutDashboard,
       label: t('common.dashboard'),
       roles: ['admin'],
@@ -54,13 +55,13 @@ export function Sidebar({ inDrawer = false, onItemClick }: SidebarProps) {
       roles: ['admin'],
     },
     {
-      href: '/admin/loans',
+      href: getLoansPathForRole('admin'),
       icon: FileText,
       label: t('common.loans'),
       roles: ['admin'],
     },
     {
-      href: '/admin/chat',
+      href: getChatPathForRole('admin'),
       icon: MessageSquare,
       label: t('common.chat'),
       roles: ['admin'],
@@ -72,7 +73,7 @@ export function Sidebar({ inDrawer = false, onItemClick }: SidebarProps) {
       roles: ['admin'],
     },
     {
-      href: '/employee',
+      href: getDashboardPathForRole('employee'),
       icon: LayoutDashboard,
       label: t('common.dashboard'),
       roles: ['employee'],
@@ -84,31 +85,31 @@ export function Sidebar({ inDrawer = false, onItemClick }: SidebarProps) {
       roles: ['employee'],
     },
     {
-      href: '/employee/loans',
+      href: getLoansPathForRole('employee'),
       icon: FileText,
       label: t('common.loans'),
       roles: ['employee'],
     },
     {
-      href: '/employee/chat',
+      href: getChatPathForRole('employee'),
       icon: MessageSquare,
       label: t('common.chat'),
       roles: ['employee'],
     },
     {
-      href: '/customer',
+      href: getDashboardPathForRole('customer'),
       icon: LayoutDashboard,
       label: t('common.dashboard'),
       roles: ['customer'],
     },
     {
-      href: '/customer/loan',
+      href: getLoansPathForRole('customer'),
       icon: FileText,
       label: t('common.loans'),
       roles: ['customer'],
     },
     {
-      href: '/customer/chat',
+      href: getChatPathForRole('customer'),
       icon: MessageSquare,
       label: t('common.chat'),
       roles: ['customer'],

@@ -5,6 +5,14 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Loader } from '@/components/ui/Loader';
+import {
+  getChatPathForRole,
+  getDashboardWithNotificationsOpenPath,
+  getLoansPathForRole,
+  isAppRole,
+} from '@/lib/roleRoutes';
+import { normalizePathname } from '@/lib/safeNextPath';
+import { isPublicNoAuthPath } from '@/lib/publicRoutes';
 // Firebase analytics disabled
 // import { getFirebaseAnalytics } from '@/lib/firebase';
 
@@ -58,7 +66,29 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     };
 
     if (isAuthenticated && user) {
-      const p = pathname || '';
+      const p = normalizePathname(pathname);
+      if (isPublicNoAuthPath(p)) {
+        done();
+        return;
+      }
+      if (p === '/chat') {
+        const role = isAppRole(user.role) ? user.role : 'customer';
+        schedule(() => router.replace(getChatPathForRole(role)));
+        done();
+        return;
+      }
+      if (p === '/loans') {
+        const role = isAppRole(user.role) ? user.role : 'customer';
+        schedule(() => router.replace(getLoansPathForRole(role)));
+        done();
+        return;
+      }
+      if (p === '/notifications') {
+        const role = isAppRole(user.role) ? user.role : 'customer';
+        schedule(() => router.replace(getDashboardWithNotificationsOpenPath(role)));
+        done();
+        return;
+      }
       const isOnDashboard =
         p.startsWith('/admin') ||
         p.startsWith('/employee') ||
@@ -82,7 +112,8 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
         pathname.startsWith('/employee') ||
         pathname.startsWith('/customer'))
     ) {
-      schedule(() => router.push('/login'));
+      const n = normalizePathname(pathname);
+      schedule(() => router.push(`/login?next=${encodeURIComponent(n)}`));
       done();
       return;
     }
@@ -102,18 +133,17 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (pathname === '/signup') {
-      schedule(() => router.push('/login'));
-      done();
-      return;
-    }
-
     if (
       !isVerifying &&
       !isAuthenticated &&
-      pathname !== '/login'
+      pathname !== '/login' &&
+      pathname !== '/signup' &&
+      !isPublicNoAuthPath(pathname)
     ) {
-      schedule(() => router.push('/login'));
+      const n = normalizePathname(pathname);
+      const loginUrl =
+        n === '/' ? '/login' : `/login?next=${encodeURIComponent(n)}`;
+      schedule(() => router.push(loginUrl));
       done();
       return;
     }
@@ -125,11 +155,17 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     return <Loader fullScreen text={t('common.loading')} />;
   }
 
-  // Authenticated but on login/root: show loader until redirect to dashboard completes (no login flash)
+  // Authenticated but on login/root/short paths: show loader until redirect completes
   if (isAuthenticated && user) {
-    const p = pathname || '';
+    const p = normalizePathname(pathname);
     const isOnDashboard =
-      p.startsWith('/admin') || p.startsWith('/employee') || p.startsWith('/customer');
+      p.startsWith('/admin') ||
+      p.startsWith('/employee') ||
+      p.startsWith('/customer') ||
+      p === '/chat' ||
+      p === '/loans' ||
+      p === '/notifications' ||
+      isPublicNoAuthPath(p);
     if (!isOnDashboard) {
       return <Loader fullScreen text={t('common.loading')} />;
     }

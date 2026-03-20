@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { notFound, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
@@ -9,6 +9,7 @@ import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Loader } from '@/components/ui/Loader';
 import { fetchApi } from '@/lib/fetchApi';
+import { isAppRole, isPathAllowedForRole } from '@/lib/roleRoutes';
 
 export default function DashboardLayoutClient({
   children,
@@ -18,6 +19,7 @@ export default function DashboardLayoutClient({
   const { user, isAuthenticated, isVerifying } = useAuth();
   const { locale } = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Global presence heartbeat: update last_seen_at when tab is visible (any dashboard page)
@@ -48,6 +50,10 @@ export default function DashboardLayoutClient({
         <Loader size="large" />
       </div>
     );
+  }
+
+  if (!isAppRole(user.role) || !isPathAllowedForRole(pathname, user.role)) {
+    notFound();
   }
 
   return (

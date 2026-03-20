@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../l10n/mobile_strings.dart';
+import '../providers/locale_provider.dart';
 import '../theme/app_theme.dart';
 
 /// Shows [child] when connected; shows "Internet required" full-screen when offline.
@@ -54,6 +57,7 @@ class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_hasConnection) return widget.child;
+    final t = MobileStrings(context.watch<LocaleProvider>().locale);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -66,7 +70,7 @@ class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
                 Icon(Icons.wifi_off_rounded, size: 72, color: AppTheme.neutral400),
                 const SizedBox(height: 24),
                 Text(
-                  'Internet required',
+                  t.internetRequired,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.neutral900,
                         fontWeight: FontWeight.w600,
@@ -75,7 +79,7 @@ class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Please turn on Wi‑Fi or mobile data and try again.',
+                  t.internetHint,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppTheme.neutral500,
                       ),
@@ -85,7 +89,7 @@ class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
                 FilledButton.icon(
                   onPressed: () => _check(),
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
+                  label: Text(t.retry),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.primary500,
                     foregroundColor: Colors.white,

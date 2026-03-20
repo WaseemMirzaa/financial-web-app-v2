@@ -7,6 +7,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDate } from '@/lib/utils';
+import { getChatPathForRole, getDashboardPathForRole, getLoansPathForRole, isAppRole } from '@/lib/roleRoutes';
 
 function getNotificationRoute(
   notif: { title?: string },
@@ -20,17 +21,13 @@ function getNotificationRoute(
     return '/customer';
   }
   if (title.includes('loan') || title.includes('قرض')) {
-    if (role === 'customer') return '/customer/loan';
-    if (role === 'employee') return '/employee/loans';
-    if (role === 'admin') return '/admin/loans';
+    if (isAppRole(role)) return getLoansPathForRole(role);
   }
   if (title.includes('message') || title.includes('رسالة')) {
-    if (role === 'admin') return '/admin/chat';
-    if (role === 'employee') return '/employee/chat';
-    return '/customer/chat';
+    if (isAppRole(role)) return getChatPathForRole(role);
+    return getChatPathForRole('customer');
   }
-  if (role === 'admin') return '/admin';
-  if (role === 'employee') return '/employee';
+  if (isAppRole(role)) return getDashboardPathForRole(role);
   return '/customer';
 }
 

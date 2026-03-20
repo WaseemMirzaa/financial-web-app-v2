@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/mobile_strings.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
 import 'main_screen.dart';
 
@@ -41,6 +43,7 @@ class _SignupScreenState extends State<SignupScreen> {
         name: _name.text.trim(),
         email: _email.text.trim(),
         password: _password.text,
+        locale: context.read<LocaleProvider>().locale,
       );
       if (!mounted) return;
       if (ok) {
@@ -56,6 +59,7 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _password.text,
         phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
         address: _address.text.trim().isEmpty ? null : _address.text.trim(),
+        locale: context.read<LocaleProvider>().locale,
       );
       if (!mounted) return;
       if (ok) {
@@ -72,23 +76,24 @@ class _SignupScreenState extends State<SignupScreen> {
     final auth = context.watch<AuthProvider>();
     final settings = context.watch<SettingsProvider>();
     final signupEnabled = settings.signupEnabled;
+    final t = MobileStrings(context.watch<LocaleProvider>().locale);
 
     if (!signupEnabled) {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text('Create account'),
+          title: Text(t.createAccount),
           backgroundColor: Colors.white,
           foregroundColor: AppTheme.primary500,
           elevation: 0,
         ),
-        body: const Center(
+        body: Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
             child: Text(
-              'Signup is currently disabled. Please contact your administrator.',
+              t.signupDisabledBody,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.neutral600),
+              style: const TextStyle(color: AppTheme.neutral600),
             ),
           ),
         ),
@@ -98,7 +103,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Create account'),
+        title: Text(t.createAccount),
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.primary500,
         elevation: 0,
@@ -128,13 +133,13 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('I am signing up as', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.neutral900)),
+                      Text(t.signingUpAs, style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.neutral900)),
                       const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
                             child: RadioListTile<String>(
-                              title: const Text('Customer'),
+                              title: Text(t.customer),
                               value: 'customer',
                               groupValue: _role,
                               onChanged: (v) => setState(() => _role = v!),
@@ -144,7 +149,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                           Expanded(
                             child: RadioListTile<String>(
-                              title: const Text('Employee'),
+                              title: Text(t.employee),
                               value: 'employee',
                               groupValue: _role,
                               onChanged: (v) => setState(() => _role = v!),
@@ -157,34 +162,34 @@ class _SignupScreenState extends State<SignupScreen> {
                       const SizedBox(height: 20),
                       TextFormField(
                         controller: _name,
-                        decoration: const InputDecoration(labelText: 'Name'),
-                        validator: (v) => v == null || v.isEmpty ? 'Enter name' : null,
+                        decoration: InputDecoration(labelText: t.name),
+                        validator: (v) => v == null || v.isEmpty ? t.enterName : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _email,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'Email'),
-                        validator: (v) => v == null || v.isEmpty ? 'Enter email' : null,
+                        decoration: InputDecoration(labelText: t.email),
+                        validator: (v) => v == null || v.isEmpty ? t.enterEmail : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _password,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Password'),
-                        validator: (v) => v == null || v.length < 6 ? 'At least 6 characters' : null,
+                        decoration: InputDecoration(labelText: t.password),
+                        validator: (v) => v == null || v.length < 6 ? t.atLeast6Chars : null,
                       ),
                       if (_role == 'customer') ...[
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _phone,
                           keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(labelText: 'Phone (optional)'),
+                          decoration: InputDecoration(labelText: t.phoneOptional),
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _address,
-                          decoration: const InputDecoration(labelText: 'Address (optional)'),
+                          decoration: InputDecoration(labelText: t.addressOptional),
                         ),
                       ],
                       if (auth.error != null) ...[
@@ -205,7 +210,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   width: 24,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('Create account'),
+                              : Text(t.createAccount),
                         ),
                       ),
                     ],

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../l10n/mobile_strings.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -35,7 +36,7 @@ class AuthProvider with ChangeNotifier {
     return true;
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String email, String password, {String locale = 'en'}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -50,7 +51,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
-      _error = _mapAuthError(data, isSignup: false);
+      _error = _mapAuthError(data, isSignup: false, locale: locale);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -68,6 +69,7 @@ class AuthProvider with ChangeNotifier {
     required String password,
     String? phone,
     String? address,
+    String locale = 'en',
   }) async {
     _isLoading = true;
     _error = null;
@@ -89,7 +91,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
-      _error = _mapAuthError(data, isSignup: true);
+      _error = _mapAuthError(data, isSignup: true, locale: locale);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -106,6 +108,7 @@ class AuthProvider with ChangeNotifier {
     required String name,
     required String email,
     required String password,
+    String locale = 'en',
   }) async {
     _isLoading = true;
     _error = null;
@@ -125,7 +128,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
-      _error = _mapAuthError(data, isSignup: true);
+      _error = _mapAuthError(data, isSignup: true, locale: locale);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -144,38 +147,38 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  String _mapAuthError(Map<String, dynamic> data, {required bool isSignup}) {
+  String _mapAuthError(
+    Map<String, dynamic> data, {
+    required bool isSignup,
+    required String locale,
+  }) {
+    final t = MobileStrings(locale);
     final key = data['errorKey']?.toString() ?? '';
     final raw = data['error']?.toString() ?? '';
 
-    // Backend standard auth keys
     if (key == 'error.invalidEmailOrPassword') {
-      return 'Email or password is incorrect';
+      return t.authInvalidCredentials;
     }
     if (key == 'error.userNotFound') {
-      return 'No account found with these details';
+      return t.authUserNotFound;
     }
     if (key == 'error.userInactive') {
-      return 'Your account is inactive. Please contact support.';
+      return t.authInactive;
     }
     if (key == 'error.emailAlreadyExists' || key == 'error.userAlreadyExists') {
-      return 'This email is already registered';
+      return t.authEmailExists;
     }
 
-    // Generic network / URL issues
     if (raw.contains('Service not found')) {
-      return 'Service not found. Please check the server URL and try again.';
+      return t.authServiceNotFound;
     }
     if (raw.contains('Server returned page')) {
-      return 'Server returned an HTML page instead of JSON. Please check the API URL.';
+      return t.authServerHtml;
     }
     if (raw.toLowerCase().contains('network error')) {
-      return 'Network error. Please check your internet connection and try again.';
+      return t.authNetworkError;
     }
 
-    // Fallback based on context
-    return isSignup
-        ? 'Something went wrong while creating the account. Please try again.'
-        : 'Something went wrong while signing in. Please try again.';
+    return isSignup ? t.authGenericSignup : t.authGenericLogin;
   }
 }

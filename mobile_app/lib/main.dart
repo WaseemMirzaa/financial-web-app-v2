@@ -11,6 +11,7 @@ import 'providers/settings_provider.dart';
 import 'screens/splash_screen.dart';
 import 'services/push_notification_service.dart';
 import 'theme/app_theme.dart';
+import 'l10n/mobile_strings.dart';
 import 'widgets/connectivity_wrapper.dart';
 
 void main() async {
@@ -51,7 +52,7 @@ class FinancialMobileApp extends StatelessWidget {
         builder: (_, locale, __) {
           return ConnectivityWrapper(
             child: MaterialApp(
-              title: 'الخليج للتمويل',
+              title: MobileStrings(locale.locale).appName,
               theme: AppTheme.light,
               locale: Locale(locale.locale),
               localizationsDelegates: const [

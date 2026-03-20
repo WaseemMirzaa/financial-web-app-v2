@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../l10n/mobile_strings.dart';
 import '../theme/app_theme.dart';
+import '../providers/locale_provider.dart';
 import '../services/api_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -25,6 +28,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final t = MobileStrings(context.read<LocaleProvider>().locale);
     setState(() {
       _loading = true;
       _message = null;
@@ -37,8 +41,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _success = data['success'] == true;
         _message = data['message']?.toString() ??
             (data['success'] == true
-                ? 'تم إرسال رابط إعادة تعيين كلمة المرور'
-                : data['error']?.toString() ?? 'حدث خطأ');
+                ? t.resetLinkSent
+                : data['error']?.toString() ?? t.genericError);
       });
     } catch (e) {
       if (!mounted) return;
@@ -52,9 +56,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = MobileStrings(context.watch<LocaleProvider>().locale);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('نسيت كلمة المرور'),
+        title: Text(t.forgotPasswordTitle),
         backgroundColor: AppTheme.primary500,
         foregroundColor: Colors.white,
       ),
@@ -86,14 +91,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'أدخل بريدك الإلكتروني',
+                          t.forgotPasswordHeading,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 color: AppTheme.neutral900,
                               ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'سنرسل لك رابطاً لإعادة تعيين كلمة المرور',
+                          t.forgotPasswordSubtitle,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: AppTheme.neutral500,
                               ),
@@ -102,11 +107,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         TextFormField(
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'البريد الإلكتروني',
+                          decoration: InputDecoration(
+                            labelText: t.emailLabel,
                           ),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'أدخل البريد' : null,
+                              v == null || v.isEmpty ? t.enterEmailValidator : null,
                         ),
                         if (_message != null) ...[
                           const SizedBox(height: 12),
@@ -132,7 +137,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text('إرسال رابط إعادة التعيين'),
+                                : Text(t.sendResetLink),
                           ),
                         ),
                       ],

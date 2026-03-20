@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Loader } from '@/components/ui/Loader';
 import { Shield, BarChart3, Users, Eye, EyeOff } from 'lucide-react';
+import { getSafeNextPath } from '@/lib/safeNextPath';
+import { isAppRole, isPathAllowedForRole } from '@/lib/roleRoutes';
 // import { ChevronDown } from 'lucide-react'; // Demo credentials hidden
 
 export default function LoginPage() {
@@ -25,6 +27,17 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
+      const raw = getSafeNextPath(
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('next')
+          : null,
+      );
+      const next =
+        raw && isAppRole(user.role) && isPathAllowedForRole(raw, user.role) ? raw : null;
+      if (next) {
+        router.replace(next);
+        return;
+      }
       if (user.role === 'admin') router.push('/admin');
       else if (user.role === 'employee') router.push('/employee');
       else if (user.role === 'customer') router.push('/customer');

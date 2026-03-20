@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/mobile_strings.dart';
 import '../models/user_model.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
@@ -15,6 +17,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final settings = context.watch<SettingsProvider>();
+    final t = MobileStrings(context.watch<LocaleProvider>().locale);
     final user = auth.user;
     if (user == null) {
       return const Scaffold(
@@ -28,7 +31,7 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.bgPage,
       appBar: AppBar(
-        title: const Text('الملف الشخصي'),
+        title: Text(t.profileTitle),
         backgroundColor: AppTheme.primary500,
         foregroundColor: Colors.white,
       ),
@@ -114,7 +117,7 @@ class ProfileScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      _roleLabel(user.role),
+                      _roleLabel(user.role, t),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -129,26 +132,26 @@ class ProfileScreen extends StatelessWidget {
           _menuTile(
             context,
             icon: Icons.notifications_outlined,
-            title: 'الإشعارات',
+            title: t.notificationsTitle,
             onTap: () => _openNotifications(context),
           ),
           _menuTile(
             context,
             icon: Icons.privacy_tip_outlined,
-            title: 'سياسة الخصوصية',
+            title: t.privacyPolicy,
             onTap: () => _openUrl(context, '/privacy'),
           ),
           _menuTile(
             context,
             icon: Icons.description_outlined,
-            title: 'الشروط والأحكام',
+            title: t.termsOfService,
             onTap: () => _openUrl(context, '/terms'),
           ),
           const SizedBox(height: 8),
           _menuTile(
             context,
             icon: Icons.logout,
-            title: 'تسجيل الخروج',
+            title: t.logout,
             iconColor: AppTheme.primary600,
             onTap: () async {
               await auth.logout();
@@ -163,10 +166,10 @@ class ProfileScreen extends StatelessWidget {
             _menuTile(
               context,
               icon: Icons.delete_outline,
-              title: 'حذف الحساب',
+              title: t.deleteAccount,
               iconColor: AppTheme.error,
               titleColor: AppTheme.error,
-              onTap: () => _confirmDelete(context, auth),
+              onTap: () => _confirmDelete(context, auth, t),
             ),
         ],
       ),
@@ -199,14 +202,14 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  String _roleLabel(UserRole r) {
+  String _roleLabel(UserRole r, MobileStrings t) {
     switch (r) {
       case UserRole.admin:
-        return 'مدير';
+        return t.roleAdmin;
       case UserRole.employee:
-        return 'موظف';
+        return t.roleEmployeeLabel;
       case UserRole.customer:
-        return 'عميل';
+        return t.roleCustomerLabel;
     }
   }
 
@@ -217,6 +220,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _openUrl(BuildContext context, String path) {
+    final t = MobileStrings(context.read<LocaleProvider>().locale);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Scaffold(
@@ -225,27 +229,27 @@ class ProfileScreen extends StatelessWidget {
             backgroundColor: AppTheme.primary500,
             foregroundColor: Colors.white,
           ),
-          body: const Center(child: Text('افتح الرابط في المتصفح أو WebView')),
+          body: Center(child: Text(t.openLinkHint)),
         ),
       ),
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, AuthProvider auth) async {
+  Future<void> _confirmDelete(BuildContext context, AuthProvider auth, MobileStrings t) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف الحساب'),
-        content: const Text('هل أنت متأكد؟ لا يمكن التراجع.'),
+        title: Text(t.deleteAccountConfirmTitle),
+        content: Text(t.deleteAccountConfirmBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
+            child: Text(t.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            child: const Text('حذف'),
+            child: Text(t.delete),
           ),
         ],
       ),

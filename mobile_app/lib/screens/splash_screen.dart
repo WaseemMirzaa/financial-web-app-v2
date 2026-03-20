@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/mobile_strings.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
@@ -48,6 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = MobileStrings(context.watch<LocaleProvider>().locale);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -66,7 +69,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'الخليج للتمويل',
+                      t.appName,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             color: AppTheme.primary500,
                             fontWeight: FontWeight.w700,
@@ -76,7 +79,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'منصة إدارة التمويل',
+                      t.tagline,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppTheme.neutral500,
                             fontSize: 14,

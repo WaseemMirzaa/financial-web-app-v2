@@ -480,7 +480,110 @@ const translations: Record<Locale, Record<string, string>> = {
     'broadcast.send': 'Send announcement',
     'broadcast.sending': 'Sending...',
     'broadcast.sentSuccessfully': 'Announcement sent successfully',
-    
+
+    // Legal & account — Gulf Finance Privacy Policy + Terms of Service
+    'legal.home': 'Home',
+    'legal.privacyTitle': 'Privacy Policy',
+    'legal.privacyBrand': 'Gulf Finance website',
+    'legal.termsTitle': 'Terms of Service',
+    'legal.lastUpdated':
+      'Gulf Finance may update this document. Please review this page periodically for the latest version.',
+    'legal.privacyIntro':
+      'Welcome to the Gulf Finance website. We affirm our full commitment to protecting user privacy and maintaining the confidentiality of personal information and data collected and used through this website.',
+    'legal.sectionGathering': '1. Gathering information',
+    'legal.privacyGatherIntro':
+      'We may collect some personal information when you use the site or apply for funding, including but not limited to:',
+    'legal.privacyGather1': 'Full name',
+    'legal.privacyGather2': 'Phone number',
+    'legal.privacyGather3': 'E-mail',
+    'legal.privacyGather4': 'Identity information and financial data',
+    'legal.sectionUsingInfo': '2. Using the information',
+    'legal.privacyUseIntro': 'The information collected is used for the following purposes:',
+    'legal.privacyUse1': 'Processing funding requests',
+    'legal.privacyUse2': 'Customer communication',
+    'legal.privacyUse3': 'Improving the quality of services provided',
+    'legal.privacyUse4': 'Compliance with applicable regulations and instructions',
+    'legal.sectionInfoProtection': '3. Information protection',
+    'legal.privacyProtection':
+      'We are committed to taking appropriate security and organizational measures to protect personal information from unauthorized access, use, modification or disclosure.',
+    'legal.sectionSharing': '4. Sharing information',
+    'legal.privacySharingIntro':
+      'Personal information will not be sold, rented, or shared with any third party except in the following cases:',
+    'legal.privacySharing1': 'With the explicit consent of the user',
+    'legal.privacySharing2': 'In accordance with applicable regulations and laws',
+    'legal.privacySharing3': 'With official bodies or authorized partners for the purpose of providing the service',
+    'legal.sectionCookies': '5. Cookies',
+    'legal.privacyCookies':
+      'The website may use cookies to improve the user experience, and the user can control or disable them through the browser settings.',
+    'legal.sectionUserRights': '6. User rights',
+    'legal.privacyUserRights':
+      'The user has the right to request to view, update, correct or delete his or her personal data in accordance with applicable regulations.',
+    'legal.sectionAmendments': '7. Amendments to the Privacy Policy',
+    'legal.privacyAmendments':
+      'Gulf Finance reserves the right to modify or update the Privacy Policy at any time, and modifications will be posted on this page.',
+    'legal.sectionContactPrivacy': '8. Contact us',
+    'legal.privacyContact':
+      'If you have any questions regarding the privacy policy, you can contact us through the contact methods available on the website.',
+    'legal.termsLink': 'Terms of Service',
+    'legal.privacyLink': 'Privacy Policy',
+    'legal.termsIntro':
+      'These Terms of Service (“Terms”) govern your access to and use of the Gulf Finance website, mobile application, and related services (collectively, the “Service”) operated by Gulf Finance (“we”, “us”, or “our”). By downloading, accessing, or using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.',
+    'legal.sectionAcceptance': '1. Agreement',
+    'legal.termsAcceptance':
+      'You must be at least the age of majority in your jurisdiction to use the Service, or have verifiable parental or guardian consent where required. You represent that the information you provide is accurate and that you will update it as needed.',
+    'legal.sectionServiceDescription': '2. The Service',
+    'legal.termsServiceDescription':
+      'The Service provides tools for loan management, communication, and related financial workflows as described in the application. Features may vary by platform and region. We may modify, suspend, or discontinue any part of the Service with reasonable notice where practicable.',
+    'legal.sectionAccounts': '3. Accounts and security',
+    'legal.termsAccounts':
+      'You are responsible for safeguarding your account credentials and for all activity under your account. Notify us promptly through the contact methods on the website if you suspect unauthorized access. We may suspend or terminate accounts that violate these Terms or pose a security risk.',
+    'legal.sectionUserConduct': '4. Acceptable use',
+    'legal.termsUserConduct':
+      'You agree not to: (a) use the Service for any unlawful purpose; (b) attempt to gain unauthorized access to systems, data, or other users’ accounts; (c) interfere with or disrupt the Service; (d) upload malware or harmful code; (e) scrape or use automated means to access the Service except as allowed by us; or (f) misuse the Service in any way that harms Gulf Finance, other users, or third parties.',
+    'legal.sectionPrivacyRef': '5. Privacy',
+    'legal.termsPrivacyRef':
+      'Your use of the Service is also governed by our Privacy Policy, which explains how we collect and process personal information. By using the Service, you acknowledge that you have read the Privacy Policy.',
+    'legal.sectionIP': '6. Intellectual property',
+    'legal.termsIP':
+      'The Service, including its design, text, graphics, logos, and software, is owned by Gulf Finance or its licensors and is protected by applicable intellectual property laws. You receive a limited, non-exclusive, non-transferable license to use the Service for its intended purpose. You may not copy, modify, distribute, or reverse engineer the Service except as permitted by law.',
+    'legal.sectionDisclaimer': '7. Disclaimer of warranties',
+    'legal.termsDisclaimer':
+      'To the maximum extent permitted by applicable law, the Service is provided on an “as is” and “as available” basis without warranties of any kind, whether express or implied, including merchantability, fitness for a particular purpose, and non-infringement. We do not warrant that the Service will be uninterrupted, error-free, or free of harmful components.',
+    'legal.sectionLimitation': '8. Limitation of liability',
+    'legal.termsLimitation':
+      'To the fullest extent permitted by law, Gulf Finance and its affiliates, officers, employees, and suppliers shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits, data, goodwill, or business opportunities, arising from your use of or inability to use the Service. Our total liability for any claim arising out of these Terms or the Service shall not exceed the amount you paid to us for the Service in the twelve (12) months preceding the claim, or one hundred U.S. dollars (USD 100) if no such payments apply, except where liability cannot be limited under mandatory law.',
+    'legal.sectionIndemnity': '9. Indemnity',
+    'legal.termsIndemnity':
+      'You agree to indemnify and hold harmless Gulf Finance and its affiliates from claims, damages, losses, and expenses (including reasonable legal fees) arising from your use of the Service, your violation of these Terms, or your violation of any third-party rights, to the extent permitted by law.',
+    'legal.sectionTermination': '10. Termination',
+    'legal.termsTermination':
+      'You may stop using the Service at any time. We may suspend or terminate your access if you breach these Terms or if required by law. Provisions that by their nature should survive (including limitations of liability, indemnity, and intellectual property) will survive termination.',
+    'legal.sectionChanges': '11. Changes to the Terms',
+    'legal.termsChanges':
+      'We may update these Terms from time to time. We will post the revised Terms on this page and, where appropriate, provide additional notice (for example, within the app). Your continued use of the Service after the effective date constitutes acceptance of the updated Terms, unless applicable law requires your express consent.',
+    'legal.sectionGoverningLaw': '12. Governing law',
+    'legal.termsGoverningLaw':
+      'These Terms are governed by the laws applicable in the jurisdiction in which Gulf Finance operates its Service for your region, without regard to conflict-of-law principles, except where mandatory consumer protection laws in your country of residence apply.',
+    'legal.sectionContactTerms': '13. Contact',
+    'legal.termsContact':
+      'For questions about these Terms, please contact Gulf Finance using the contact methods provided on the website or within the application.',
+
+    'deleteAccount.title': 'Delete account',
+    'deleteAccount.description':
+      'Enter the email and password for your customer or employee account. Administrators cannot use this page.',
+    'deleteAccount.warning':
+      'This action is permanent. Customer accounts are fully removed. Employee accounts are deactivated when allowed.',
+    'deleteAccount.confirm': 'I understand my account will be deleted or deactivated.',
+    'deleteAccount.submit': 'Delete my account',
+    'deleteAccount.deleting': 'Deleting…',
+    'deleteAccount.disabled': 'Account deletion is disabled. Contact support.',
+    'deleteAccount.success': 'Your account request has been processed. You can close this page.',
+    'error.deleteAccountDisabled': 'Account deletion is disabled. Please contact support.',
+    'error.deleteAccountAdminNotAllowed': 'Administrator accounts cannot be deleted from this page.',
+    'error.deleteAccountNotAllowed': 'This account cannot be deleted here.',
+    'error.deleteAccountEmployeeHasAssignments':
+      'You still have assigned customers. Ask your administrator to remove assignments before deleting your account.',
+
     // Form Validation Messages
     'validation.required': 'This field is required',
     'validation.nameRequired': 'Name is required',
@@ -983,6 +1086,108 @@ const translations: Record<Locale, Record<string, string>> = {
     'validation.employeeRequired': 'يرجى اختيار موظف',
     'validation.selectCustomer': 'يرجى اختيار عميل',
     'validation.selectEmployee': 'يرجى اختيار موظف',
+
+    // Legal & account — سياسة خصوصية وشروط خدمة جلف فاينانس
+    'legal.home': 'الرئيسية',
+    'legal.privacyTitle': 'سياسة الخصوصية',
+    'legal.privacyBrand': 'موقع جلف فاينانس',
+    'legal.termsTitle': 'شروط الخدمة',
+    'legal.lastUpdated':
+      'يجوز لجلف فاينانس تحديث هذا المستند. يرجى مراجعة هذه الصفحة دورياً للاطلاع على أحدث نسخة.',
+    'legal.privacyIntro':
+      'مرحباً بكم في موقع جلف فاينانس. نؤكد التزامنا الكامل بحماية خصوصية المستخدمين والحفاظ على سرية المعلومات والبيانات الشخصية التي يتم جمعها واستخدامها عبر هذا الموقع.',
+    'legal.sectionGathering': '1. جمع المعلومات',
+    'legal.privacyGatherIntro':
+      'قد نجمع بعض المعلومات الشخصية عند استخدامكم للموقع أو عند التقدم بطلب تمويل، بما في ذلك على سبيل المثال لا الحصر:',
+    'legal.privacyGather1': 'الاسم الكامل',
+    'legal.privacyGather2': 'رقم الهاتف',
+    'legal.privacyGather3': 'البريد الإلكتروني',
+    'legal.privacyGather4': 'معلومات الهوية والبيانات المالية',
+    'legal.sectionUsingInfo': '2. استخدام المعلومات',
+    'legal.privacyUseIntro': 'تُستخدم المعلومات التي يتم جمعها للأغراض التالية:',
+    'legal.privacyUse1': 'معالجة طلبات التمويل',
+    'legal.privacyUse2': 'التواصل مع العملاء',
+    'legal.privacyUse3': 'تحسين جودة الخدمات المقدمة',
+    'legal.privacyUse4': 'الامتثال للأنظمة والتعليمات المعمول بها',
+    'legal.sectionInfoProtection': '3. حماية المعلومات',
+    'legal.privacyProtection':
+      'نلتزم باتخاذ التدابير الأمنية والتنظيمية المناسبة لحماية المعلومات الشخصية من الوصول أو الاستخدام أو التعديل أو الإفصاح غير المصرح به.',
+    'legal.sectionSharing': '4. مشاركة المعلومات',
+    'legal.privacySharingIntro':
+      'لن تُباع أو تُؤجر أو تُشارك المعلومات الشخصية لأي طرف ثالث إلا في الحالات التالية:',
+    'legal.privacySharing1': 'بموافقة صريحة من المستخدم',
+    'legal.privacySharing2': 'وفقاً للأنظمة والقوانين المعمول بها',
+    'legal.privacySharing3': 'مع الجهات الرسمية أو الشركاء المصرح لهم لغرض تقديم الخدمة',
+    'legal.sectionCookies': '5. ملفات تعريف الارتباط (كوكيز)',
+    'legal.privacyCookies':
+      'قد يستخدم الموقع ملفات تعريف الارتباط لتحسين تجربة المستخدم، ويمكن للمستخدم التحكم فيها أو تعطيلها من إعدادات المتصفح.',
+    'legal.sectionUserRights': '6. حقوق المستخدم',
+    'legal.privacyUserRights':
+      'يحق للمستخدم طلب الاطلاع على بياناته الشخصية أو تحديثها أو تصحيحها أو حذفها وفقاً للأنظمة المعمول بها.',
+    'legal.sectionAmendments': '7. تعديلات سياسة الخصوصية',
+    'legal.privacyAmendments':
+      'تحتفظ جلف فاينانس بحق تعديل أو تحديث سياسة الخصوصية في أي وقت، وستُنشر التعديلات على هذه الصفحة.',
+    'legal.sectionContactPrivacy': '8. اتصل بنا',
+    'legal.privacyContact':
+      'إذا كانت لديكم أي أسئلة بخصوص سياسة الخصوصية، يمكنكم التواصل معنا عبر وسائل الاتصال المتاحة على الموقع.',
+    'legal.termsLink': 'شروط الخدمة',
+    'legal.privacyLink': 'سياسة الخصوصية',
+    'legal.termsIntro':
+      'تحكم شروط الخدمة هذه («الشروط») وصولكم إلى موقع جلف فاينانس وتطبيق الهاتف والخدمات ذات الصلة («الخدمة») التي تديرها جلف فاينانس («نحن» أو «لنا»). بتنزيلكم أو دخولكم أو استخدامكم للخدمة، فإنكم توافقون على الالتزام بهذه الشروط. إذا لم توافقوا، لا تستخدموا الخدمة.',
+    'legal.sectionAcceptance': '1. الموافقة',
+    'legal.termsAcceptance':
+      'يجب أن يبلغ عمركم سن الرشد في بلدكم أو الحصول على موافقة ولي الأمر حيث يقتضي القانون. تقرون بأن المعلومات التي تقدمونها دقيقة وتلتزمون بتحديثها عند الحاجة.',
+    'legal.sectionServiceDescription': '2. الخدمة',
+    'legal.termsServiceDescription':
+      'توفر الخدمة أدوات لإدارة القروض والتواصل والعمليات المالية ذات الصلة كما هو موضح في التطبيق. قد تختلف الميزات حسب المنصة والمنطقة. يجوز لنا تعديل أي جزء من الخدمة أو تعليقه أو إيقافه مع إشعار معقول حيثما أمكن.',
+    'legal.sectionAccounts': '3. الحسابات والأمان',
+    'legal.termsAccounts':
+      'أنتم مسؤولون عن الحفاظ على سرية بيانات الدخول وعن كل النشاط بموجب حسابكم. يُرجى إبلاغنا فوراً عبر وسائل الاتصال على الموقع إذا اشتبهتم في وصول غير مصرح. يجوز لنا تعليق الحسابات أو إنهاؤها عند انتهاك هذه الشروط أو عند وجود خطر أمني.',
+    'legal.sectionUserConduct': '4. الاستخدام المسموح',
+    'legal.termsUserConduct':
+      'توافقون على عدم: (أ) استخدام الخدمة لأي غرض غير قانوني؛ (ب) محاولة الوصول غير المصرح به إلى الأنظمة أو البيانات أو حسابات المستخدمين الآخرين؛ (ج) التدخل في الخدمة أو تعطيلها؛ (د) رفع برمجيات ضارة؛ (هـ) استخدام وسائل آلية لجمع البيانات إلا حيث نسمح بذلك؛ أو (و) إساءة استخدام الخدمة بأي شكل يضر بجلف فاينانس أو المستخدمين أو أطرافاً أخرى.',
+    'legal.sectionPrivacyRef': '5. الخصوصية',
+    'legal.termsPrivacyRef':
+      'يخضع استخدامكم للخدمة أيضاً لسياسة الخصوصية الخاصة بنا، التي توضح كيفية جمع المعلومات الشخصية ومعالجتها. باستخدامكم للخدمة، تقرون بأنكم اطلعتم على سياسة الخصوصية.',
+    'legal.sectionIP': '6. الملكية الفكرية',
+    'legal.termsIP':
+      'الخدمة، بما في ذلك التصميم والنصوص والرسوم والشعارات والبرمجيات، مملوكة لجلف فاينانس أو لمرخصيها ومحمية بموجب قوانين الملكية الفكرية. يُمنح لكم ترخيص محدود وغير حصري وغير قابل للتحويل لاستخدام الخدمة للغرض المخصص لها. لا يجوز نسخ الخدمة أو تعديلها أو توزيعها أو إجراء هندسة عكسية لها إلا حيث يسمح القانون.',
+    'legal.sectionDisclaimer': '7. إخلاء المسؤولية عن الضمانات',
+    'legal.termsDisclaimer':
+      'إلى أقصى حد يسمح به القانون المعمول، تُقدَّم الخدمة «كما هي» و«حسب التوفر» دون أي ضمانات صريحة أو ضمنية، بما في ذلك الملاءمة لغرض معين وعدم الانتهاك. لا نضمن أن تكون الخدمة دون انقطاع أو خالية من الأخطاء أو العناصر الضارة.',
+    'legal.sectionLimitation': '8. حدود المسؤولية',
+    'legal.termsLimitation':
+      'إلى أقصى حد يسمح به القانون، لا تتحمل جلف فاينانس ولا الشركات التابعة لها ولا مسؤولوها ولا موظفوها ولا موردوها المسؤولية عن أي أضرار غير مباشرة أو عرضية أو خاصة أو تبعية أو عقابية، أو عن فقدان الأرباح أو البيانات أو السمعة أو الفرص، الناشئة عن استخدامكم للخدمة أو عدم القدرة على استخدامها. إجمالي مسؤوليتنا عن أي مطالبة تنشأ عن هذه الشروط أو الخدمة لا يتجاوز المبلغ الذي دفعتموه لنا مقابل الخدمة خلال اثني عشر (12) شهراً السابقة للمطالبة، أو مائة دولار أمريكي (100 USD) إذا لم يكن هناك دفع، باستثناء ما لا يجوز تقييده بموجب قانون إلزامي.',
+    'legal.sectionIndemnity': '9. التعويض',
+    'legal.termsIndemnity':
+      'توافقون على تعويض جلف فاينانس والشركات التابعة لها وحمايتها من المطالبات والأضرار والخسائر والنفقات (بما في ذلك أتعاب محاماة معقولة) الناشئة عن استخدامكم للخدمة أو انتهاككم لهذه الشروط أو حقوق الغير، ضمن الحدود التي يسمح بها القانون.',
+    'legal.sectionTermination': '10. الإنهاء',
+    'legal.termsTermination':
+      'يمكنكم التوقف عن استخدام الخدمة في أي وقت. يجوز لنا تعليق أو إنهاء وصولكم عند مخالفة هذه الشروط أو عند الاقتضاء بموجب القانون. تظل الأحكام التي يجب أن تبقى سارية (بما في ذلك حدود المسؤولية والتعويض والملكية الفكرية) نافذة بعد الإنهاء.',
+    'legal.sectionChanges': '11. تعديل الشروط',
+    'legal.termsChanges':
+      'يجوز لنا تحديث هذه الشروط من وقت لآخر. سننشر النسخة المحدثة على هذه الصفحة وعند الاقتضاء سنقدم إشعاراً إضافياً (مثلاً داخل التطبيق). استمراركم في استخدام الخدمة بعد سريان التعديلات يُعد موافقة على الشروط المحدثة، ما لم يقتض القانون موافقة صريحة.',
+    'legal.sectionGoverningLaw': '12. القانون الواجب التطبيق',
+    'legal.termsGoverningLaw':
+      'تخضع هذه الشروط للقوانين المعمولة في الاختصاص الذي تقدم فيه جلف فاينانس الخدمة لمنطقتكم، دون مراعاة تعارض القوانين، باستثناء القواعد الإلزامية لحماية المستهلك في بلد إقامتكم حيث تنطبق.',
+    'legal.sectionContactTerms': '13. الاتصال',
+    'legal.termsContact':
+      'للاستفسارات حول هذه الشروط، يُرجى التواصل مع جلف فاينانس عبر وسائل الاتصال المذكورة على الموقع أو داخل التطبيق.',
+
+    'deleteAccount.title': 'حذف الحساب',
+    'deleteAccount.description':
+      'أدخل البريد وكلمة المرور لحساب العميل أو الموظف. لا يمكن للمسؤولين استخدام هذه الصفحة.',
+    'deleteAccount.warning': 'هذا الإجراء دائم. يُحذف حساب العميل بالكامل. يُعطَّل حساب الموظف عند السماح.',
+    'deleteAccount.confirm': 'أفهم أنه سيتم حذف حسابي أو تعطيله.',
+    'deleteAccount.submit': 'حذف حسابي',
+    'deleteAccount.deleting': 'جاري الحذف…',
+    'deleteAccount.disabled': 'حذف الحساب معطّل. تواصل مع الدعم.',
+    'deleteAccount.success': 'تمت معالجة طلبك. يمكنك إغلاق هذه الصفحة.',
+    'error.deleteAccountDisabled': 'حذف الحساب معطّل. تواصل مع الدعم.',
+    'error.deleteAccountAdminNotAllowed': 'لا يمكن حذف حساب المسؤول من هذه الصفحة.',
+    'error.deleteAccountNotAllowed': 'لا يمكن حذف هذا الحساب من هنا.',
+    'error.deleteAccountEmployeeHasAssignments':
+      'لا يزال لديك عملاء معينون. اطلب من المسؤول إلغاء التعيين قبل حذف الحساب.',
   },
 };
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/mobile_strings.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
 import 'forgot_password_screen.dart';
 import 'main_screen.dart';
@@ -32,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final ok = await context.read<AuthProvider>().login(
           _email.text.trim(),
           _password.text,
+          locale: context.read<LocaleProvider>().locale,
         );
     if (!mounted) return;
     if (ok) {
@@ -45,6 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final settings = context.watch<SettingsProvider>();
+    final t = MobileStrings(context.watch<LocaleProvider>().locale);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -67,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'الخليج للتمويل',
+                  t.appName,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.primary500,
                         fontWeight: FontWeight.w700,
@@ -94,14 +98,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Sign in',
+                          t.signIn,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 color: AppTheme.neutral900,
                               ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Enter your credentials to continue',
+                          t.enterCredentials,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: AppTheme.neutral500,
                               ),
@@ -110,21 +114,21 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextFormField(
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
+                          decoration: InputDecoration(
+                            labelText: t.email,
                           ),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'Please enter email' : null,
+                              v == null || v.isEmpty ? t.pleaseEnterEmail : null,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _password,
                           obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
+                          decoration: InputDecoration(
+                            labelText: t.password,
                           ),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'Please enter password' : null,
+                              v == null || v.isEmpty ? t.pleaseEnterPassword : null,
                         ),
                         if (auth.error != null) ...[
                           const SizedBox(height: 12),
@@ -150,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text('Sign in'),
+                                : Text(t.signIn),
                           ),
                         ),
                         // Signup / Forgot password: only show when server says enabled (hide when disabled)
@@ -162,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 builder: (_) => const SignupScreen(),
                               ),
                             ),
-                            child: const Text('Create account'),
+                            child: Text(t.createAccount),
                           ),
                         ],
                         if (settings.loaded && settings.forgetPasswordEnabled) ...[
@@ -173,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 builder: (_) => const ForgotPasswordScreen(),
                               ),
                             ),
-                            child: const Text('Forgot password?'),
+                            child: Text(t.forgotPassword),
                           ),
                         ],
                       ],

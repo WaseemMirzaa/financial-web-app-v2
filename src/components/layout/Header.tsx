@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Bell, LogOut, Globe, Menu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { formatDate } from '@/lib/utils';
+import { getChatPathForRole, getLoansPathForRole, isAppRole } from '@/lib/roleRoutes';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -24,6 +25,7 @@ const NOTIFICATION_MESSAGE_KEYS: Record<string, string> = {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useAuth();
   const { locale, setLocale, t } = useLocale();
   const { notifications, unreadCount, markAsRead, markAllAsRead, requestNotificationPermission } = useNotifications();
@@ -42,17 +44,31 @@ export function Header({ onMenuClick }: HeaderProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openNotifications') !== '1') return;
+    setShowNotifications(true);
+    if ('Notification' in window && Notification.permission === 'default') {
+      requestNotificationPermission();
+    }
+    params.delete('openNotifications');
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [pathname, router, requestNotificationPermission]);
+
   const getNotificationRoute = (notif: { title?: string }): string => {
     const role = user?.role;
     const title = (notif.title || '').toLowerCase();
     if (role === 'employee' && (title.includes('customer assigned') || title.includes('عميل'))) return '/employee/customers';
     if (role === 'customer' && (title.includes('employee assigned') || title.includes('موظف'))) return '/customer';
     if (title.includes('loan') || title.includes('قرض')) {
-      if (role === 'customer') return '/customer/loan';
-      if (role === 'employee') return '/employee/loans';
-      if (role === 'admin') return '/admin/loans';
+      if (isAppRole(role)) return getLoansPathForRole(role);
     }
-    if (title.includes('message') || title.includes('رسالة')) return role === 'admin' ? '/admin/chat' : role === 'employee' ? '/employee/chat' : '/customer/chat';
+    if (title.includes('message') || title.includes('رسالة')) {
+      if (isAppRole(role)) return getChatPathForRole(role);
+      return getChatPathForRole('customer');
+    }
     if (role === 'admin') return '/admin';
     if (role === 'employee') return '/employee';
     return '/customer';

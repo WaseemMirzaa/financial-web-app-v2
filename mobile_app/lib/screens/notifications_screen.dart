@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/mobile_strings.dart';
 import '../models/notification_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
@@ -32,10 +33,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = MobileStrings(context.watch<LocaleProvider>().locale);
     return Scaffold(
       backgroundColor: AppTheme.bgPage,
       appBar: AppBar(
-        title: const Text('الإشعارات'),
+        title: Text(t.notificationsTitle),
         backgroundColor: AppTheme.primary500,
         foregroundColor: Colors.white,
         actions: [
@@ -44,7 +46,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               if (np.unreadCount == 0) return const SizedBox.shrink();
               return TextButton(
                 onPressed: np.loading ? null : () => np.markAllAsRead(),
-                child: const Text('تعليم الكل كمقروء'),
+                child: Text(t.markAllRead),
               );
             },
           ),
@@ -56,7 +58,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (np.list.isEmpty) {
-            return const Center(child: Text('لا توجد إشعارات'));
+            return Center(child: Text(t.noNotifications));
           }
           return RefreshIndicator(
             onRefresh: () {
