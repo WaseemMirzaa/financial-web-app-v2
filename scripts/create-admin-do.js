@@ -1,6 +1,6 @@
 /**
  * Create admin user in DB (used by Digital Ocean setup script).
- * Env: ADMIN_EMAIL (default admin@khalijtamweel.com), ADMIN_PASSWORD (default Admin@123).
+ * Env: ADMIN_EMAIL (optional), ADMIN_PASSWORD (required — no default).
  * DB from .env.local.
  */
 require('dotenv').config({ path: require('path').join(process.cwd(), '.env.local') });
@@ -8,7 +8,11 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@khalijtamweel.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin@Khalijtamweel123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 8) {
+  console.error('Set ADMIN_PASSWORD (min 8 characters) in the environment before running create-admin-do.js');
+  process.exit(1);
+}
 
 async function main() {
   const c = await mysql.createConnection({
@@ -34,7 +38,7 @@ async function main() {
     "INSERT INTO user_translations (user_id, locale, name) VALUES (?, 'en', ?), (?, 'ar', ?)",
     [id, 'Khalijtamweel', id, 'خليج تمويل']
   );
-  console.log('Admin created:', ADMIN_EMAIL, '| Password:', ADMIN_PASSWORD);
+  console.log('Admin created:', ADMIN_EMAIL, '| Password: (set via ADMIN_PASSWORD — not echoed)');
   await c.end();
   process.exit(0);
 }

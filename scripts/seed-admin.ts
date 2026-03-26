@@ -1,17 +1,30 @@
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+import { loadEnvFiles } from './load-env';
 
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+loadEnvFiles();
 
 async function seedAdmin() {
   const { default: pool } = await import('../src/lib/db');
   const { hashPassword } = await import('../src/lib/auth');
   const { saveUserNameTranslations } = await import('../src/lib/translations');
 
+  const email = process.env.ADMIN_EMAIL?.trim();
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!email) {
+    console.error(
+      'Set ADMIN_EMAIL in `.env` or `.env.local` (same file as your DB settings).'
+    );
+    process.exit(1);
+  }
+  if (!password || password.length < 8) {
+    console.error(
+      'Set ADMIN_PASSWORD in `.env` or `.env.local` (min 8 characters).'
+    );
+    process.exit(1);
+  }
+
   try {
     const adminId = 'admin-1';
-    const email = process.env.ADMIN_EMAIL || 'admin@khalijtamweel.com';
-    const password = process.env.ADMIN_PASSWORD || 'admin@Khalijtamweel123';
     const nameEn = 'Khalijtamweel';
     const nameAr = 'خليج تمويل';
 
@@ -49,7 +62,7 @@ async function seedAdmin() {
 
     console.log('Admin user created successfully!');
     console.log(`Email: ${email}`);
-    console.log(`Password: ${password}`);
+    console.log('Password: (value from ADMIN_PASSWORD in your env file — not shown)');
   } catch (error) {
     console.error('Failed to seed admin user:', error);
     throw error;

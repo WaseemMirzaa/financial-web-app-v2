@@ -1,14 +1,15 @@
-// Firebase Cloud Messaging Service Worker (ES5 for broad support)
+// FCM service worker — replace firebaseConfig with the same values as NEXT_PUBLIC_FIREBASE_* in .env.local
+// Or generate this file in CI from env. Do not commit real API keys to a public repo.
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
 var firebaseConfig = {
-  apiKey: 'AIzaSyAD8qK621xenufo3v027lhaQwNtwuVBW38',
-  authDomain: 'spotandvibe-f74d0.firebaseapp.com',
-  projectId: 'spotandvibe-f74d0',
-  storageBucket: 'spotandvibe-f74d0.firebasestorage.app',
-  messagingSenderId: '374701282125',
-  appId: '1:374701282125:web:659c7751df41e07ff1dd04',
+  apiKey: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_API_KEY',
+  authDomain: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  projectId: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+  storageBucket: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  messagingSenderId: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  appId: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_APP_ID',
 };
 
 firebase.initializeApp(firebaseConfig);

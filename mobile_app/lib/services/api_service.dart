@@ -191,10 +191,33 @@ class ApiService {
     }
   }
 
-  static Future<bool> markNotificationRead(String id) async {
+  /// POST /api/auth/delete-account — customer & employee only; server checks password.
+  static Future<Map<String, dynamic>> deleteAccount({
+    required String email,
+    required String password,
+  }) async {
     try {
       final res = await http.post(
-        Uri.parse('$_base/api/notifications/$id/read'),
+        Uri.parse('$_base/api/auth/delete-account'),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+      final data = _parseJson(res.body);
+      if (data != null) return data;
+      return {
+        'success': false,
+        'error': 'Invalid response (${res.statusCode})',
+      };
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  static Future<bool> markNotificationRead(String id) async {
+    try {
+      final safeId = Uri.encodeComponent(id);
+      final res = await http.post(
+        Uri.parse('$_base/api/notifications/$safeId/read'),
         headers: {'Accept': 'application/json'},
       );
       final data = _parseJson(res.body);

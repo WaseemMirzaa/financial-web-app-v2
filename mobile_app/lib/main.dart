@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
@@ -10,24 +11,20 @@ import 'providers/notifications_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/splash_screen.dart';
 import 'services/push_notification_service.dart';
+import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'l10n/mobile_strings.dart';
 import 'widgets/connectivity_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.white,
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.white,
-      systemNavigationBarIconBrightness: Brightness.dark,
-      systemNavigationBarDividerColor: Colors.transparent,
-    ),
-  );
+  SystemChrome.setSystemUIOverlayStyle(AppTheme.lightStatusBarOnPrimary);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     await PushNotificationService.init();
   } catch (_) {}
   final localeProvider = LocaleProvider();
@@ -52,9 +49,15 @@ class FinancialMobileApp extends StatelessWidget {
         builder: (_, locale, __) {
           return ConnectivityWrapper(
             child: MaterialApp(
-              title: MobileStrings(locale.locale).appName,
+              title: mobileAppTitle(locale.locale),
               theme: AppTheme.light,
               locale: Locale(locale.locale),
+              builder: (context, child) {
+                return AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: AppTheme.lightStatusBarOnPrimary,
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
               localizationsDelegates: const [
                 GlobalMaterialLocalizations.delegate,
                 GlobalWidgetsLocalizations.delegate,

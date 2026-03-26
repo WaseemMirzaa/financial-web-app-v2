@@ -7,6 +7,9 @@ import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/notifications_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/notification_web_path.dart';
+import '../widgets/web_view_tab.dart';
+import 'login_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -29,6 +32,48 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         provider.load(auth.user!.id);
       }
     });
+  }
+
+  Future<void> _onNotificationTap(NotificationModel notification) async {
+    final auth = context.read<AuthProvider>();
+    final np = context.read<NotificationsProvider>();
+    final locale = context.read<LocaleProvider>();
+    final user = auth.user;
+    if (user == null) return;
+
+    if (!notification.isRead) {
+      await np.markAsRead(notification.id);
+    }
+    if (!mounted) return;
+
+    final path = notificationWebPath(notification, user);
+    final t = MobileStrings(locale.locale);
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (ctx) => Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            title: Text(t.notificationsTitle),
+            backgroundColor: AppTheme.primary500,
+            foregroundColor: Colors.white,
+          ),
+          body: WebViewTab(
+            path: path,
+            userId: user.id,
+            userJson: user.toJson(),
+            onWebLogout: () {
+              auth.logout();
+              Navigator.of(ctx).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+              );
+            },
+            onLocaleFromWeb: (l) => locale.setLocale(l),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -70,7 +115,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemCount: np.list.length,
               itemBuilder: (_, i) => _NotificationTile(
                 notification: np.list[i],
-                onTap: () => np.markAsRead(np.list[i].id),
+                onTap: () => _onNotificationTap(np.list[i]),
               ),
             ),
           );
@@ -123,7 +168,8 @@ class _NotificationTile extends StatelessWidget {
               )
             : null,
         isThreeLine: notification.message.isNotEmpty,
-        onTap: notification.isRead ? null : onTap,
+        trailing: const Icon(Icons.chevron_right, color: AppTheme.neutral400),
+        onTap: onTap,
       ),
     );
   }

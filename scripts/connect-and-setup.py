@@ -21,12 +21,14 @@ DB_NAME = "financial_app"
 DB_USER = "app_user"
 DB_PASSWORD = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(25))
 JWT_SECRET = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(40))
+ADMIN_PASSWORD = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(20))
 
 print("=== Generated Credentials ===")
 print(f"DB_NAME: {DB_NAME}")
 print(f"DB_USER: {DB_USER}")
 print(f"DB_PASSWORD: {DB_PASSWORD}")
 print(f"JWT_SECRET: {JWT_SECRET}")
+print(f"ADMIN_PASSWORD: {ADMIN_PASSWORD}")
 print()
 
 # Save credentials locally
@@ -54,7 +56,7 @@ JWT_SECRET: {JWT_SECRET}
 ADMIN CREDENTIALS:
 ------------------
 Email: admin@khalijtamweel.com
-Password: admin@Khalijtamweel123
+Password: {ADMIN_PASSWORD}
 
 APP INFO:
 --------
@@ -84,7 +86,7 @@ export DB_USER={DB_USER}
 export DB_PASSWORD={DB_PASSWORD}
 export JWT_SECRET={JWT_SECRET}
 export ADMIN_EMAIL=admin@khalijtamweel.com
-export ADMIN_PASSWORD=admin@Khalijtamweel123
+export ADMIN_PASSWORD={ADMIN_PASSWORD}
 export PORT=3000
 
 curl -sSL https://raw.githubusercontent.com/WaseemMirzaa/financial-web-app/backend/scripts/digitalocean-setup.sh | bash

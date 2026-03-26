@@ -24,6 +24,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _address = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String _role = 'customer'; // 'customer' | 'employee'
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -175,8 +176,22 @@ class _SignupScreenState extends State<SignupScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _password,
-                        obscureText: true,
-                        decoration: InputDecoration(labelText: t.password),
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: t.password,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: AppTheme.neutral600,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                            tooltip: _obscurePassword ? t.showPassword : t.hidePassword,
+                          ),
+                        ),
                         validator: (v) => v == null || v.length < 6 ? t.atLeast6Chars : null,
                       ),
                       if (_role == 'customer') ...[

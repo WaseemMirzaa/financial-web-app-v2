@@ -23,4 +23,4 @@ execSync('npx tsx scripts/migrate.ts', { cwd: root, stdio: 'inherit' });
 console.log('Running database seed...');
 execSync('npx tsx scripts/seed.ts', { cwd: root, stdio: 'inherit' });
 console.log('Setup complete. Start the app with: npm run dev');
-console.log('Admin login: admin@demo.com / admin123');
+console.log('Log in with ADMIN_EMAIL and ADMIN_PASSWORD from .env.');

@@ -4,10 +4,9 @@
  * Run after migrate: npm run db:migrate && npm run db:seed
  */
 
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+import { loadEnvFiles } from './load-env';
 
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+loadEnvFiles();
 
 async function insertUser(connection: any, params: [string, string, string, string]) {
   const [id, email, passwordHash, role] = params;
@@ -27,6 +26,23 @@ async function insertUser(connection: any, params: [string, string, string, stri
 }
 
 async function seed() {
+  const adminEmail = process.env.ADMIN_EMAIL?.trim();
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminEmail) {
+    console.error('Set ADMIN_EMAIL in `.env` or `.env.local` before db:seed.');
+    process.exit(1);
+  }
+  if (!adminPassword || adminPassword.length < 8) {
+    console.error('Set ADMIN_PASSWORD in `.env` or `.env.local` (min 8 characters) before db:seed.');
+    process.exit(1);
+  }
+
+  const seedDemoPassword = process.env.SEED_DEMO_PASSWORD;
+  if (!seedDemoPassword || seedDemoPassword.length < 8) {
+    console.error('Set SEED_DEMO_PASSWORD in `.env` or `.env.local` (min 8 characters) for seeded employee/customer demo accounts.');
+    process.exit(1);
+  }
+
   const { default: pool } = await import('../src/lib/db');
   const { hashPassword } = await import('../src/lib/auth');
   const { saveUserNameTranslations, saveLoanNotesTranslations } = await import('../src/lib/translations');
@@ -37,8 +53,6 @@ async function seed() {
   try {
     // --- Admin ---
     const adminId = 'admin-1';
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@khalijtamweel.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin@Khalijtamweel123';
     const [existingAdmin] = await connection.query('SELECT id FROM users WHERE email = ?', [adminEmail]) as any[];
     if (existingAdmin.length === 0) {
       const passwordHash = await hashPassword(adminPassword);
@@ -57,7 +71,7 @@ async function seed() {
     for (const e of employees) {
       const [ex] = await connection.query('SELECT id FROM users WHERE id = ?', [e.id]) as any[];
       if (ex.length === 0) {
-        const hash = await hashPassword('employee123');
+        const hash = await hashPassword(seedDemoPassword);
         await insertUser(connection, [e.id, e.email, hash, 'employee']);
         await connection.query(`INSERT INTO employees (id) VALUES (?)`, [e.id]);
         await saveUserNameTranslations(e.id, e.nameEn, e.nameAr);
@@ -74,7 +88,7 @@ async function seed() {
     for (const c of customers) {
       const [ex] = await connection.query('SELECT id FROM users WHERE id = ?', [c.id]) as any[];
       if (ex.length === 0) {
-        const hash = await hashPassword('customer123');
+        const hash = await hashPassword(seedDemoPassword);
         await insertUser(connection, [c.id, c.email, hash, 'customer']);
         await connection.query(
           `INSERT INTO customers (id, phone, address, assigned_employee_id) VALUES (?, ?, NULL, NULL)`,
@@ -160,8 +174,7 @@ async function seed() {
       }
     }
 
-    const adminEmailFinal = process.env.ADMIN_EMAIL || 'admin@khalijtamweel.com';
-    console.log('\nSeed completed. Admin login:', adminEmailFinal, '(password from ADMIN_PASSWORD)');
+    console.log('\nSeed completed. Admin login:', adminEmail, '(password from ADMIN_PASSWORD in env)');
   } catch (error) {
     console.error('Seed failed:', error);
     throw error;

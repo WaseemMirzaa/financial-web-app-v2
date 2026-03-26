@@ -76,14 +76,18 @@ npm run dev
 
 ### Demo Accounts (after seed)
 
-| Role     | Email            | Password    |
-|----------|------------------|-------------|
-| Admin    | `admin@demo.com` | `admin123`  |
-| Employee | `john@demo.com`  | `employee123` |
-| Employee | `sarah@demo.com` | `employee123` |
-| Customer | `ahmed@demo.com`  | `customer123` |
-| Customer | `fatima@demo.com` | `customer123` |
-| Customer | `mohammed@demo.com` | `customer123` |
+Passwords are never in the repo: set `ADMIN_EMAIL` / `ADMIN_PASSWORD` and `SEED_DEMO_PASSWORD` in `.env` before `db:seed`.
+
+| Role     | Email               |
+|----------|---------------------|
+| Admin    | your `ADMIN_EMAIL`  |
+| Employee | `john@demo.com`     |
+| Employee | `sarah@demo.com`    |
+| Customer | `ahmed@demo.com`    |
+| Customer | `fatima@demo.com`   |
+| Customer | `mohammed@demo.com` |
+
+Admin uses `ADMIN_PASSWORD`; employees and customers use `SEED_DEMO_PASSWORD`.
 
 ## Project Structure
 

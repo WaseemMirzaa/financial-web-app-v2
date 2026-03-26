@@ -36,8 +36,20 @@ target 'Runner' do
   end
 end
 
+# permission_handler (iOS): compile-time flags so Permission.camera / .microphone / .photos work.
+# Match usage strings in Runner/Info.plist. See: https://pub.dev/packages/permission_handler
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = [
+        '$(inherited)',
+        'PERMISSION_CAMERA=1',
+        'PERMISSION_MICROPHONE=1',
+        'PERMISSION_PHOTOS=1',
+        'PERMISSION_PHOTOS_ADD=1',
+        'PERMISSION_NOTIFICATIONS=1',
+      ]
+    end
   end
 end

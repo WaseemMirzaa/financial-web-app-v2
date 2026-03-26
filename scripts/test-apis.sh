@@ -3,7 +3,17 @@
 set -e
 BASE="${BASE_URL:-http://localhost:3004}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@demo.com}"
-ADMIN_PASS="${ADMIN_PASS:-admin123}"
+ADMIN_PASS="${ADMIN_PASS:-}"
+TEST_API_PASSWORD="${TEST_API_PASSWORD:-}"
+
+if [ -z "$ADMIN_PASS" ]; then
+  echo "Set ADMIN_PASS (admin password from your env / seed)."
+  exit 1
+fi
+if [ -z "$TEST_API_PASSWORD" ]; then
+  echo "Set TEST_API_PASSWORD for create/signup curl steps (min 8 chars if your API enforces it)."
+  exit 1
+fi
 
 echo "=== Base URL: $BASE ==="
 echo ""
@@ -54,7 +64,7 @@ echo ""
 
 # 8) Create employee (admin)
 echo "8. POST /api/employees (create employee)"
-CREATE_EMP=$(curl -s -X POST "$BASE/api/employees" -H "Content-Type: application/json" -d '{"name":"Test Employee","email":"testemp@demo.com","password":"test1234"}')
+CREATE_EMP=$(curl -s -X POST "$BASE/api/employees" -H "Content-Type: application/json" -d "{\"name\":\"Test Employee\",\"email\":\"testemp@demo.com\",\"password\":\"$TEST_API_PASSWORD\"}")
 if echo "$CREATE_EMP" | grep -q '"success":true'; then
   echo "   OK"
   EMP_ID=$(echo "$CREATE_EMP" | grep -o '"id":"employee-[^"]*"' | head -1 | cut -d'"' -f4)
@@ -65,7 +75,7 @@ echo ""
 
 # 9) Create customer (admin)
 echo "9. POST /api/customers (create customer)"
-CREATE_CUST=$(curl -s -X POST "$BASE/api/customers" -H "Content-Type: application/json" -d '{"name":"Test Customer","email":"testcust@demo.com","password":"test1234"}')
+CREATE_CUST=$(curl -s -X POST "$BASE/api/customers" -H "Content-Type: application/json" -d "{\"name\":\"Test Customer\",\"email\":\"testcust@demo.com\",\"password\":\"$TEST_API_PASSWORD\"}")
 if echo "$CREATE_CUST" | grep -q '"success":true'; then
   echo "   OK"
 else
@@ -81,7 +91,7 @@ echo ""
 
 # 11) Signup (public)
 echo "11. POST /api/auth/signup"
-SIGNUP=$(curl -s -X POST "$BASE/api/auth/signup" -H "Content-Type: application/json" -d '{"name":"Signup Test","email":"signuptest@demo.com","password":"test1234"}')
+SIGNUP=$(curl -s -X POST "$BASE/api/auth/signup" -H "Content-Type: application/json" -d "{\"name\":\"Signup Test\",\"email\":\"signuptest@demo.com\",\"password\":\"$TEST_API_PASSWORD\"}")
 if echo "$SIGNUP" | grep -q '"success":true'; then
   echo "   OK"
 else

@@ -2,8 +2,50 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../config.dart';
+
+/// WebView needs camera/mic runtime grants before [onPermissionRequest] can GRANT (chat attachments).
+Future<PermissionResponse?> _handlePermissionRequest(
+  InAppWebViewController controller,
+  PermissionRequest request,
+) async {
+  final resources = request.resources;
+  for (final r in resources) {
+    final v = r.toValue();
+    if (v == 'CAMERA') {
+      final status = await Permission.camera.request();
+      if (!status.isGranted) {
+        return PermissionResponse(
+          action: PermissionResponseAction.DENY,
+          resources: resources,
+        );
+      }
+    } else if (v == 'MICROPHONE') {
+      final status = await Permission.microphone.request();
+      if (!status.isGranted) {
+        return PermissionResponse(
+          action: PermissionResponseAction.DENY,
+          resources: resources,
+        );
+      }
+    } else if (v == 'CAMERA_AND_MICROPHONE') {
+      final cam = await Permission.camera.request();
+      final mic = await Permission.microphone.request();
+      if (!cam.isGranted || !mic.isGranted) {
+        return PermissionResponse(
+          action: PermissionResponseAction.DENY,
+          resources: resources,
+        );
+      }
+    }
+  }
+  return PermissionResponse(
+    action: PermissionResponseAction.GRANT,
+    resources: resources,
+  );
+}
 
 class WebViewTab extends StatefulWidget {
   final String path;
@@ -27,7 +69,6 @@ class WebViewTab extends StatefulWidget {
 
 class _WebViewTabState extends State<WebViewTab> {
   InAppWebViewController? _controller;
-  bool _loading = true;
 
   String get _url {
     final base = kBaseUrl.endsWith('/') ? kBaseUrl.substring(0, kBaseUrl.length - 1) : kBaseUrl;
@@ -40,39 +81,40 @@ class _WebViewTabState extends State<WebViewTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        InAppWebView(
-          initialUrlRequest: URLRequest(url: WebUri(_url)),
-          initialSettings: InAppWebViewSettings(
-            javaScriptEnabled: true,
-            domStorageEnabled: true,
-          ),
-          onWebViewCreated: (c) {
-            _controller = c;
-            c.addJavaScriptHandler(
-              handlerName: 'flutterLogout',
-              callback: (_) {
-                widget.onWebLogout?.call();
-              },
-            );
-            c.addJavaScriptHandler(
-              handlerName: 'flutterSetLocale',
-              callback: (args) {
-                final l = args.isNotEmpty ? args[0]?.toString() : null;
-                if (l == 'en' || l == 'ar') widget.onLocaleFromWeb?.call(l!);
-              },
-            );
+    return InAppWebView(
+      initialUrlRequest: URLRequest(url: WebUri(_url)),
+      initialSettings: InAppWebViewSettings(
+        javaScriptEnabled: true,
+        domStorageEnabled: true,
+        allowsInlineMediaPlayback: true,
+        mediaPlaybackRequiresUserGesture: false,
+      ),
+      onPermissionRequest: _handlePermissionRequest,
+      onWebViewCreated: (c) {
+        _controller = c;
+        c.addJavaScriptHandler(
+          handlerName: 'flutterLogout',
+          callback: (_) {
+            widget.onWebLogout?.call();
           },
-          onLoadStop: (_, __) async {
-            // Inject mobile user into web localStorage to share session with web app
-            if (widget.userJson != null) {
-              final userString = jsonEncode(widget.userJson);
-              final escaped = userString
-                  .replaceAll(r'\', r'\\')
-                  .replaceAll("'", r"\'");
+        );
+        c.addJavaScriptHandler(
+          handlerName: 'flutterSetLocale',
+          callback: (args) {
+            final l = args.isNotEmpty ? args[0]?.toString() : null;
+            if (l == 'en' || l == 'ar') widget.onLocaleFromWeb?.call(l!);
+          },
+        );
+      },
+      onLoadStop: (_, __) async {
+        // Inject mobile user into web localStorage to share session with web app
+        if (widget.userJson != null) {
+          final userString = jsonEncode(widget.userJson);
+          final escaped = userString
+              .replaceAll(r'\', r'\\')
+              .replaceAll("'", r"\'");
 
-              await _controller?.evaluateJavascript(source: """
+          await _controller?.evaluateJavascript(source: """
                 (function() {
                   try {
                     var shouldSet = true;
@@ -97,9 +139,9 @@ class _WebViewTabState extends State<WebViewTab> {
                   } catch(e) {}
                 })();
               """);
-            }
+        }
 
-            await _controller?.evaluateJavascript(source: '''
+        await _controller?.evaluateJavascript(source: '''
               (function() {
                 if (!window.FlutterAppBridge) {
                   window.FlutterAppBridge = {};
@@ -116,21 +158,16 @@ class _WebViewTabState extends State<WebViewTab> {
                 };
               })();
             ''');
-            if (widget.onLocaleFromWeb != null) {
-              try {
-                final result = await _controller?.evaluateJavascript(
-                  source: "(function(){ return window.localStorage.getItem('locale') || 'en'; })();",
-                );
-                final l = result?.toString().replaceAll(RegExp(r'^"|"$'), '');
-                if (l != null && (l == 'en' || l == 'ar') && mounted) widget.onLocaleFromWeb!.call(l);
-              } catch (_) {}
-            }
-            if (mounted) setState(() => _loading = false);
-          },
-        ),
-        if (_loading)
-          const Center(child: CircularProgressIndicator()),
-      ],
+        if (widget.onLocaleFromWeb != null) {
+          try {
+            final result = await _controller?.evaluateJavascript(
+              source: "(function(){ return window.localStorage.getItem('locale') || 'en'; })();",
+            );
+            final l = result?.toString().replaceAll(RegExp(r'^"|"$'), '');
+            if (l != null && (l == 'en' || l == 'ar') && mounted) widget.onLocaleFromWeb!.call(l);
+          } catch (_) {}
+        }
+      },
     );
   }
 }

@@ -8,7 +8,7 @@
 #   GITHUB_REPO, BRANCH, APP_DIR, APP_USER, NODE_VERSION, PORT
 #   DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT
 #   JWT_SECRET, INSTALL_MYSQL=y
-#   ADMIN_EMAIL (default admin@khalijtamweel.com), ADMIN_PASSWORD (default admin@Khalijtamweel123)
+#   ADMIN_EMAIL (optional), ADMIN_PASSWORD (required — strong password, no default)
 #   ENV_FILE=/path/to/your/.env.local  (copy this file to droplet and use instead of generated template)
 
 set -e
@@ -28,10 +28,19 @@ DB_NAME="${DB_NAME:-financial_app}"
 DB_PORT="${DB_PORT:-3306}"
 DB_HOST="${DB_HOST:-localhost}"
 
-JWT_SECRET="${JWT_SECRET:-change-me-in-production}"
+JWT_SECRET="${JWT_SECRET:-}"
 INSTALL_MYSQL="${INSTALL_MYSQL:-n}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@khalijtamweel.com}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin@Khalijtamweel123}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+
+if [ -z "$ADMIN_PASSWORD" ] || [ "${#ADMIN_PASSWORD}" -lt 8 ]; then
+  echo "ERROR: Set ADMIN_PASSWORD in the environment (min 8 characters). No default is allowed."
+  exit 1
+fi
+if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "change-me-in-production" ]; then
+  echo "ERROR: Set JWT_SECRET to a long random value (e.g. openssl rand -base64 48). Do not use the default placeholder."
+  exit 1
+fi
 
 # --- Ensure root ---
 if [ "$(id -u)" -ne 0 ]; then

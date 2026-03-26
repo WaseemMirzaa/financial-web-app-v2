@@ -3,12 +3,19 @@ import 'package:flutter/foundation.dart';
 import '../l10n/mobile_strings.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import '../services/push_notification_service.dart';
 import '../services/session_service.dart';
 
 class AuthProvider with ChangeNotifier {
   UserModel? _user;
   bool _isLoading = false;
   String? _error;
+
+  void _registerFcmToken() {
+    final u = _user;
+    if (u == null) return;
+    Future.microtask(() => PushNotificationService.registerFcmTokenWithBackend(u.id));
+  }
 
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
@@ -32,6 +39,7 @@ class AuthProvider with ChangeNotifier {
     }
     _user = me;
     await SessionService.saveUser(me);
+    _registerFcmToken();
     notifyListeners();
     return true;
   }
@@ -48,6 +56,7 @@ class AuthProvider with ChangeNotifier {
         await SessionService.saveUser(_user!);
         _error = null;
         _isLoading = false;
+        _registerFcmToken();
         notifyListeners();
         return true;
       }
@@ -88,6 +97,7 @@ class AuthProvider with ChangeNotifier {
         await SessionService.saveUser(_user!);
         _error = null;
         _isLoading = false;
+        _registerFcmToken();
         notifyListeners();
         return true;
       }
@@ -125,6 +135,7 @@ class AuthProvider with ChangeNotifier {
         await SessionService.saveUser(_user!);
         _error = null;
         _isLoading = false;
+        _registerFcmToken();
         notifyListeners();
         return true;
       }
@@ -145,6 +156,50 @@ class AuthProvider with ChangeNotifier {
     _user = null;
     _error = null;
     notifyListeners();
+  }
+
+  /// Deletes account via API (customer/employee only). Clears session on success.
+  /// Returns null on success, or an error message string.
+  Future<String?> deleteAccount(String password, {String locale = 'en'}) async {
+    final u = _user;
+    if (u == null) return MobileStrings(locale).deleteAccountGenericError;
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final data = await ApiService.deleteAccount(email: u.email, password: password);
+      if (data['success'] == true) {
+        await SessionService.clearUser();
+        _user = null;
+        _error = null;
+        _isLoading = false;
+        notifyListeners();
+        return null;
+      }
+      final err = _mapDeleteError(data, locale);
+      _isLoading = false;
+      notifyListeners();
+      return err;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return e.toString();
+    }
+  }
+
+  String _mapDeleteError(Map<String, dynamic> data, String locale) {
+    final t = MobileStrings(locale);
+    final key = data['errorKey']?.toString() ?? '';
+    final raw = data['error']?.toString() ?? '';
+    if (key == 'error.deleteAccountDisabled') return t.deleteAccountDisabled;
+    if (key == 'error.deleteAccountAdminNotAllowed') return t.deleteAccountAdminNotAllowed;
+    if (key == 'error.deleteAccountNotAllowed') return t.deleteAccountNotAllowed;
+    if (key == 'error.deleteAccountEmployeeHasAssignments') {
+      return t.deleteAccountEmployeeHasAssignments;
+    }
+    if (key == 'error.invalidEmailOrPassword') return t.authInvalidCredentials;
+    if (raw.isNotEmpty) return raw;
+    return t.deleteAccountGenericError;
   }
 
   String _mapAuthError(

@@ -7,11 +7,15 @@ import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
+import 'delete_account_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, required this.onOpenLegalInDashboard});
+
+  /// Loads [path] in the main dashboard WebView and switches to that tab.
+  final void Function(String path) onOpenLegalInDashboard;
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +29,8 @@ class ProfileScreen extends StatelessWidget {
       );
     }
 
-    final canDelete = (user.role == UserRole.admin || user.role == UserRole.customer) &&
-        settings.deleteAccountEnabled;
+    final canDelete = settings.deleteAccountEnabled &&
+        (user.role == UserRole.customer || user.role == UserRole.employee);
 
     return Scaffold(
       backgroundColor: AppTheme.bgPage,
@@ -139,13 +143,13 @@ class ProfileScreen extends StatelessWidget {
             context,
             icon: Icons.privacy_tip_outlined,
             title: t.privacyPolicy,
-            onTap: () => _openUrl(context, '/privacy'),
+            onTap: () => onOpenLegalInDashboard('/privacy'),
           ),
           _menuTile(
             context,
             icon: Icons.description_outlined,
             title: t.termsOfService,
-            onTap: () => _openUrl(context, '/terms'),
+            onTap: () => onOpenLegalInDashboard('/terms'),
           ),
           const SizedBox(height: 8),
           _menuTile(
@@ -169,7 +173,7 @@ class ProfileScreen extends StatelessWidget {
               title: t.deleteAccount,
               iconColor: AppTheme.error,
               titleColor: AppTheme.error,
-              onTap: () => _confirmDelete(context, auth, t),
+              onTap: () => _openDeleteAccount(context),
             ),
         ],
       ),
@@ -219,48 +223,9 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _openUrl(BuildContext context, String path) {
-    final t = MobileStrings(context.read<LocaleProvider>().locale);
+  void _openDeleteAccount(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            title: const Text(''),
-            backgroundColor: AppTheme.primary500,
-            foregroundColor: Colors.white,
-          ),
-          body: Center(child: Text(t.openLinkHint)),
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => const DeleteAccountScreen()),
     );
-  }
-
-  Future<void> _confirmDelete(BuildContext context, AuthProvider auth, MobileStrings t) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t.deleteAccountConfirmTitle),
-        content: Text(t.deleteAccountConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(t.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            child: Text(t.delete),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await auth.logout();
-      if (!context.mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (_) => false,
-      );
-    }
   }
 }

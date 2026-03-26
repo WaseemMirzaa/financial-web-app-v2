@@ -19,6 +19,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _index = 0;
+  /// When set, dashboard WebView loads this path; cleared when user selects Dashboard tab.
+  String? _dashboardPathOverride;
 
   List<_NavItem> _navItemsFor(UserModel user, String locale) {
     final isAr = locale == 'ar';
@@ -47,6 +49,7 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     final items = _navItemsFor(user, locale.locale);
+    final dashboardPath = _dashboardPathOverride ?? user.homePath;
     final notificationsProvider = context.read<NotificationsProvider>();
     notificationsProvider.setUserId(user.id);
     notificationsProvider.listenToPushRefresh();
@@ -61,10 +64,18 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               for (var i = 0; i < items.length; i++)
                 items[i].path == 'menu'
-                    ? const ProfileScreen(key: ValueKey('menu'))
+                    ? ProfileScreen(
+                        key: const ValueKey('menu'),
+                        onOpenLegalInDashboard: (path) {
+                          setState(() {
+                            _dashboardPathOverride = path;
+                            _index = 0;
+                          });
+                        },
+                      )
                     : WebViewTab(
-                        key: ValueKey(items[i].path),
-                        path: items[i].path,
+                        key: ValueKey(dashboardPath),
+                        path: dashboardPath,
                         userId: user.id,
                         userJson: user.toJson(),
                         onWebLogout: () {
@@ -95,7 +106,12 @@ class _MainScreenState extends State<MainScreen> {
           top: false,
           child: BottomNavigationBar(
             currentIndex: _index,
-            onTap: (i) => setState(() => _index = i),
+            onTap: (i) {
+              setState(() {
+                _index = i;
+                if (i == 0) _dashboardPathOverride = null;
+              });
+            },
             type: BottomNavigationBarType.fixed,
             items: [
               for (final item in items)

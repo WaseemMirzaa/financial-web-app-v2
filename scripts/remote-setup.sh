@@ -22,12 +22,14 @@ DB_NAME="financial_app"
 DB_USER="app_user"
 DB_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
 JWT_SECRET=$(openssl rand -base64 48 | tr -d "=+/" | cut -c1-40)
+ADMIN_PASSWORD=$(openssl rand -base64 24 | tr -d "=+/" | cut -c1-20)
 TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
 echo "DB Name: $DB_NAME"
 echo "DB User: $DB_USER"
 echo "DB Password: $DB_PASSWORD"
 echo "JWT Secret: $JWT_SECRET"
+echo "Admin password (generated): $ADMIN_PASSWORD"
 echo ""
 
 # Save credentials locally
@@ -52,7 +54,7 @@ JWT_SECRET: $JWT_SECRET
 ADMIN CREDENTIALS:
 ------------------
 Email: admin@khalijtamweel.com
-Password: admin@Khalijtamweel123
+Password: $ADMIN_PASSWORD
 
 APP INFO:
 --------
@@ -102,7 +104,7 @@ export DB_USER="$DB_USER"
 export DB_PASSWORD="$DB_PASSWORD"
 export JWT_SECRET="$JWT_SECRET"
 export ADMIN_EMAIL="admin@khalijtamweel.com"
-export ADMIN_PASSWORD="admin@Khalijtamweel123"
+export ADMIN_PASSWORD="$ADMIN_PASSWORD"
 export PORT=3000
 
 # Copy scripts to expected location
@@ -132,6 +134,6 @@ echo "All credentials saved locally to: $CREDS_FILE"
 echo ""
 echo "Quick summary:"
 echo "  Database: $DB_NAME / $DB_USER"
-echo "  Admin: admin@khalijtamweel.com / admin@Khalijtamweel123"
+echo "  Admin: admin@khalijtamweel.com / (see \$ADMIN_PASSWORD in $CREDS_FILE)"
 echo ""
 echo "View full credentials: cat $CREDS_FILE"

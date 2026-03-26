@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         title,
         message,
         type: row.type,
-        isRead: row.is_read,
+        isRead: Boolean(row.is_read),
         createdAt: row.created_at,
       };
     });

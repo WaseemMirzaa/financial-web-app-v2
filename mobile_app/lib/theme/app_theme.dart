@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Matches web app globals.css: primary #0066B3, neutrals, semantic colors.
@@ -26,6 +27,18 @@ class AppTheme {
   static const Color error = Color(0xFFEF4444);
   static const Color errorDark = Color(0xFFDC2626);
 
+  /// White status bar icons on primary blue (Android + iOS).
+  static const SystemUiOverlayStyle lightStatusBarOnPrimary = SystemUiOverlayStyle(
+    statusBarColor: primary500,
+    // Android: Brightness.dark => light icons on dark status bar
+    statusBarIconBrightness: Brightness.dark,
+    // iOS: Brightness.dark => light icons on dark status bar
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarDividerColor: Colors.transparent,
+  );
+
   static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
@@ -48,6 +61,7 @@ class AppTheme {
         centerTitle: true,
         backgroundColor: primary500,
         foregroundColor: Colors.white,
+        systemOverlayStyle: lightStatusBarOnPrimary,
         titleTextStyle: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w600,

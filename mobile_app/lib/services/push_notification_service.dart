@@ -1,21 +1,70 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import '../firebase_options.dart';
+import 'api_service.dart';
 import 'notification_refresh_trigger.dart';
 
-/// Initializes FCM and triggers notification list refresh when a push is received or opened.
+/// Background isolate — must not touch UI or main-isolate singletons.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
+
+/// FCM: permission, token → backend, foreground local notifications, open handlers.
 class PushNotificationService {
+  static final FlutterLocalNotificationsPlugin _local =
+      FlutterLocalNotificationsPlugin();
+
+  static const AndroidNotificationChannel _androidChannel =
+      AndroidNotificationChannel(
+    'high_importance_channel',
+    'Notifications',
+    description: 'In-app and push notifications',
+    importance: Importance.high,
+  );
+
   static Future<void> init() async {
+    await _ensureAndroidPostNotificationPermission();
+
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    await _local.initialize(
+      const InitializationSettings(android: androidInit, iOS: iosInit),
+    );
+
+    final iosLocal = _local.resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
+    await iosLocal?.requestPermissions(alert: true, badge: true, sound: true);
+
+    final androidPlugin = _local.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(_androidChannel);
+
     try {
       await FirebaseMessaging.instance.requestPermission(
         alert: true,
         badge: true,
         sound: true,
+        provisional: false,
       );
     } catch (_) {}
 
-    FirebaseMessaging.onMessage.listen((_) {
-      NotificationRefreshTrigger.instance.trigger();
-    });
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
+      alert: false,
+      badge: false,
+      sound: false,
+    );
+
+    FirebaseMessaging.onMessage.listen(_onForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen((_) {
       NotificationRefreshTrigger.instance.trigger();
     });
@@ -23,5 +72,59 @@ class PushNotificationService {
     if (initial != null) {
       NotificationRefreshTrigger.instance.trigger();
     }
+
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      _lastToken = token;
+    });
+  }
+
+  static String? _lastToken;
+
+  /// Call after login / session restore so the backend can send pushes.
+  static Future<void> registerFcmTokenWithBackend(String userId) async {
+    if (userId.isEmpty) return;
+    try {
+      final token = _lastToken ?? await FirebaseMessaging.instance.getToken();
+      if (token == null || token.isEmpty) return;
+      _lastToken = token;
+      await ApiService.registerFcmToken(userId, token);
+    } catch (_) {}
+  }
+
+  static Future<void> _ensureAndroidPostNotificationPermission() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    final status = await Permission.notification.status;
+    if (status.isDenied) {
+      await Permission.notification.request();
+    }
+  }
+
+  static Future<void> _onForegroundMessage(RemoteMessage message) async {
+    NotificationRefreshTrigger.instance.trigger();
+
+    final notification = message.notification;
+    if (notification == null) return;
+
+    await _local.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _androidChannel.id,
+          _androidChannel.name,
+          channelDescription: _androidChannel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: message.data.isNotEmpty ? message.data.toString() : null,
+    );
   }
 }

@@ -24,8 +24,17 @@ class NotificationModel {
       title: json['title']?.toString() ?? '',
       message: json['message']?.toString() ?? '',
       type: json['type']?.toString() ?? 'info',
-      isRead: json['isRead'] == true,
+      isRead: _jsonBool(json['isRead']),
       createdAt: json['createdAt']?.toString(),
     );
+  }
+
+  /// API / MySQL may send `true`, `1`, or `"1"`.
+  static bool _jsonBool(dynamic v) {
+    if (v == true) return true;
+    if (v == false || v == null) return false;
+    if (v is num) return v != 0;
+    final s = v.toString().toLowerCase();
+    return s == '1' || s == 'true' || s == 'yes';
   }
 }

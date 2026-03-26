@@ -1,11 +1,18 @@
 /// Auth & splash strings for EN / AR (matches app LocaleProvider).
+
+/// Use for [MaterialApp.title] — avoids hot-reload VM lookup issues on `.appName`.
+String mobileAppTitle(String locale) {
+  final isAr = locale == 'ar';
+  return isAr ? 'الخليج للتمويل' : 'Alkhalij for Finance';
+}
+
 class MobileStrings {
   MobileStrings(this.locale);
   final String locale;
   bool get isAr => locale == 'ar';
 
   // Splash
-  String get appName => isAr ? 'الخليج للتمويل' : 'Alkhalij for Finance';
+  String get appName => mobileAppTitle(locale);
   String get tagline =>
       isAr ? 'منصة إدارة التمويل' : 'Professional loan management platform';
 
@@ -19,6 +26,8 @@ class MobileStrings {
       isAr ? 'يرجى إدخال البريد الإلكتروني' : 'Please enter email';
   String get pleaseEnterPassword =>
       isAr ? 'يرجى إدخال كلمة المرور' : 'Please enter password';
+  String get showPassword => isAr ? 'إظهار كلمة المرور' : 'Show password';
+  String get hidePassword => isAr ? 'إخفاء كلمة المرور' : 'Hide password';
   String get createAccount => isAr ? 'إنشاء حساب' : 'Create account';
   String get forgotPassword => isAr ? 'نسيت كلمة المرور؟' : 'Forgot password?';
 
@@ -98,6 +107,25 @@ class MobileStrings {
   String get deleteAccountConfirmBody => isAr
       ? 'هل أنت متأكد؟ لا يمكن التراجع.'
       : 'Are you sure? This cannot be undone.';
+  String get deleteAccountEnterPassword => isAr
+      ? 'أدخل كلمة المرور لتأكيد حذف الحساب.'
+      : 'Enter your password to confirm account deletion.';
+  String get deleteAccountSubmit => isAr ? 'حذف نهائياً' : 'Delete permanently';
+  String get deleteAccountDisabled => isAr
+      ? 'حذف الحساب غير مفعّل. تواصل مع الدعم.'
+      : 'Account deletion is disabled. Contact support.';
+  String get deleteAccountAdminNotAllowed => isAr
+      ? 'لا يمكن حذف حساب المسؤول من التطبيق.'
+      : 'Administrator accounts cannot be deleted from the app.';
+  String get deleteAccountNotAllowed => isAr
+      ? 'لا يمكن حذف هذا الحساب من هنا.'
+      : 'This account cannot be deleted here.';
+  String get deleteAccountEmployeeHasAssignments => isAr
+      ? 'لا يزال لديك عملاء معينون. اطلب من المسؤول إلغاء التعيين أولاً.'
+      : 'You still have assigned customers. Ask your administrator to unassign them first.';
+  String get deleteAccountGenericError => isAr
+      ? 'تعذّر حذف الحساب. حاول مرة أخرى.'
+      : 'Could not delete account. Please try again.';
   String get cancel => isAr ? 'إلغاء' : 'Cancel';
   String get delete => isAr ? 'حذف' : 'Delete';
   String get roleAdmin => isAr ? 'مدير' : 'Admin';

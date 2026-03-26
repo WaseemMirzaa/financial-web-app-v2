@@ -9,10 +9,9 @@
  * Requires .env.local with DB_* and optionally ADMIN_EMAIL (default admin@khalijtamweel.com).
  */
 
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+import { loadEnvFiles } from './load-env';
 
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+loadEnvFiles();
 
 async function changeAdminPassword() {
   const newPassword = process.env.ADMIN_NEW_PASSWORD || process.argv[2];
@@ -26,7 +25,11 @@ async function changeAdminPassword() {
   const { default: pool } = await import('../src/lib/db');
   const { hashPassword } = await import('../src/lib/auth');
 
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@khalijtamweel.com';
+  const adminEmail = process.env.ADMIN_EMAIL?.trim();
+  if (!adminEmail) {
+    console.error('Set ADMIN_EMAIL in `.env` or `.env.local`.');
+    process.exit(1);
+  }
 
   try {
     const [rows] = await pool.query('SELECT id, email FROM users WHERE role = ? AND email = ?', ['admin', adminEmail]) as any[];
