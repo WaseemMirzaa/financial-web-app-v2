@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import pool from '@/lib/db';
-import { successResponse, errorResponse, serverError, validationError } from '@/lib/api';
+import {
+  successResponse,
+  errorResponse,
+  serverError,
+  validationError,
+  notFoundError,
+} from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,14 +29,51 @@ async function checkCanManageChat(chatId: string, userId: string): Promise<boole
 }
 
 /**
+ * PUT /api/chat/[id]/pin?userId=
+ * Toggle pin for the chat in the sidebar list (is_pinned on chats). Admin only.
+ */
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> | { id: string } }
+) {
+  try {
+    const params = await Promise.resolve(context.params);
+    const chatId = params.id;
+    const userId = new URL(request.url).searchParams.get('userId');
+    if (!chatId || !userId) {
+      return validationError('chatId and userId are required', 'error.missingRequiredFields');
+    }
+    const [userRows] = await pool.query(`SELECT role FROM users WHERE id = ?`, [userId]) as any[];
+    if (userRows.length === 0 || userRows[0].role !== 'admin') {
+      return errorResponse('Access denied', 403, 'error.accessDenied');
+    }
+    const [chatRows] = await pool.query(`SELECT id, is_pinned FROM chats WHERE id = ?`, [chatId]) as any[];
+    if (chatRows.length === 0) {
+      return notFoundError('Chat');
+    }
+    const nextPinned = !Boolean(chatRows[0].is_pinned);
+    if (nextPinned) {
+      await pool.query(`UPDATE chats SET is_pinned = TRUE, pinned_at = NOW() WHERE id = ?`, [chatId]);
+    } else {
+      await pool.query(`UPDATE chats SET is_pinned = FALSE, pinned_at = NULL WHERE id = ?`, [chatId]);
+    }
+    return successResponse({ isPinned: nextPinned }, nextPinned ? 'Chat pinned' : 'Chat unpinned');
+  } catch (error: any) {
+    console.error('Pin chat (room) error:', error);
+    return serverError();
+  }
+}
+
+/**
  * POST /api/chat/[id]/pin
  * Pin or unpin a message in a chat
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    const params = await Promise.resolve(context.params);
     const chatId = params.id;
     const body = await request.json();
     const { messageId, userId } = body;

@@ -10,9 +10,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { filename: string } }
+  context: { params: Promise<{ filename: string }> | { filename: string } }
 ) {
   try {
+    const params = await Promise.resolve(context.params);
     const { filename } = params;
     if (!filename) {
       return NextResponse.json({ success: false, error: 'Filename is required' }, { status: 400 });
@@ -31,8 +32,14 @@ export async function GET(
         '.png': 'image/png',
         '.gif': 'image/gif',
         '.webp': 'image/webp',
+        '.bmp': 'image/bmp',
+        '.heic': 'image/heic',
+        '.heif': 'image/heif',
         '.pdf': 'application/pdf',
+        '.doc': 'application/msword',
         '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.xls': 'application/vnd.ms-excel',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       };
       const contentType = contentTypeMap[ext] || 'application/octet-stream';
       return new NextResponse(fileBuffer, {

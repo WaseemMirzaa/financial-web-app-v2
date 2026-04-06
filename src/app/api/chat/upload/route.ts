@@ -3,15 +3,39 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { successResponse, validationError, serverError } from '@/lib/api';
 
+export const runtime = 'nodejs';
+
 const ALLOWED_TYPES = [
   'application/pdf',
   'image/jpeg',
   'image/png',
   'image/gif',
   'image/webp',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+  'image/bmp',
+  'image/heic',
+  'image/heif',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
 ];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+/** Browsers and mobile often send empty type, octet-stream, or docx as zip — accept by extension + mime. */
+function isAllowedUpload(file: File): boolean {
+  const name = file.name || '';
+  if (ALLOWED_TYPES.includes(file.type)) return true;
+  if (/\.(pdf|jpe?g|png|gif|webp|bmp|heic|heif|docx?|xlsx?)$/i.test(name)) {
+    if (!file.type || file.type === 'application/octet-stream') return true;
+  }
+  if (/\.docx$/i.test(name) && (file.type === 'application/zip' || file.type === 'application/x-zip-compressed')) {
+    return true;
+  }
+  if (/\.xlsx$/i.test(name) && (file.type === 'application/zip' || file.type === 'application/x-zip-compressed')) {
+    return true;
+  }
+  return false;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,8 +44,11 @@ export async function POST(request: NextRequest) {
     if (!file || !(file instanceof File)) {
       return validationError('File is required', 'error.missingRequiredFields');
     }
-    if (!ALLOWED_TYPES.includes(file.type) && !file.name.match(/\.(pdf|jpg|jpeg|png|gif|webp|docx)$/i)) {
-      return validationError('Allowed: PDF, images (jpg, png, gif, webp), DOCX', 'error.invalidFileType');
+    if (!isAllowedUpload(file)) {
+      return validationError(
+        'Allowed: PDF, images (jpg, png, gif, webp, bmp, heic), Word, Excel',
+        'error.invalidFileType'
+      );
     }
     if (file.size > MAX_SIZE) {
       return validationError('File too large (max 10MB)', 'error.fileTooLarge');
