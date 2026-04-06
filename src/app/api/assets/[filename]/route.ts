@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { getChatUploadDir } from '@/lib/chat-upload-path';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/assets/[filename]
- * Serve uploaded files from public/assets directory
+ * Serve uploaded files from getChatUploadDir() (see CHAT_UPLOAD_DIR)
  */
 export async function GET(
   request: NextRequest,
@@ -22,7 +23,7 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Invalid filename' }, { status: 400 });
     }
 
-    const filePath = path.join(process.cwd(), 'public', 'assets', filename);
+    const filePath = path.join(getChatUploadDir(), filename);
     try {
       const fileBuffer = await readFile(filePath);
       const ext = path.extname(filename).toLowerCase();

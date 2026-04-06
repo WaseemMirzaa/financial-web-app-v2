@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { successResponse, validationError, serverError } from '@/lib/api';
+import { getChatUploadDir } from '@/lib/chat-upload-path';
 
 export const runtime = 'nodejs';
 
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       return validationError('File too large (max 10MB)', 'error.fileTooLarge');
     }
 
-    const assetsDir = path.join(process.cwd(), 'public', 'assets');
+    const assetsDir = getChatUploadDir();
     await mkdir(assetsDir, { recursive: true });
     const ext = path.extname(file.name) || (file.type === 'application/pdf' ? '.pdf' : '.bin');
     const baseName = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
