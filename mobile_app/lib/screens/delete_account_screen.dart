@@ -33,6 +33,22 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     final err = await auth.deleteAccount(_password.text, locale: locale);
     if (!mounted) return;
     if (err == null) {
+      final strings = MobileStrings(locale);
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: Text(strings.deleteAccountSuccessTitle),
+          content: Text(strings.deleteAccountSuccessBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(strings.okAction),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (_) => false,

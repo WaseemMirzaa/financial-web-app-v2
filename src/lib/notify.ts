@@ -5,8 +5,7 @@
 
 import pool from './db';
 import { saveNotificationTranslations } from './translations';
-// Firebase FCM push notifications disabled
-// import { sendPushNotification } from './fcm';
+import { sendPushNotification } from './fcm';
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
@@ -55,7 +54,10 @@ export async function createNotificationAndPush(
     console.error('[Notify] Save notification translations error:', err);
   }
 
-  // Firebase FCM push notifications disabled - using in-app notifications only
-  // Notifications are polled every 15s by NotificationContext
+  try {
+    await sendPushNotification(userId, titleEn, titleAr, messageEn, messageAr);
+  } catch (err) {
+    console.error('[Notify] FCM push error:', err);
+  }
   return notificationId;
 }

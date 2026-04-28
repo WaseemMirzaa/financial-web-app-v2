@@ -138,7 +138,7 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: notification.isRead ? Colors.white : AppTheme.primary50.withOpacity(0.5),
+      color: notification.isRead ? Colors.white : AppTheme.primary50.withValues(alpha: 0.5),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         leading: CircleAvatar(

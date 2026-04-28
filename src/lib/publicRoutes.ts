@@ -5,6 +5,7 @@ const PUBLIC_NO_AUTH_PATHS = new Set([
   '/privacy',
   '/terms',
   '/delete',
+  '/delete-account',
   '/privacy-policy',
   '/terms-of-service',
 ]);

@@ -7,3 +7,7 @@ const String kBaseUrl = String.fromEnvironment(
 
 /// Base URL without trailing slash for building paths like base + '/api/...'
 String get apiBaseUrl => kBaseUrl.endsWith('/') ? kBaseUrl.substring(0, kBaseUrl.length - 1) : kBaseUrl;
+
+/// Public legal pages opened in the dashboard WebView.
+const String kPrivacyPolicyUrl = 'https://khalijtamweel.com/privacy-policy.php';
+const String kTermsOfServiceUrl = 'https://khalijtamweel.com/terms-of-service.php';

@@ -136,29 +136,31 @@ class _SignupScreenState extends State<SignupScreen> {
                     children: [
                       Text(t.signingUpAs, style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.neutral900)),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: Text(t.customer),
-                              value: 'customer',
-                              groupValue: _role,
-                              onChanged: (v) => setState(() => _role = v!),
-                              activeColor: AppTheme.primary500,
-                              contentPadding: EdgeInsets.zero,
+                      RadioGroup<String>(
+                        groupValue: _role,
+                        onChanged: (v) {
+                          if (v != null) setState(() => _role = v);
+                        },
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: Text(t.customer),
+                                value: 'customer',
+                                activeColor: AppTheme.primary500,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: Text(t.employee),
-                              value: 'employee',
-                              groupValue: _role,
-                              onChanged: (v) => setState(() => _role = v!),
-                              activeColor: AppTheme.primary500,
-                              contentPadding: EdgeInsets.zero,
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: Text(t.employee),
+                                value: 'employee',
+                                activeColor: AppTheme.primary500,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 20),
                       TextFormField(

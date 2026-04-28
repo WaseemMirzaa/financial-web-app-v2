@@ -70,7 +70,13 @@ class WebViewTab extends StatefulWidget {
 class _WebViewTabState extends State<WebViewTab> {
   InAppWebViewController? _controller;
 
+  bool get _isAbsoluteHttpUrl {
+    final p = widget.path;
+    return p.startsWith('http://') || p.startsWith('https://');
+  }
+
   String get _url {
+    if (_isAbsoluteHttpUrl) return widget.path;
     final base = kBaseUrl.endsWith('/') ? kBaseUrl.substring(0, kBaseUrl.length - 1) : kBaseUrl;
     final path = widget.path.startsWith('/') ? widget.path : '/${widget.path}';
     final uri = Uri.parse('$base$path');
@@ -108,7 +114,7 @@ class _WebViewTabState extends State<WebViewTab> {
       },
       onLoadStop: (_, __) async {
         // Inject mobile user into web localStorage to share session with web app
-        if (widget.userJson != null) {
+        if (widget.userJson != null && !_isAbsoluteHttpUrl) {
           final userString = jsonEncode(widget.userJson);
           final escaped = userString
               .replaceAll(r'\', r'\\')
@@ -158,7 +164,7 @@ class _WebViewTabState extends State<WebViewTab> {
                 };
               })();
             ''');
-        if (widget.onLocaleFromWeb != null) {
+        if (widget.onLocaleFromWeb != null && !_isAbsoluteHttpUrl) {
           try {
             final result = await _controller?.evaluateJavascript(
               source: "(function(){ return window.localStorage.getItem('locale') || 'en'; })();",

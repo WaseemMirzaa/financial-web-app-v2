@@ -1,6 +1,5 @@
-/// Auth & splash strings for EN / AR (matches app LocaleProvider).
-
-/// Use for [MaterialApp.title] — avoids hot-reload VM lookup issues on `.appName`.
+// Auth & splash strings for EN / AR (matches app LocaleProvider).
+// Use for MaterialApp.title — avoids hot-reload VM lookup issues on `.appName`.
 String mobileAppTitle(String locale) {
   final isAr = locale == 'ar';
   return isAr ? 'الخليج للتمويل' : 'Alkhalij for Finance';
@@ -95,6 +94,9 @@ class MobileStrings {
 
   // Profile / menu
   String get profileTitle => isAr ? 'الملف الشخصي' : 'Profile';
+  String get settingsTitle => isAr ? 'الإعدادات' : 'Settings';
+  String get navDashboard => isAr ? 'لوحة التحكم' : 'Dashboard';
+  String get navSettings => isAr ? 'الإعدادات' : 'Settings';
   String get notificationsTitle => isAr ? 'الإشعارات' : 'Notifications';
   String get markAllRead => isAr ? 'تعليم الكل كمقروء' : 'Mark all read';
   String get noNotifications => isAr ? 'لا توجد إشعارات' : 'No notifications';
@@ -126,6 +128,11 @@ class MobileStrings {
   String get deleteAccountGenericError => isAr
       ? 'تعذّر حذف الحساب. حاول مرة أخرى.'
       : 'Could not delete account. Please try again.';
+  String get deleteAccountSuccessTitle => isAr ? 'تم حذف الحساب' : 'Account deleted';
+  String get deleteAccountSuccessBody => isAr
+      ? 'تمت معالجة حسابك. يمكنك إغلاق هذه الشاشة.'
+      : 'Your account has been deleted or deactivated.';
+  String get okAction => isAr ? 'حسناً' : 'OK';
   String get cancel => isAr ? 'إلغاء' : 'Cancel';
   String get delete => isAr ? 'حذف' : 'Delete';
   String get roleAdmin => isAr ? 'مدير' : 'Admin';

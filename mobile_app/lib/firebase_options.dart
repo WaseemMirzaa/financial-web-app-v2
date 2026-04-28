@@ -31,19 +31,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_FIREBASE_API_KEY',
-    appId: '1:REPLACE_WITH_SENDER:android:REPLACE',
-    messagingSenderId: 'REPLACE_WITH_SENDER',
-    projectId: 'REPLACE_WITH_PROJECT_ID',
-    storageBucket: 'REPLACE_WITH_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyDX3yKJsCYxD8GynHaMom1zd73MSwqf-Jg',
+    appId: '1:786188064824:android:cde668495ac25c5c3daecd',
+    messagingSenderId: '786188064824',
+    projectId: '786188064824',
+    storageBucket: 'khalij-tamweel-app.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_FIREBASE_API_KEY',
-    appId: '1:REPLACE_WITH_SENDER:ios:REPLACE',
-    messagingSenderId: 'REPLACE_WITH_SENDER',
-    projectId: 'REPLACE_WITH_PROJECT_ID',
-    storageBucket: 'REPLACE_WITH_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyDX3yKJsCYxD8GynHaMom1zd73MSwqf-Jg',
+    appId: '1:786188064824:ios:b02743476d4b4b813daecd',
+    messagingSenderId: '786188064824',
+    projectId: 'khalij-tamweel-app',
+    storageBucket: 'khalij-tamweel-app.firebasestorage.app',
     iosBundleId: 'com.khalijtamweel.financialMobile',
   );
 }

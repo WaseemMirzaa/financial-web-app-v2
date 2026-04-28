@@ -7,11 +7,39 @@ import 'package:permission_handler/permission_handler.dart';
 import '../firebase_options.dart';
 import 'api_service.dart';
 import 'notification_refresh_trigger.dart';
+import 'session_service.dart';
 
 /// Background isolate — must not touch UI or main-isolate singletons.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
+
+/// Arabic script (subset) — matches server [fcm.ts] for EN-only Arabic payloads.
+final RegExp _arabicScript = RegExp(
+  r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]',
+);
+
+String _pickPushTitle(RemoteMessage message) {
+  final d = message.data;
+  final ar = (d['title_ar']?.toString() ?? '').trim();
+  if (ar.isNotEmpty) return ar;
+  final en = (d['title_en']?.toString() ?? '').trim();
+  if (en.isNotEmpty && _arabicScript.hasMatch(en)) return en;
+  final n = message.notification?.title?.trim();
+  if (n != null && n.isNotEmpty) return n;
+  return en;
+}
+
+String _pickPushBody(RemoteMessage message) {
+  final d = message.data;
+  final ar = (d['body_ar']?.toString() ?? '').trim();
+  if (ar.isNotEmpty) return ar;
+  final en = (d['body_en']?.toString() ?? '').trim();
+  if (en.isNotEmpty && _arabicScript.hasMatch(en)) return en;
+  final n = message.notification?.body?.trim();
+  if (n != null && n.isNotEmpty) return n;
+  return en;
 }
 
 /// FCM: permission, token → backend, foreground local notifications, open handlers.
@@ -73,8 +101,12 @@ class PushNotificationService {
       NotificationRefreshTrigger.instance.trigger();
     }
 
-    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
       _lastToken = token;
+      final user = await SessionService.getUser();
+      if (user != null) {
+        await ApiService.registerFcmToken(user.id, token);
+      }
     });
   }
 
@@ -103,12 +135,14 @@ class PushNotificationService {
     NotificationRefreshTrigger.instance.trigger();
 
     final notification = message.notification;
-    if (notification == null) return;
+    final title = _pickPushTitle(message);
+    final body = _pickPushBody(message);
+    if (title.isEmpty && body.isEmpty) return;
 
     await _local.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
+      Object.hash(title, body, message.sentTime?.millisecondsSinceEpoch ?? 0),
+      title.isNotEmpty ? title : (notification?.title ?? ''),
+      body.isNotEmpty ? body : (notification?.body ?? ''),
       NotificationDetails(
         android: AndroidNotificationDetails(
           _androidChannel.id,

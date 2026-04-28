@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/mobile_strings.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
@@ -19,14 +20,11 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _index = 0;
-  /// When set, dashboard WebView loads this path; cleared when user selects Dashboard tab.
-  String? _dashboardPathOverride;
 
-  List<_NavItem> _navItemsFor(UserModel user, String locale) {
-    final isAr = locale == 'ar';
+  List<_NavItem> _navItemsFor(UserModel user, MobileStrings t) {
     return [
-      _NavItem(Icons.dashboard, isAr ? 'لوحة التحكم' : 'Dashboard', user.homePath),
-      _NavItem(Icons.menu_rounded, isAr ? 'القائمة' : 'Menu', 'menu'),
+      _NavItem(Icons.dashboard, t.navDashboard, user.homePath),
+      _NavItem(Icons.settings_outlined, t.navSettings, 'menu'),
     ];
   }
 
@@ -48,8 +46,8 @@ class _MainScreenState extends State<MainScreen> {
       );
     }
 
-    final items = _navItemsFor(user, locale.locale);
-    final dashboardPath = _dashboardPathOverride ?? user.homePath;
+    final items = _navItemsFor(user, MobileStrings(locale.locale));
+    final dashboardPath = user.homePath;
     final notificationsProvider = context.read<NotificationsProvider>();
     notificationsProvider.setUserId(user.id);
     notificationsProvider.listenToPushRefresh();
@@ -64,15 +62,7 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               for (var i = 0; i < items.length; i++)
                 items[i].path == 'menu'
-                    ? ProfileScreen(
-                        key: const ValueKey('menu'),
-                        onOpenLegalInDashboard: (path) {
-                          setState(() {
-                            _dashboardPathOverride = path;
-                            _index = 0;
-                          });
-                        },
-                      )
+                    ? const ProfileScreen(key: ValueKey('menu'))
                     : WebViewTab(
                         key: ValueKey(dashboardPath),
                         path: dashboardPath,
@@ -107,10 +97,7 @@ class _MainScreenState extends State<MainScreen> {
           child: BottomNavigationBar(
             currentIndex: _index,
             onTap: (i) {
-              setState(() {
-                _index = i;
-                if (i == 0) _dashboardPathOverride = null;
-              });
+              setState(() => _index = i);
             },
             type: BottomNavigationBarType.fixed,
             items: [

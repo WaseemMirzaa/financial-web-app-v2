@@ -10,6 +10,21 @@
 
 import pool from './db';
 
+/** Arabic script (basic range) — used when EN text is actually Arabic-only payloads. */
+const ARABIC_SCRIPT = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+/**
+ * Text shown in the system tray / APNs: prefer Arabic fields; if empty, use EN when it looks Arabic;
+ * otherwise fall back to EN.
+ */
+function pickPushDisplayText(ar: string, en: string): string {
+  const arT = (ar || '').trim();
+  if (arT) return arT;
+  const enT = (en || '').trim();
+  if (enT && ARABIC_SCRIPT.test(enT)) return enT;
+  return enT || arT;
+}
+
 // Firebase Admin is optional; type as any so build works without firebase-admin installed
 let fcmAdmin: any = null;
 
@@ -85,57 +100,59 @@ export async function sendPushNotification(
     return;
   }
 
+  // FCM `data` map values must be strings (Android / delivery rules).
+  const dataPayload: Record<string, string> = {
+    title_en: String(titleEn),
+    title_ar: String(titleAr),
+    body_en: String(messageEn),
+    body_ar: String(messageAr),
+  };
+
+  const displayTitle = pickPushDisplayText(titleAr, titleEn);
+  const displayBody = pickPushDisplayText(messageAr, messageEn);
+
+  const invalidTokenCodes = new Set([
+    'messaging/registration-token-not-registered',
+    'messaging/invalid-registration-token',
+    'messaging/unregistered',
+  ]);
+
   try {
     console.log('[FCM] Sending push notification to', tokens.length, 'token(s)');
     const result = await admin.messaging().sendEachForMulticast({
       tokens,
       notification: {
-        title: titleEn,
-        body: messageEn,
+        title: displayTitle,
+        body: displayBody,
       },
-      data: {
-        title_en: titleEn,
-        title_ar: titleAr,
-        body_en: messageEn,
-        body_ar: messageAr,
-      },
+      data: dataPayload,
       webpush: {
         notification: {
-          title: titleEn,
-          body: messageEn,
+          title: displayTitle,
+          body: displayBody,
           icon: '/icon.png',
         },
-        data: {
-          title_en: titleEn,
-          title_ar: titleAr,
-          body_en: messageEn,
-          body_ar: messageAr,
-        },
+        data: dataPayload,
       },
       android: {
         notification: {
-          title: titleEn,
-          body: messageEn,
+          title: displayTitle,
+          body: displayBody,
+          channelId: 'high_importance_channel',
+          sound: 'default',
         },
-        data: {
-          title_en: titleEn,
-          title_ar: titleAr,
-          body_en: messageEn,
-          body_ar: messageAr,
-        },
+        data: dataPayload,
       },
       apns: {
         payload: {
           aps: {
             alert: {
-              title: titleEn,
-              body: messageEn,
+              title: displayTitle,
+              body: displayBody,
             },
-            'mutable-content': 1,
-            'content-available': 1,
+            sound: 'default',
           },
         },
-        fcmOptions: {},
       },
     });
     console.log('[FCM] Push notification sent:', { 
@@ -144,9 +161,24 @@ export async function sendPushNotification(
       responses: result.responses?.map((r: any, i: number) => ({ 
         index: i, 
         success: r.success, 
-        error: r.error?.code 
+        error: r.success ? undefined : r.error?.code || r.error?.message
       }))
     });
+
+    for (let i = 0; i < result.responses.length; i++) {
+      const r = result.responses[i];
+      if (r.success) continue;
+      const code = r.error?.code || r.error?.errorInfo?.code;
+      if (code && invalidTokenCodes.has(code)) {
+        const token = tokens[i];
+        try {
+          await pool.query('DELETE FROM user_fcm_tokens WHERE user_id = ? AND token = ?', [userId, token]);
+          console.log('[FCM] Removed invalid token for user', userId, code);
+        } catch (e) {
+          console.warn('[FCM] Failed to delete invalid token:', e);
+        }
+      }
+    }
   } catch (err) {
     console.error('[FCM] Send failed for user', userId, err);
   }

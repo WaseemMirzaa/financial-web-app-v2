@@ -7,15 +7,14 @@ import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
+import '../config.dart';
 import 'delete_account_screen.dart';
+import 'legal_web_view_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key, required this.onOpenLegalInDashboard});
-
-  /// Loads [path] in the main dashboard WebView and switches to that tab.
-  final void Function(String path) onOpenLegalInDashboard;
+  const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +34,7 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.bgPage,
       appBar: AppBar(
-        title: Text(t.profileTitle),
+        title: Text(t.settingsTitle),
         backgroundColor: AppTheme.primary500,
         foregroundColor: Colors.white,
       ),
@@ -143,13 +142,13 @@ class ProfileScreen extends StatelessWidget {
             context,
             icon: Icons.privacy_tip_outlined,
             title: t.privacyPolicy,
-            onTap: () => onOpenLegalInDashboard('/privacy'),
+            onTap: () => _openLegalWeb(context, kPrivacyPolicyUrl, t.privacyPolicy),
           ),
           _menuTile(
             context,
             icon: Icons.description_outlined,
             title: t.termsOfService,
-            onTap: () => onOpenLegalInDashboard('/terms'),
+            onTap: () => _openLegalWeb(context, kTermsOfServiceUrl, t.termsOfService),
           ),
           const SizedBox(height: 8),
           _menuTile(
@@ -215,6 +214,14 @@ class ProfileScreen extends StatelessWidget {
       case UserRole.customer:
         return t.roleCustomerLabel;
     }
+  }
+
+  void _openLegalWeb(BuildContext context, String url, String title) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LegalWebViewScreen(url: url, title: title),
+      ),
+    );
   }
 
   void _openNotifications(BuildContext context) {

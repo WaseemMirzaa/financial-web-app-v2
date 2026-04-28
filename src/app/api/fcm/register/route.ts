@@ -4,37 +4,28 @@ import { successResponse, validationError, serverError } from '@/lib/api';
 
 /**
  * POST /api/fcm/register
- * DISABLED: Firebase FCM push notifications are disabled.
- * Using in-app notifications only (polled every 15s).
+ * Body: { userId, token, deviceLabel? }
+ * Stores the device FCM token so the server can send pushes via createNotificationAndPush.
  */
 export async function POST(request: NextRequest) {
-  // Firebase FCM disabled - return success but don't register token
-  return successResponse(
-    { registered: false, message: 'FCM disabled - using in-app notifications only' },
-    'FCM disabled',
-    'fcm.disabled'
-  );
-  
-  /* COMMENTED OUT - Firebase FCM registration
   try {
     const body = await request.json();
     const { userId, token, deviceLabel } = body;
 
-    console.log('[FCM API] Register request received:', { userId, tokenLength: token?.length, hasDeviceLabel: !!deviceLabel });
-
     if (!userId || !token || typeof token !== 'string') {
-      console.warn('[FCM API] Validation failed - missing userId or token');
       return validationError('userId and token are required', 'error.missingRequiredFields');
     }
 
-    // FCM tokens are typically ~152 chars; we store up to 255
     const trimmedToken = token.trim().slice(0, 255);
     if (!trimmedToken) {
-      console.warn('[FCM API] Token is empty after trimming');
       return validationError('Invalid token', 'error.invalidToken');
     }
 
-    console.log('[FCM API] Saving token to database...');
+    const [users] = (await pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', [userId])) as any[];
+    if (!users?.length) {
+      return validationError('Invalid user', 'error.userNotFound');
+    }
+
     await pool.query(
       `INSERT INTO user_fcm_tokens (user_id, token, device_label)
        VALUES (?, ?, ?)
@@ -42,15 +33,13 @@ export async function POST(request: NextRequest) {
       [userId, trimmedToken, deviceLabel || null]
     );
 
-    console.log('[FCM API] Token registered successfully for user:', userId);
     return successResponse(
       { registered: true },
       'Token registered for push notifications',
       'fcm.registered'
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[FCM API] Register error:', error);
     return serverError();
   }
-  */
 }

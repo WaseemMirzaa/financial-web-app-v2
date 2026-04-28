@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import pool from '@/lib/db';
+import { sendPushNotification } from '@/lib/fcm';
 import { saveNotificationTranslations } from '@/lib/translations';
 import { successResponse, errorResponse, validationError, serverError } from '@/lib/api';
 
@@ -91,6 +92,16 @@ export async function POST(request: NextRequest) {
       );
 
       await connection.commit();
+
+      const titleEn = title;
+      const messageEn = message;
+      const titleArResolved = titleAr || title;
+      const messageArResolved = messageAr || message;
+      try {
+        await sendPushNotification(userId, titleEn, titleArResolved, messageEn, messageArResolved);
+      } catch (pushErr) {
+        console.error('[Notifications POST] FCM push error:', pushErr);
+      }
 
       return successResponse({ id: notificationId }, 'Notification created successfully', 'error.notificationCreatedSuccessfully');
     } catch (error) {
