@@ -483,8 +483,22 @@ export default function AdminChatPage() {
       });
       const data = await response.json();
       if (data.success) {
+        const nextParticipantIds = shouldAdd
+          ? Array.from(new Set([...selectedParticipantIds, employeeId]))
+          : selectedParticipantIds.filter((id) => id !== employeeId);
+        setChatParticipants((prev) => {
+          const next = new Map(prev);
+          next.set(selectedChatData.id, nextParticipantIds);
+          return next;
+        });
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === selectedChatData.id
+              ? { ...c, participantIds: nextParticipantIds, updatedAt: new Date().toISOString() }
+              : c
+          )
+        );
         await fetchParticipants(selectedChatData.id);
-        await fetchChats();
       } else {
         setRoomManageError(data.error || 'Failed to update room members');
       }
@@ -1211,7 +1225,7 @@ export default function AdminChatPage() {
               size="small"
               onClick={handleRenameRoom}
               disabled={isSavingRoomName || !hasRoomNameChanges}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto sm:min-w-[128px] whitespace-nowrap"
             >
               <Pencil className="w-4 h-4 mr-1" />
               {isSavingRoomName ? 'Saving...' : 'Save Name'}
