@@ -5,6 +5,50 @@ import { successResponse, errorResponse, serverError, unauthorizedError } from '
 export const dynamic = 'force-dynamic';
 
 /**
+ * PUT /api/chat/[id]
+ * Rename an internal room (admin only)
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const chatId = params.id;
+    const body = await request.json().catch(() => ({}));
+    const userId = body.userId;
+    const roomName = (body.roomName || '').toString().trim();
+
+    if (!userId) return errorResponse('User ID is required', 400, 'error.userIdRequired');
+    if (!roomName) return errorResponse('Room name is required', 400, 'chat.roomNameRequired');
+
+    const [users] = await pool.query(
+      'SELECT role FROM users WHERE id = ?',
+      [userId]
+    ) as any[];
+    if (users.length === 0 || users[0].role !== 'admin') return unauthorizedError();
+
+    const [chats] = await pool.query(
+      'SELECT id, type FROM chats WHERE id = ?',
+      [chatId]
+    ) as any[];
+    if (chats.length === 0) return errorResponse('Chat not found', 404, 'error.chatNotFound');
+    if (chats[0].type !== 'internal_room') {
+      return errorResponse('Only internal room name can be changed', 400, 'chat.onlyInternalRoomRename');
+    }
+
+    await pool.query(
+      'UPDATE chats SET room_name = ?, updated_at = NOW() WHERE id = ?',
+      [roomName, chatId]
+    );
+
+    return successResponse({ renamed: true, roomName }, 'Room renamed successfully', 'chat.roomRenamed');
+  } catch (error: any) {
+    console.error('[RENAME CHAT] ERROR:', error?.message || error);
+    return serverError();
+  }
+}
+
+/**
  * DELETE /api/chat/[id]
  * Delete a chat room (admin only; any room)
  */

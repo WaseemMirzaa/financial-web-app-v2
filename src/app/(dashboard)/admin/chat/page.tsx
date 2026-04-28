@@ -13,7 +13,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { useNotifications } from '../../../../contexts/NotificationContext';
 import { Chat, ChatMessage } from '../../../../types';
 import type { Employee } from '../../../../types';
-import { Pin, PinOff, Trash2, Bookmark } from 'lucide-react';
+import { Pin, PinOff, Trash2, Pencil, UserPlus, UserMinus } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { reloadIfStaleDeploy } from '@/lib/client-utils';
 import { fetchApi } from '@/lib/fetchApi';
@@ -82,6 +82,11 @@ export default function AdminChatPage() {
   const [deleteConfirmChat, setDeleteConfirmChat] = useState<Chat | null>(null);
   const [deleteRoomError, setDeleteRoomError] = useState('');
   const [createRoomError, setCreateRoomError] = useState('');
+  const [editingRoomName, setEditingRoomName] = useState('');
+  const [isSavingRoomName, setIsSavingRoomName] = useState(false);
+  const [roomMemberSearch, setRoomMemberSearch] = useState('');
+  const [isUpdatingMembers, setIsUpdatingMembers] = useState(false);
+  const [roomManageError, setRoomManageError] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -232,6 +237,21 @@ export default function AdminChatPage() {
   }, [user?.id]);
 
   const selectedChatData = chats.find(c => c.id === selectedChat);
+  const selectedParticipantIds = selectedChat ? (chatParticipants.get(selectedChat) || []) : [];
+  const selectedRoomEmployeeIds = selectedParticipantIds.filter((id) => {
+    const emp = employees.find((e) => e.id === id);
+    return Boolean(emp);
+  });
+
+  useEffect(() => {
+    setRoomManageError('');
+    if (selectedChatData?.type === 'internal_room') {
+      setEditingRoomName(selectedChatData.roomName || '');
+    } else {
+      setEditingRoomName('');
+      setRoomMemberSearch('');
+    }
+  }, [selectedChatData?.id, selectedChatData?.roomName, selectedChatData?.type]);
 
   const chatsByEmployee = employeeFilterId
     ? chats.filter((c) =>
@@ -415,6 +435,137 @@ export default function AdminChatPage() {
     }
   };
 
+  const handleRenameRoom = async () => {
+    if (!selectedChatData || selectedChatData.type !== 'internal_room' || !user?.id) return;
+    const nextName = editingRoomName.trim();
+    if (!nextName) {
+      setRoomManageError('Room name is required');
+      return;
+    }
+    if ((selectedChatData.roomName || '') === nextName) return;
+
+    setRoomManageError('');
+    setIsSavingRoomName(true);
+    try {
+      const response = await fetchApi(`/api/chat/${selectedChatData.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, roomName: nextName }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === selectedChatData.id ? { ...c, roomName: nextName, updatedAt: new Date().toISOString() } : c
+          )
+        );
+      } else {
+        setRoomManageError(data.error || 'Failed to rename room');
+      }
+    } catch (error) {
+      reloadIfStaleDeploy(error);
+      setRoomManageError('Failed to rename room');
+    } finally {
+      setIsSavingRoomName(false);
+    }
+  };
+
+  const handleToggleRoomEmployee = async (employeeId: string, shouldAdd: boolean) => {
+    if (!selectedChatData || selectedChatData.type !== 'internal_room' || !user?.id) return;
+    setRoomManageError('');
+    setIsUpdatingMembers(true);
+    try {
+      const response = await fetchApi(`/api/chat/${selectedChatData.id}/participants`, {
+        method: shouldAdd ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorUserId: user.id, participantId: employeeId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchParticipants(selectedChatData.id);
+        await fetchChats();
+      } else {
+        setRoomManageError(data.error || 'Failed to update room members');
+      }
+    } catch (error) {
+      reloadIfStaleDeploy(error);
+      setRoomManageError('Failed to update room members');
+    } finally {
+      setIsUpdatingMembers(false);
+    }
+  };
+
+  const filteredEmployeesForRoom = React.useMemo(() => {
+    const q = roomMemberSearch.trim().toLowerCase();
+    if (!q) return employees;
+    return employees.filter((emp) => (emp.name || '').toLowerCase().includes(q));
+  }, [employees, roomMemberSearch]);
+
+  const roomManagementPanel = selectedChatData?.type === 'internal_room' ? (
+    <Card variant="default" padding="medium" className="mb-3">
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <Input
+            value={editingRoomName}
+            onChange={(e) => setEditingRoomName(e.target.value)}
+            placeholder={t('chat.roomName')}
+            className="flex-1"
+          />
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={handleRenameRoom}
+            disabled={isSavingRoomName || !editingRoomName.trim()}
+            className="w-full sm:w-auto"
+          >
+            <Pencil className="w-4 h-4 mr-1" />
+            Rename
+          </Button>
+        </div>
+
+        <div className="text-xs text-neutral-600">
+          Members: {selectedRoomEmployeeIds.length}
+        </div>
+        <Input
+          value={roomMemberSearch}
+          onChange={(e) => setRoomMemberSearch(e.target.value)}
+          placeholder="Search employee..."
+          className="text-sm"
+        />
+        <div className="max-h-44 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-100">
+          {filteredEmployeesForRoom.map((emp) => {
+            const isInRoom = selectedRoomEmployeeIds.includes(emp.id);
+            return (
+              <div key={emp.id} className="flex items-center justify-between px-3 py-2 gap-2">
+                <span className="text-sm text-neutral-900 truncate">{emp.name}</span>
+                <Button
+                  variant={isInRoom ? 'secondary' : 'primary'}
+                  size="small"
+                  onClick={() => handleToggleRoomEmployee(emp.id, !isInRoom)}
+                  disabled={isUpdatingMembers}
+                  className="shrink-0"
+                >
+                  {isInRoom ? (
+                    <>
+                      <UserMinus className="w-4 h-4 mr-1" />
+                      Remove
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4 mr-1" />
+                      Add
+                    </>
+                  )}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+        {roomManageError && <p className="text-sm text-error">{roomManageError}</p>}
+      </div>
+    </Card>
+  ) : null;
+
   const isMobile = useMediaQuery('(max-width: 1023px)');
 
   if (loading) {
@@ -434,6 +585,7 @@ export default function AdminChatPage() {
 
       {isMobile && selectedChatData ? (
         <div className="flex flex-col min-h-[320px] h-[82vh] sm:h-[78vh] md:h-[600px] max-h-[calc(100dvh-4rem)]">
+          {roomManagementPanel}
           <ChatWindow
             messages={messages}
             onSendMessage={handleSendMessage}
@@ -1005,67 +1157,70 @@ export default function AdminChatPage() {
 
         <div className="lg:col-span-2">
           {selectedChatData ? (
-            <ChatWindow
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              chatId={selectedChat ?? undefined}
-              availableChats={chats.filter((c) => c.id !== selectedChat)}
-              availableEmployees={employees.map((e) => ({ id: e.id, name: e.name || e.email }))}
-              onForwardComplete={fetchChats}
-              onMessageUpdate={(update) => {
-                if (!update || !selectedChat) return;
-                if (update.type === 'messageEdited') {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === update.message.id
-                        ? { ...m, ...update.message, content: update.message.content ?? m.content }
-                        : m
-                    )
-                  );
-                  setChats((prev) =>
-                    prev.map((c) => {
-                      if (c.id !== selectedChat) return c;
-                      if (c.lastMessage?.id === update.message.id)
-                        return { ...c, lastMessage: { ...c.lastMessage, content: update.message.content ?? c.lastMessage!.content, isEdited: true } };
-                      return c;
-                    })
-                  );
-                } else if (update.type === 'messageDeleted') {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === update.messageId ? { ...m, isDeleted: true, content: '' } : m
-                    )
-                  );
-                  setChats((prev) =>
-                    prev.map((c) => {
-                      if (c.id !== selectedChat) return c;
-                      if (c.lastMessage?.id === update.messageId)
-                        return { ...c, lastMessage: { ...c.lastMessage!, content: 'Message deleted', isDeleted: true } };
-                      return c;
-                    })
-                  );
+            <>
+              {roomManagementPanel}
+              <ChatWindow
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                chatId={selectedChat ?? undefined}
+                availableChats={chats.filter((c) => c.id !== selectedChat)}
+                availableEmployees={employees.map((e) => ({ id: e.id, name: e.name || e.email }))}
+                onForwardComplete={fetchChats}
+                onMessageUpdate={(update) => {
+                  if (!update || !selectedChat) return;
+                  if (update.type === 'messageEdited') {
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === update.message.id
+                          ? { ...m, ...update.message, content: update.message.content ?? m.content }
+                          : m
+                      )
+                    );
+                    setChats((prev) =>
+                      prev.map((c) => {
+                        if (c.id !== selectedChat) return c;
+                        if (c.lastMessage?.id === update.message.id)
+                          return { ...c, lastMessage: { ...c.lastMessage, content: update.message.content ?? c.lastMessage!.content, isEdited: true } };
+                        return c;
+                      })
+                    );
+                  } else if (update.type === 'messageDeleted') {
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === update.messageId ? { ...m, isDeleted: true, content: '' } : m
+                      )
+                    );
+                    setChats((prev) =>
+                      prev.map((c) => {
+                        if (c.id !== selectedChat) return c;
+                        if (c.lastMessage?.id === update.messageId)
+                          return { ...c, lastMessage: { ...c.lastMessage!, content: 'Message deleted', isDeleted: true } };
+                        return c;
+                      })
+                    );
+                  }
+                }}
+                title={
+                  selectedChatData.type === 'internal_room'
+                    ? translateRoomName(selectedChatData.roomName)
+                    : (selectedChatData.participantNames && selectedChatData.participantNames.length > 0
+                      ? selectedChatData.participantNames.join(', ')
+                      : t('chat.customerChat')) + (selectedChatData.customerPhone ? ` · ${selectedChatData.customerPhone}` : '')
                 }
-              }}
-              title={
-                selectedChatData.type === 'internal_room'
-                  ? translateRoomName(selectedChatData.roomName)
-                  : (selectedChatData.participantNames && selectedChatData.participantNames.length > 0
-                    ? selectedChatData.participantNames.join(', ')
-                    : t('chat.customerChat')) + (selectedChatData.customerPhone ? ` · ${selectedChatData.customerPhone}` : '')
-              }
-              presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale, user?.id)}
-              readOnly={selectedChatData.type === 'customer_employee'}
-              pinnedMessageId={selectedChatData.pinnedMessageId}
-              onPinnedMessageUpdate={(messageId) => {
-                setChats((prev) =>
-                  prev.map((c) =>
-                    c.id === selectedChat
-                      ? { ...c, pinnedMessageId: messageId, pinnedMessageAt: messageId ? new Date().toISOString() : null }
-                      : c
-                  )
-                );
-              }}
-            />
+                presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale, user?.id)}
+                readOnly={selectedChatData.type === 'customer_employee'}
+                pinnedMessageId={selectedChatData.pinnedMessageId}
+                onPinnedMessageUpdate={(messageId) => {
+                  setChats((prev) =>
+                    prev.map((c) =>
+                      c.id === selectedChat
+                        ? { ...c, pinnedMessageId: messageId, pinnedMessageAt: messageId ? new Date().toISOString() : null }
+                        : c
+                    )
+                  );
+                }}
+              />
+            </>
           ) : (
             <Card variant="elevated" padding="large">
               <p className="text-center text-neutral-500">{t('chat.selectChat')}</p>
