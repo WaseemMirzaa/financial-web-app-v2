@@ -87,6 +87,7 @@ export default function AdminChatPage() {
   const [roomMemberSearch, setRoomMemberSearch] = useState('');
   const [isUpdatingMembers, setIsUpdatingMembers] = useState(false);
   const [roomManageError, setRoomManageError] = useState('');
+  const [isManageRoomModalOpen, setIsManageRoomModalOpen] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -500,70 +501,24 @@ export default function AdminChatPage() {
     if (!q) return employees;
     return employees.filter((emp) => (emp.name || '').toLowerCase().includes(q));
   }, [employees, roomMemberSearch]);
+  const hasRoomNameChanges = Boolean(
+    selectedChatData?.type === 'internal_room' &&
+    editingRoomName.trim() &&
+    editingRoomName.trim() !== (selectedChatData.roomName || '')
+  );
 
   const roomManagementPanel = selectedChatData?.type === 'internal_room' ? (
-    <Card variant="default" padding="medium" className="mb-3">
-      <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-          <Input
-            value={editingRoomName}
-            onChange={(e) => setEditingRoomName(e.target.value)}
-            placeholder={t('chat.roomName')}
-            className="flex-1"
-          />
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={handleRenameRoom}
-            disabled={isSavingRoomName || !editingRoomName.trim()}
-            className="w-full sm:w-auto"
-          >
-            <Pencil className="w-4 h-4 mr-1" />
-            Rename
-          </Button>
-        </div>
-
-        <div className="text-xs text-neutral-600">
-          Members: {selectedRoomEmployeeIds.length}
-        </div>
-        <Input
-          value={roomMemberSearch}
-          onChange={(e) => setRoomMemberSearch(e.target.value)}
-          placeholder="Search employee..."
-          className="text-sm"
-        />
-        <div className="max-h-44 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-100">
-          {filteredEmployeesForRoom.map((emp) => {
-            const isInRoom = selectedRoomEmployeeIds.includes(emp.id);
-            return (
-              <div key={emp.id} className="flex items-center justify-between px-3 py-2 gap-2">
-                <span className="text-sm text-neutral-900 truncate">{emp.name}</span>
-                <Button
-                  variant={isInRoom ? 'secondary' : 'primary'}
-                  size="small"
-                  onClick={() => handleToggleRoomEmployee(emp.id, !isInRoom)}
-                  disabled={isUpdatingMembers}
-                  className="shrink-0"
-                >
-                  {isInRoom ? (
-                    <>
-                      <UserMinus className="w-4 h-4 mr-1" />
-                      Remove
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4 mr-1" />
-                      Add
-                    </>
-                  )}
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-        {roomManageError && <p className="text-sm text-error">{roomManageError}</p>}
-      </div>
-    </Card>
+    <div className="mb-3 flex justify-end">
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={() => setIsManageRoomModalOpen(true)}
+        className="w-full sm:w-auto"
+      >
+        <Pencil className="w-4 h-4 mr-1" />
+        Manage Room
+      </Button>
+    </div>
   ) : null;
 
   const isMobile = useMediaQuery('(max-width: 1023px)');
@@ -1229,6 +1184,81 @@ export default function AdminChatPage() {
         </div>
       </div>
       )}
+
+      <Modal
+        isOpen={isManageRoomModalOpen}
+        onClose={() => {
+          setIsManageRoomModalOpen(false);
+          setRoomManageError('');
+          setRoomMemberSearch('');
+        }}
+        title="Manage Room"
+      >
+        <div className="space-y-3">
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+            <p className="text-xs font-medium text-neutral-700">Room Name</p>
+            <p className="text-xs text-neutral-500 truncate">{selectedChatData?.roomName || '-'}</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <Input
+              value={editingRoomName}
+              onChange={(e) => setEditingRoomName(e.target.value)}
+              placeholder="Enter new room name"
+              className="flex-1"
+            />
+            <Button
+              variant="primary"
+              size="small"
+              onClick={handleRenameRoom}
+              disabled={isSavingRoomName || !hasRoomNameChanges}
+              className="w-full sm:w-auto"
+            >
+              <Pencil className="w-4 h-4 mr-1" />
+              {isSavingRoomName ? 'Saving...' : 'Save Name'}
+            </Button>
+          </div>
+
+          <div className="text-xs text-neutral-600">
+            Members: {selectedRoomEmployeeIds.length}
+          </div>
+          <Input
+            value={roomMemberSearch}
+            onChange={(e) => setRoomMemberSearch(e.target.value)}
+            placeholder="Search employee..."
+            className="text-sm"
+          />
+          <div className="max-h-64 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-100">
+            {filteredEmployeesForRoom.map((emp) => {
+              const isInRoom = selectedRoomEmployeeIds.includes(emp.id);
+              return (
+                <div key={emp.id} className="flex items-center justify-between px-3 py-2 gap-2">
+                  <span className="text-sm text-neutral-900 truncate">{emp.name}</span>
+                  <Button
+                    variant={isInRoom ? 'secondary' : 'primary'}
+                    size="small"
+                    onClick={() => handleToggleRoomEmployee(emp.id, !isInRoom)}
+                    disabled={isUpdatingMembers}
+                    className="shrink-0"
+                  >
+                    {isInRoom ? (
+                      <>
+                        <UserMinus className="w-4 h-4 mr-1" />
+                        Remove
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-1" />
+                        Add
+                      </>
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          {roomManageError && <p className="text-sm text-error">{roomManageError}</p>}
+        </div>
+      </Modal>
 
       {/* Create Group Room Modal */}
       <Modal
