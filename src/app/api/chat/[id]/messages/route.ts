@@ -67,15 +67,18 @@ async function checkCanSendInChat(chatId: string, senderId: string): Promise<Ret
   let participantIds = participants.map((p: any) => p.user_id);
   let isParticipant = participantIds.includes(senderId);
 
-  // Admin: can join and send in internal rooms only; read-only in customer–employee 1:1 chats
+  // Admin: can join internal rooms; can send in customer chats (participants synced via syncCustomerUnifiedChat)
   if (role === 'admin') {
-    if (chatType === 'customer_employee') {
-      return errorResponse('Admin cannot send messages in customer chats', 403, 'chat.adminCannotSendToCustomer');
-    }
     if (chatType === 'internal_room') {
       if (!isParticipant) {
         await pool.query(`INSERT IGNORE INTO chat_participants (chat_id, user_id) VALUES (?, ?)`, [chatId, senderId]);
         isParticipant = true;
+      }
+      return null;
+    }
+    if (chatType === 'customer_employee') {
+      if (!isParticipant) {
+        await pool.query(`INSERT IGNORE INTO chat_participants (chat_id, user_id) VALUES (?, ?)`, [chatId, senderId]);
       }
       return null;
     }

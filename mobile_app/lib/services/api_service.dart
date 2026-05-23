@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config.dart';
@@ -164,12 +165,23 @@ class ApiService {
       final res = await http.post(
         Uri.parse('$_base/api/fcm/register'),
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: jsonEncode({'userId': userId, 'token': token}),
+        body: jsonEncode({
+          'userId': userId,
+          'token': token,
+          'deviceLabel': 'flutter_${defaultTargetPlatform.name}',
+        }),
       );
       final data = _parseJson(res.body);
-      if (data != null) return data;
-      return {'success': false, 'error': 'Invalid response'};
+      if (data != null) {
+        if (data['success'] != true) {
+          debugPrint('[FCM] register HTTP ${res.statusCode}: ${res.body}');
+        }
+        return data;
+      }
+      debugPrint('[FCM] register invalid JSON HTTP ${res.statusCode}: ${res.body}');
+      return {'success': false, 'error': 'Invalid response (${res.statusCode})'};
     } catch (e) {
+      debugPrint('[FCM] register network error: $e');
       return {'success': false, 'error': e.toString()};
     }
   }

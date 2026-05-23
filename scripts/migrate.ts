@@ -551,7 +551,7 @@ async function migrate() {
       CREATE TABLE IF NOT EXISTS user_fcm_tokens (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id VARCHAR(255) NOT NULL,
-        token VARCHAR(255) NOT NULL,
+        token VARCHAR(512) NOT NULL,
         device_label VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -559,6 +559,14 @@ async function migrate() {
         INDEX idx_user_id (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    try {
+      await connection.query(
+        `ALTER TABLE user_fcm_tokens MODIFY token VARCHAR(512) NOT NULL`
+      );
+    } catch {
+      // Table may not exist yet or column already updated
+    }
 
     console.log('All tables created successfully!');
   } catch (error) {

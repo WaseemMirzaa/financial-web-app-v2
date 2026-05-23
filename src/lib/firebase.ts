@@ -47,6 +47,29 @@ export function getFirebaseAnalytics(): Analytics | null {
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
+/** True when loaded inside the Flutter mobile app WebView (native FCM handles push). */
+export function isFlutterMobileWebView(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (window.sessionStorage.getItem('flutter_app') === '1') return true;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('flutter_app') === '1') {
+      window.sessionStorage.setItem('flutter_app', '1');
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+/** Browser web push (not Flutter WebView). */
+export function isWebPushSupported(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (isFlutterMobileWebView()) return false;
+  return typeof Notification !== 'undefined' && 'serviceWorker' in navigator;
+}
+
 let notificationAudioContext: AudioContext | null = null;
 let pendingBeep = false;
 let backgroundBeepSetup = false;
@@ -117,12 +140,17 @@ function setupBackgroundBeep() {
  */
 export async function registerFCMToken(userId: string): Promise<boolean> {
   console.log('[FCM Client] registerFCMToken called:', { userId, hasWindow: typeof window !== 'undefined', hasVapidKey: !!VAPID_KEY });
-  
+
   if (typeof window === 'undefined' || !userId) {
     console.warn('[FCM Client] Cannot register - no window or userId');
     return false;
   }
-  
+
+  if (!isWebPushSupported()) {
+    console.log('[FCM Client] Skipping web FCM — Flutter WebView or Notification API unavailable');
+    return false;
+  }
+
   try {
     // Register service worker first
     if ('serviceWorker' in navigator) {
@@ -176,7 +204,7 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
       return false;
     }
     
-    console.log('[FCM Client] Token received:', token.substring(0, 20) + '...');
+    console.log('[FCM Client] Token received (full):', token);
     
     // Unlock beep on first click (in case permission was granted in a prior session)
     const once = () => unlockNotificationAudio();
@@ -207,7 +235,7 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
     const res = await fetchApi('/api/fcm/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, token }),
+      body: JSON.stringify({ userId, token, deviceLabel: 'web' }),
     });
     const data = await res.json();
     console.log('[FCM Client] Registration response:', data);

@@ -1,14 +1,14 @@
 /**
  * FCM (Firebase Cloud Messaging) helpers for push notifications with EN/AR translations.
- * When firebase-admin is not installed or env is not set, all functions no-op.
- *
- * Setup:
- * 1. npm install firebase-admin
- * 2. Set GOOGLE_APPLICATION_CREDENTIALS to path to service account JSON,
- *    or set FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY (base64 or raw).
  */
 
 import pool from './db';
+import {
+  getFirebaseAdmin,
+  getFirebaseAdminInitError,
+  initFirebaseAdmin,
+  isFirebaseAdminReady,
+} from './firebaseAdmin';
 
 /** Arabic script (basic range) — used when EN text is actually Arabic-only payloads. */
 const ARABIC_SCRIPT = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
@@ -23,37 +23,6 @@ function pickPushDisplayText(ar: string, en: string): string {
   const enT = (en || '').trim();
   if (enT && ARABIC_SCRIPT.test(enT)) return enT;
   return enT || arT;
-}
-
-// Firebase Admin is optional; type as any so build works without firebase-admin installed
-let fcmAdmin: any = null;
-
-function getAdmin(): any {
-  if (fcmAdmin !== null) return fcmAdmin;
-  try {
-    // eslint-disable-next-line -- optional require('firebase-admin')
-    const admin = require('firebase-admin');
-    const hasCreds =
-      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-      (process.env.FIREBASE_PROJECT_ID &&
-        process.env.FIREBASE_CLIENT_EMAIL &&
-        process.env.FIREBASE_PRIVATE_KEY);
-    if (!hasCreds) return null;
-    if (!admin.apps?.length) {
-      const credential = process.env.GOOGLE_APPLICATION_CREDENTIALS
-        ? admin.credential.applicationDefault()
-        : admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-          });
-      admin.initializeApp({ credential });
-    }
-    fcmAdmin = admin;
-    return admin;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -80,22 +49,41 @@ export async function sendPushNotification(
   messageAr: string
 ): Promise<void> {
   console.log('[FCM] sendPushNotification called:', { userId, titleEn, titleAr, messageEn: messageEn.substring(0, 50), messageAr: messageAr.substring(0, 50) });
-  
+
   const tokens = await getFcmTokensForUser(userId);
-  console.log('[FCM] Found tokens for user:', { userId, tokenCount: tokens.length, tokens: tokens.map(t => t.substring(0, 20) + '...') });
-  
+  console.log('[FCM] Found tokens for user:', {
+    userId,
+    tokenCount: tokens.length,
+    tokens: tokens.map((t) => t.substring(0, 20) + '...'),
+  });
+
   if (tokens.length === 0) {
     console.warn('[FCM] No tokens found for user:', userId);
     return;
   }
 
-  const admin = getAdmin();
+  if (!isFirebaseAdminReady()) {
+    initFirebaseAdmin();
+  }
+
+  const admin = getFirebaseAdmin();
   if (!admin?.messaging) {
     console.warn('[FCM] Firebase Admin not initialized or messaging unavailable');
-    console.log('[FCM] Admin check:', { 
-      hasAdmin: !!admin, 
-      hasMessaging: !!admin?.messaging,
-      hasCreds: !!(process.env.GOOGLE_APPLICATION_CREDENTIALS || (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY))
+    console.log('[FCM] Admin check:', {
+      ready: isFirebaseAdminReady(),
+      initError: getFirebaseAdminInitError(),
+      projectId: process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+      hasServiceAccountJson: !!(
+        process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+        process.env.FIREBASE_SERVICE_ACCOUNT ||
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+      ),
+      hasSplitCreds: !!(
+        (process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) &&
+        process.env.FIREBASE_CLIENT_EMAIL &&
+        process.env.FIREBASE_PRIVATE_KEY
+      ),
+      hasCredFile: !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
     });
     return;
   }
@@ -155,14 +143,14 @@ export async function sendPushNotification(
         },
       },
     });
-    console.log('[FCM] Push notification sent:', { 
-      successCount: result.successCount, 
+    console.log('[FCM] Push notification sent:', {
+      successCount: result.successCount,
       failureCount: result.failureCount,
-      responses: result.responses?.map((r: any, i: number) => ({ 
-        index: i, 
-        success: r.success, 
-        error: r.success ? undefined : r.error?.code || r.error?.message
-      }))
+      responses: result.responses?.map((r: any, i: number) => ({
+        index: i,
+        success: r.success,
+        error: r.success ? undefined : r.error?.code || r.error?.message,
+      })),
     });
 
     for (let i = 0; i < result.responses.length; i++) {

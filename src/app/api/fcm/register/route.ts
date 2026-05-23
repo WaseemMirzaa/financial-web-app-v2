@@ -16,15 +16,23 @@ export async function POST(request: NextRequest) {
       return validationError('userId and token are required', 'error.missingRequiredFields');
     }
 
-    const trimmedToken = token.trim().slice(0, 255);
-    if (!trimmedToken) {
+    const trimmedToken = token.trim();
+    if (!trimmedToken || trimmedToken.length > 512) {
       return validationError('Invalid token', 'error.invalidToken');
     }
 
-    const [users] = (await pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', [userId])) as any[];
+    const [users] = (await pool.query('SELECT id, role FROM users WHERE id = ? LIMIT 1', [userId])) as any[];
     if (!users?.length) {
       return validationError('Invalid user', 'error.userNotFound');
     }
+
+    console.log('[FCM API] Token received:', {
+      userId,
+      role: users[0].role,
+      deviceLabel: deviceLabel || null,
+      tokenLength: trimmedToken.length,
+      token: trimmedToken,
+    });
 
     await pool.query(
       `INSERT INTO user_fcm_tokens (user_id, token, device_label)
@@ -32,6 +40,8 @@ export async function POST(request: NextRequest) {
        ON DUPLICATE KEY UPDATE device_label = VALUES(device_label)`,
       [userId, trimmedToken, deviceLabel || null]
     );
+
+    console.log('[FCM API] Token stored for user:', userId);
 
     return successResponse(
       { registered: true },

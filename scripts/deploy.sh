@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
-# Server deploy: fetch, pull, install, migrate, build, pm2 restart.
-# On server once: chmod +x scripts/deploy.sh
-# Usage: ./scripts/deploy.sh [--seed-admin]
-# Env: APP_DIR (default /var/www/financial-web-app), DEPLOY_BRANCH (default backend-no-firebase)
+# Server deploy: pull, install, migrate, build, pm2 restart.
+#
+# One-time on server:
+#   chmod +x /var/www/financial-web-app/scripts/deploy.sh
+#
+# Usage:
+#   ./scripts/deploy.sh
+#   ./scripts/deploy.sh --seed-admin
+#   DEPLOY_BRANCH=main APP_DIR=/var/www/financial-web-app ./scripts/deploy.sh
+#
+# Before first deploy with push notifications, add to .env.local on server:
+#   FIREBASE_SERVICE_ACCOUNT_JSON={...}   OR
+#   FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY
 set -e
 
 APP_DIR="${APP_DIR:-/var/www/financial-web-app}"
-BRANCH="${DEPLOY_BRANCH:-backend-no-firebase}"
+BRANCH="${DEPLOY_BRANCH:-main}"
 SEED_ADMIN=false
 
 for arg in "$@"; do
@@ -14,29 +23,31 @@ for arg in "$@"; do
 done
 
 cd "$APP_DIR"
-echo "[deploy] Using $APP_DIR, branch $BRANCH"
+echo "[deploy] App: $APP_DIR | Branch: $BRANCH"
 
-echo "[deploy] Fetching and checking out..."
+echo "[deploy] Git pull..."
 git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git pull origin "$BRANCH"
 
-echo "[deploy] Installing dependencies..."
+echo "[deploy] npm install..."
 npm install --no-audit --no-fund
 
-echo "[deploy] Running migrations..."
+echo "[deploy] Database migrate..."
 npm run db:migrate
 
 if [ "$SEED_ADMIN" = true ]; then
-  echo "[deploy] Seeding admin..."
+  echo "[deploy] Seed admin..."
   npm run seed-admin
 fi
 
-echo "[deploy] Building..."
+echo "[deploy] Build..."
 npm run build
 
-echo "[deploy] Restarting PM2..."
-pm2 restart financial-web-app
+echo "[deploy] PM2 restart..."
+pm2 restart financial-web-app || pm2 start ecosystem.config.js
 pm2 save
 
-echo "[deploy] Done. If users see 'Failed to find Server Action', ask them to hard-refresh (Ctrl+Shift+R / Cmd+Shift+R)."
+echo "[deploy] Done."
+echo "[deploy] Check logs: pm2 logs financial-web-app --lines 30"
+echo "[deploy] Expect: [FCM Admin] Initialized for project: ..."

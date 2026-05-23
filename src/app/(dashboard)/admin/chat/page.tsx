@@ -605,7 +605,7 @@ export default function AdminChatPage() {
                   : t('chat.customerChat')) + (selectedChatData.customerPhone ? ` · ${selectedChatData.customerPhone}` : '')
             }
             presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale, user?.id)}
-            readOnly={selectedChatData.type === 'customer_employee'}
+            readOnly={false}
             pinnedMessageId={selectedChatData.pinnedMessageId}
             onPinnedMessageUpdate={(messageId) => {
               setChats((prev) =>
@@ -1177,7 +1177,7 @@ export default function AdminChatPage() {
                       : t('chat.customerChat')) + (selectedChatData.customerPhone ? ` · ${selectedChatData.customerPhone}` : '')
                 }
                 presenceSubtitle={getPresenceSubtitleForHeader(selectedChatData, t, locale, user?.id)}
-                readOnly={selectedChatData.type === 'customer_employee'}
+                readOnly={false}
                 pinnedMessageId={selectedChatData.pinnedMessageId}
                 onPinnedMessageUpdate={(messageId) => {
                   setChats((prev) =>

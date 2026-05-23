@@ -1,6 +1,19 @@
 const http = require('http');
 const { parse } = require('url');
 const next = require('next');
+const path = require('path');
+
+// Load env before Next.js (PM2 / custom server)
+require('dotenv').config({ path: path.join(__dirname, '.env.local') });
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+try {
+  require('tsx/cjs/register');
+  const { initFirebaseAdmin } = require('./src/lib/firebaseAdmin.ts');
+  initFirebaseAdmin();
+} catch (e) {
+  console.warn('[FCM Admin] Early bootstrap skipped:', e?.message || e);
+}
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';

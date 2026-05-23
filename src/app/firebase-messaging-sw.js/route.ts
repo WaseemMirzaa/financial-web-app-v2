@@ -1,16 +1,26 @@
-// FCM service worker — replace firebaseConfig with the same values as NEXT_PUBLIC_FIREBASE_* in .env.local
-// Or generate this file in CI from env. Do not commit real API keys to a public repo.
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Serves FCM service worker with Firebase config from server env (same as NEXT_PUBLIC_FIREBASE_*).
+ */
+export async function GET() {
+  const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  };
+
+  const configJson = JSON.stringify(firebaseConfig);
+
+  const js = `importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-var firebaseConfig = {
-  apiKey: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_API_KEY',
-  authDomain: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
-  projectId: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-  storageBucket: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
-  messagingSenderId: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-  appId: 'REPLACE_WITH_NEXT_PUBLIC_FIREBASE_APP_ID',
-};
+var firebaseConfig = ${configJson};
 
 firebase.initializeApp(firebaseConfig);
 var messaging = firebase.messaging();
@@ -45,3 +55,13 @@ self.addEventListener('notificationclick', function(event) {
     })
   );
 });
+`;
+
+  return new NextResponse(js, {
+    headers: {
+      'Content-Type': 'application/javascript; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Service-Worker-Allowed': '/',
+    },
+  });
+}

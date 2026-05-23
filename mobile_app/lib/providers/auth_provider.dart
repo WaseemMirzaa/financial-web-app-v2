@@ -11,10 +11,10 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  void _registerFcmToken() {
+  Future<void> _registerFcmToken() async {
     final u = _user;
     if (u == null) return;
-    Future.microtask(() => PushNotificationService.registerFcmTokenWithBackend(u.id));
+    await PushNotificationService.registerFcmTokenWithBackend(u.id);
   }
 
   UserModel? get user => _user;
@@ -39,7 +39,7 @@ class AuthProvider with ChangeNotifier {
     }
     _user = me;
     await SessionService.saveUser(me);
-    _registerFcmToken();
+    await _registerFcmToken();
     notifyListeners();
     return true;
   }
@@ -56,7 +56,7 @@ class AuthProvider with ChangeNotifier {
         await SessionService.saveUser(_user!);
         _error = null;
         _isLoading = false;
-        _registerFcmToken();
+        await _registerFcmToken();
         notifyListeners();
         return true;
       }
@@ -97,7 +97,7 @@ class AuthProvider with ChangeNotifier {
         await SessionService.saveUser(_user!);
         _error = null;
         _isLoading = false;
-        _registerFcmToken();
+        await _registerFcmToken();
         notifyListeners();
         return true;
       }
@@ -135,7 +135,7 @@ class AuthProvider with ChangeNotifier {
         await SessionService.saveUser(_user!);
         _error = null;
         _isLoading = false;
-        _registerFcmToken();
+        await _registerFcmToken();
         notifyListeners();
         return true;
       }

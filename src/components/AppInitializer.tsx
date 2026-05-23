@@ -14,7 +14,7 @@ import {
 } from '@/lib/roleRoutes';
 import { normalizePathname } from '@/lib/safeNextPath';
 import { isPublicNoAuthPath } from '@/lib/publicRoutes';
-import { registerFCMToken } from '@/lib/firebase';
+import { registerFCMToken, isWebPushSupported } from '@/lib/firebase';
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isVerifying } = useAuth();
@@ -24,7 +24,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) return;
+    if (!isAuthenticated || !user?.id || !isWebPushSupported()) return;
     registerFCMToken(user.id).catch(() => {});
   }, [isAuthenticated, user?.id]);
 
