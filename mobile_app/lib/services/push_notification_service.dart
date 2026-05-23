@@ -117,10 +117,18 @@ class PushNotificationService {
     if (userId.isEmpty) return;
     try {
       final token = _lastToken ?? await FirebaseMessaging.instance.getToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) {
+        debugPrint('[FCM] No device token — check Firebase config / google-services.json');
+        return;
+      }
       _lastToken = token;
-      await ApiService.registerFcmToken(userId, token);
-    } catch (_) {}
+      final res = await ApiService.registerFcmToken(userId, token);
+      if (res['success'] != true) {
+        debugPrint('[FCM] Backend register failed: $res');
+      }
+    } catch (e, st) {
+      debugPrint('[FCM] registerFcmTokenWithBackend error: $e\n$st');
+    }
   }
 
   static Future<void> _ensureAndroidPostNotificationPermission() async {

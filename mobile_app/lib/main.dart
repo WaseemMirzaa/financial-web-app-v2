@@ -26,7 +26,9 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     await PushNotificationService.init();
-  } catch (_) {}
+  } catch (e, st) {
+    debugPrint('Firebase/FCM init failed: $e\n$st');
+  }
   final localeProvider = LocaleProvider();
   await localeProvider.load();
   runApp(FinancialMobileApp(localeProvider: localeProvider));

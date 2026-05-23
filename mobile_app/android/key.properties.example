@@ -1,0 +1,6 @@
+# Copy to key.properties (same folder) and fill in. Never commit key.properties or *.jks.
+# Create an upload keystore: https://docs.flutter.dev/deployment/android#signing-the-app
+storePassword=
+keyPassword=
+keyAlias=
+storeFile=upload-keystore.jks

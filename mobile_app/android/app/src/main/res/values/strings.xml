@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Alkhalij Tamweel</string>
+    <string name="permission_core_functionality_photos_videos">
+        Upload photos and documents to your Khalij Tamweel portal when you choose a file in the app (forms, chat, KYC). The system picker is used; the app does not browse your gallery in the background.
+    </string>
+</resources>

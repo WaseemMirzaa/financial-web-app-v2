@@ -1,0 +1,7 @@
+# flutter_inappwebview: optional Chrome Custom Tabs / TWA types are compileOnly; R8 needs these suppressions.
+-dontwarn com.pichillilorenzo.flutter_inappwebview_android.ISettings
+-dontwarn com.pichillilorenzo.flutter_inappwebview_android.chrome_custom_tabs.ChromeCustomTabsActivity
+-dontwarn com.pichillilorenzo.flutter_inappwebview_android.chrome_custom_tabs.ChromeCustomTabsChannelDelegate
+-dontwarn com.pichillilorenzo.flutter_inappwebview_android.chrome_custom_tabs.ChromeSafariBrowserManager
+-dontwarn com.pichillilorenzo.flutter_inappwebview_android.chrome_custom_tabs.ServiceConnectionCallback
+-dontwarn com.pichillilorenzo.flutter_inappwebview_android.chrome_custom_tabs.TrustedWebActivity

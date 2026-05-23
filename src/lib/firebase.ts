@@ -199,7 +199,6 @@ export async function registerFCMToken(userId: string): Promise<boolean> {
           icon: '/icon.png',
           badge: '/icon.png',
           silent: false,
-          vibrate: [200, 100, 200],
         });
       }
     });

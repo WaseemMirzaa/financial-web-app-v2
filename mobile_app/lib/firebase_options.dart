@@ -34,7 +34,7 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyDX3yKJsCYxD8GynHaMom1zd73MSwqf-Jg',
     appId: '1:786188064824:android:cde668495ac25c5c3daecd',
     messagingSenderId: '786188064824',
-    projectId: '786188064824',
+    projectId: 'khalij-tamweel-app',
     storageBucket: 'khalij-tamweel-app.firebasestorage.app',
   );
 

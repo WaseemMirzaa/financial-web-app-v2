@@ -1,26 +1,52 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Network permissions for API/WebView access -->
+    <!-- Network: API, WebView, FCM -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Gallery & files: WebView / document & image upload -->
+    <!-- Push notifications (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- WebView chat: camera / microphone (permission_handler + in-app WebView) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- Gallery & files: portal uploads (forms, chat, KYC) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission
+        android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+        android:minSdkVersion="34" />
+    <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- Optional hardware (app works without camera/mic on some devices) -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
 
     <application
-        android:label="financial_mobile"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
+            android:label="@string/app_name"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
@@ -68,7 +94,14 @@
             <data android:mimeType="image/*" />
         </intent>
         <intent>
+            <action android:name="android.intent.action.PICK" />
+            <data android:mimeType="video/*" />
+        </intent>
+        <intent>
             <action android:name="android.intent.action.OPEN_DOCUMENT" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT_TREE" />
         </intent>
     </queries>
 </manifest>

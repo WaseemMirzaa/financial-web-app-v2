@@ -14,8 +14,7 @@ import {
 } from '@/lib/roleRoutes';
 import { normalizePathname } from '@/lib/safeNextPath';
 import { isPublicNoAuthPath } from '@/lib/publicRoutes';
-// Firebase analytics disabled
-// import { getFirebaseAnalytics } from '@/lib/firebase';
+import { registerFCMToken } from '@/lib/firebase';
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isVerifying } = useAuth();
@@ -24,14 +23,10 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
 
-  // Firebase analytics disabled
-  // useEffect(() => {
-  //   try {
-  //     getFirebaseAnalytics();
-  //   } catch {
-  //     // ignore
-  //   }
-  // }, []);
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    registerFCMToken(user.id).catch(() => {});
+  }, [isAuthenticated, user?.id]);
 
   // Always exit loading after 1.2s so app never stays stuck
   useEffect(() => {
