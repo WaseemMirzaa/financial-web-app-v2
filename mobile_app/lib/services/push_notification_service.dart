@@ -70,7 +70,8 @@ class PushNotificationService {
         channelDescription: _androidChannel.description,
         importance: Importance.max,
         priority: Priority.high,
-        icon: '@mipmap/ic_launcher',
+        icon: '@drawable/ic_notification',
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
         playSound: true,
         enableVibration: true,
         vibrationPattern: _vibrationPattern,
@@ -82,7 +83,7 @@ class PushNotificationService {
   static Future<void> init() async {
     await _ensureNotificationPermissionOnLaunch();
 
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -226,7 +227,7 @@ class PushNotificationService {
     if (title.isEmpty && body.isEmpty) return;
 
     if (plugin != null) {
-      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
       await local.initialize(
         const InitializationSettings(android: androidInit),
       );

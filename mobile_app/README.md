@@ -1,16 +1,49 @@
-# financial_mobile
+# Alkhalij Tamweel Mobile (Flutter)
 
-A new Flutter project.
+## Prerequisites
 
-## Getting Started
+- [FVM](https://fvm.app/) (`brew install fvm`)
+- Android Studio / Android SDK
+- Xcode + CocoaPods (for iOS on macOS)
 
-This project is a starting point for a Flutter application.
+## One-time setup
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+cd mobile_app
+fvm install 3.35.7   # if not already cached
+fvm use 3.35.7
+fvm flutter pub get
+cd ios && pod install && cd ..
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Place `android/app/google-services.json` from Firebase Console (package `com.khalijtamweel.financial_mobile`). It is gitignored.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+For release Android builds, copy `android/key.properties.example` → `android/key.properties` and add your upload keystore (also gitignored).
+
+## Run
+
+```bash
+cd mobile_app
+fvm flutter devices
+fvm flutter run                    # debug on connected device/emulator
+fvm flutter run --release          # release mode
+```
+
+VS Code / Cursor uses `.vscode/settings.json` → Flutter SDK `.fvm/versions/3.35.7`.
+
+## API base URL
+
+Default production API: `https://alkhalijtamweel.com/` (`lib/config.dart`). Override:
+
+```bash
+fvm flutter run --dart-define=BASE_URL=https://your-server.com/
+```
+
+## Common commands
+
+```bash
+fvm flutter clean && fvm flutter pub get
+fvm flutter build appbundle --release
+fvm flutter build ios --release   # macOS + signing
+fvm flutter doctor -v
+```
